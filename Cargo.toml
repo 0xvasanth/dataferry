@@ -1,0 +1,30 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/ferry-core",
+    "crates/ferry-dsl",
+    "crates/ferry-connectors/postgres",
+    "crates/ferry-connectors/mongo",
+    "crates/ferry-state",
+    "crates/ferry-cli",
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+repository = "https://github.com/0xvasanth/ferry"
+
+[workspace.dependencies]
+ferry-core = { path = "crates/ferry-core" }
+ferry-dsl = { path = "crates/ferry-dsl" }
+ferry-state = { path = "crates/ferry-state" }
+ferry-connector-postgres = { path = "crates/ferry-connectors/postgres" }
+ferry-connector-mongo = { path = "crates/ferry-connectors/mongo" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }

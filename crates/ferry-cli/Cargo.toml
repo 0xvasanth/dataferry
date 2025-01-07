@@ -1,0 +1,17 @@
+[package]
+name = "ferry-cli"
+description = "The ferry command-line interface"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+
+[[bin]]
+name = "ferry"
+path = "src/main.rs"
