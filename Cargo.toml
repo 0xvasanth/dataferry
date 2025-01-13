@@ -23,6 +23,9 @@ ferry-state = { path = "crates/ferry-state" }
 ferry-connector-postgres = { path = "crates/ferry-connectors/postgres" }
 ferry-connector-mongo = { path = "crates/ferry-connectors/mongo" }
 
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+testcontainers-modules = { version = "0.15", features = ["postgres", "mongo"] }
+
 [workspace.lints.rust]
 unsafe_code = "forbid"
 

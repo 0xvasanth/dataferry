@@ -12,3 +12,7 @@ workspace = true
 
 [dependencies]
 
+[dev-dependencies]
+tokio.workspace = true
+testcontainers-modules.workspace = true
+tokio-postgres = "0.7"

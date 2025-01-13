@@ -12,3 +12,7 @@ workspace = true
 
 [dependencies]
 
+[dev-dependencies]
+tokio.workspace = true
+testcontainers-modules.workspace = true
+mongodb = "3"
