@@ -11,3 +11,5 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
+arrow-schema = "60"
+thiserror = "2"
