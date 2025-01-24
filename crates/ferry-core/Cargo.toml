@@ -12,4 +12,5 @@ workspace = true
 
 [dependencies]
 arrow-schema = "60"
+arrow-array = "60"
 thiserror = "2"
