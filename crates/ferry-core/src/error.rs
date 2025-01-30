@@ -13,4 +13,7 @@ pub enum FerryError {
 
     #[error("field `{field}`: arrow type {arrow_type} has no canonical equivalent")]
     UnsupportedArrowType { field: String, arrow_type: String },
+
+    #[error("entity `{entity}`: {reason}")]
+    InvalidEntity { entity: String, reason: String },
 }
