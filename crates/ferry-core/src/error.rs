@@ -16,4 +16,10 @@ pub enum FerryError {
 
     #[error("entity `{entity}`: {reason}")]
     InvalidEntity { entity: String, reason: String },
+
+    #[error("invalid key range on `{column}`: {reason}")]
+    InvalidKeyRange {
+        column: String,
+        reason: &'static str,
+    },
 }
