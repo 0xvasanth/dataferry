@@ -5,9 +5,11 @@ pub mod entity;
 pub mod error;
 pub mod missing;
 pub mod partition;
+pub mod target;
 pub mod types;
 
 pub use checkpoint::Checkpoint;
 pub use entity::Entity;
 pub use error::{FerryError, Result};
 pub use partition::{KeyRange, KeyValue, Partition, PartitionId, PartitionScope};
+pub use target::{ForeignKey, TargetSchema, TargetTable};

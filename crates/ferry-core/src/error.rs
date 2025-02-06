@@ -22,4 +22,7 @@ pub enum FerryError {
         column: String,
         reason: &'static str,
     },
+
+    #[error("target table `{table}`: {reason}")]
+    InvalidTargetSchema { table: String, reason: String },
 }
