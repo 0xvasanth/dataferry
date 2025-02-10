@@ -13,6 +13,8 @@ workspace = true
 [dependencies]
 arrow-schema = "60"
 arrow-array = "60"
+async-trait = "0.1"
+futures = "0.3"
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"
 

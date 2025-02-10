@@ -25,4 +25,14 @@ pub enum FerryError {
 
     #[error("target table `{table}`: {reason}")]
     InvalidTargetSchema { table: String, reason: String },
+
+    #[error("lease on partition `{partition}` at epoch {epoch} was superseded by epoch {current}")]
+    StaleLease {
+        partition: String,
+        epoch: u64,
+        current: u64,
+    },
+
+    #[error("{connector}: {message}")]
+    Connector { connector: String, message: String },
 }

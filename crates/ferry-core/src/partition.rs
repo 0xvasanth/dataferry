@@ -20,6 +20,14 @@ pub struct Partition {
     pub scope: PartitionScope,
 }
 
+/// Guidance from the planner on how to split an entity.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PartitionHint {
+    /// Approximate rows per partition. Bounds the length of each partition's
+    /// sink transaction.
+    pub target_rows: u64,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PartitionScope {
     /// The whole entity in one unit of work.
