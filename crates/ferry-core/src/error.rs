@@ -33,6 +33,9 @@ pub enum FerryError {
         current: u64,
     },
 
+    #[error("key column: {reason}")]
+    InvalidKey { reason: String },
+
     #[error("{connector}: {message}")]
     Connector { connector: String, message: String },
 }

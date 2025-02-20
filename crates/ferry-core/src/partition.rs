@@ -6,6 +6,10 @@
 
 use std::cmp::Ordering;
 
+use arrow_array::{
+    Array, BinaryArray, FixedSizeBinaryArray, Int8Array, Int16Array, Int32Array, Int64Array,
+    StringArray, UInt8Array, UInt16Array, UInt32Array, UInt64Array,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::error::{FerryError, Result};
@@ -49,6 +53,47 @@ pub enum KeyValue {
 }
 
 impl KeyValue {
+    /// Reads the key value at `row` of a key column. Fails for nulls (keys
+    /// are never null) and for column types that can't be partition keys.
+    pub fn from_array(array: &dyn Array, row: usize) -> Result<KeyValue> {
+        let invalid = |reason: String| FerryError::InvalidKey { reason };
+        if array.is_null(row) {
+            return Err(invalid(format!("row {row} has a null key")));
+        }
+        let any = array.as_any();
+        macro_rules! int {
+            ($ty:ty) => {
+                if let Some(a) = any.downcast_ref::<$ty>() {
+                    let v = a.value(row);
+                    return i64::try_from(v).map(KeyValue::Int).map_err(|_| {
+                        invalid(format!("key {v} does not fit in a signed 64-bit integer"))
+                    });
+                }
+            };
+        }
+        int!(Int8Array);
+        int!(Int16Array);
+        int!(Int32Array);
+        int!(Int64Array);
+        int!(UInt8Array);
+        int!(UInt16Array);
+        int!(UInt32Array);
+        int!(UInt64Array);
+        if let Some(a) = any.downcast_ref::<StringArray>() {
+            return Ok(KeyValue::Str(a.value(row).to_owned()));
+        }
+        if let Some(a) = any.downcast_ref::<BinaryArray>() {
+            return Ok(KeyValue::Bytes(a.value(row).to_vec()));
+        }
+        if let Some(a) = any.downcast_ref::<FixedSizeBinaryArray>() {
+            return Ok(KeyValue::Bytes(a.value(row).to_vec()));
+        }
+        Err(invalid(format!(
+            "{} columns can't be used as keys",
+            array.data_type()
+        )))
+    }
+
     /// Values of different kinds are not comparable.
     pub fn compare(&self, other: &KeyValue) -> Option<Ordering> {
         match (self, other) {
