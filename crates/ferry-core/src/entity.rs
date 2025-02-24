@@ -2,10 +2,13 @@
 
 use std::sync::Arc;
 
+use arrow_array::RecordBatch;
 use arrow_schema::{Schema, SchemaRef};
 
 use crate::error::{FerryError, Result};
 use crate::missing::missing_paths_field;
+use crate::partition::KeyValue;
+use crate::transform::SourceRecordId;
 use crate::types::CanonicalField;
 
 /// Column names starting with this prefix are reserved for the engine
@@ -118,6 +121,30 @@ impl Entity {
 
     pub fn field(&self, name: &str) -> Option<&CanonicalField> {
         self.fields.iter().find(|f| f.name == name)
+    }
+
+    /// The id of every row in `batch`, from its primary-key columns.
+    pub fn record_ids(&self, batch: &RecordBatch) -> Result<Vec<SourceRecordId>> {
+        let columns = self
+            .primary_key
+            .iter()
+            .map(|c| {
+                batch
+                    .column_by_name(c)
+                    .ok_or_else(|| FerryError::InvalidKey {
+                        reason: format!("batch has no primary key column `{c}`"),
+                    })
+            })
+            .collect::<Result<Vec<_>>>()?;
+        (0..batch.num_rows())
+            .map(|row| {
+                columns
+                    .iter()
+                    .map(|col| KeyValue::from_array(col.as_ref(), row))
+                    .collect::<Result<_>>()
+                    .map(SourceRecordId)
+            })
+            .collect()
     }
 
     /// The Arrow schema of batches read from this entity.

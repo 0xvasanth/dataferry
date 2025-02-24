@@ -36,6 +36,12 @@ pub enum FerryError {
     #[error("key column: {reason}")]
     InvalidKey { reason: String },
 
+    #[error("no input stream for entity `{entity}`")]
+    MissingInput { entity: String },
+
+    #[error("transform output broke its contract: {reason}")]
+    InvalidTransformOutput { reason: String },
+
     #[error("{connector}: {message}")]
     Connector { connector: String, message: String },
 }

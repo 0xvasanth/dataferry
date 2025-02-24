@@ -9,6 +9,7 @@ pub mod partition;
 pub mod sink;
 pub mod source;
 pub mod target;
+pub mod transform;
 pub mod types;
 
 pub use checkpoint::Checkpoint;
@@ -19,3 +20,7 @@ pub use partition::{KeyRange, KeyValue, Partition, PartitionHint, PartitionId, P
 pub use sink::{IdempotencyStrategy, Sink, SinkCaps, SinkTxn, WriteMode, WriteSummary};
 pub use source::{BatchStream, Source, SourceCaps};
 pub use target::{ForeignKey, TargetSchema, TargetTable};
+pub use transform::{
+    IdentityPlan, PartitionInputs, RejectedRecord, SourceRecordId, TargetBatch, TransformOutput,
+    TransformPlan, TransformStream,
+};
