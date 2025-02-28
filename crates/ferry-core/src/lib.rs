@@ -9,6 +9,8 @@ pub mod partition;
 pub mod sink;
 pub mod source;
 pub mod target;
+#[cfg(feature = "testkit")]
+pub mod testkit;
 pub mod transform;
 pub mod types;
 
