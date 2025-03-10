@@ -1,0 +1,100 @@
+[
+  {
+    "_id": { "$oid": "650000000000000000000001" },
+    "status": "PAID",
+    "customer": { "id": "c1", "email": "ana@example.dev" },
+    "total": { "$numberDecimal": "25.50" },
+    "created_at": { "$date": "2026-03-01T10:00:00Z" },
+    "items": [
+      { "sku": "SKU-1", "qty": 2, "price": { "$numberDecimal": "10.00" } },
+      { "sku": "SKU-2", "qty": 1, "price": { "$numberDecimal": "5.50" } }
+    ]
+  },
+  {
+    "_id": { "$oid": "650000000000000000000002" },
+    "status": "PAID",
+    "customer": { "id": "c1", "email": "ana@example.dev" },
+    "total": { "$numberDecimal": "0.00" },
+    "created_at": { "$date": "2026-03-02T10:00:00Z" },
+    "items": []
+  },
+  {
+    "_id": { "$oid": "650000000000000000000003" },
+    "status": "PENDING",
+    "customer": { "id": "c2", "email": "bo@example.dev" },
+    "total": { "$numberDecimal": "12.00" },
+    "created_at": { "$date": "2026-03-03T10:00:00Z" }
+  },
+  {
+    "_id": { "$oid": "650000000000000000000004" },
+    "status": "PAID",
+    "customer": { "id": "c2", "email": "bo@example.dev" },
+    "total": { "$numberDecimal": "9.00" },
+    "created_at": { "$date": "2026-03-04T10:00:00Z" },
+    "deleted_at": { "$date": "2026-03-05T08:00:00Z" },
+    "items": [
+      { "sku": "SKU-1", "qty": 1, "price": { "$numberDecimal": "9.00" } }
+    ]
+  },
+  {
+    "_id": { "$oid": "650000000000000000000005" },
+    "status": "PAID",
+    "customer": { "id": "c2", "email": "bo@example.dev" },
+    "total": { "$numberDecimal": "7.25" },
+    "created_at": { "$date": "2026-03-05T10:00:00Z" },
+    "deleted_at": null,
+    "items": [
+      { "sku": "SKU-3", "qty": 1, "price": { "$numberDecimal": "7.25" } }
+    ]
+  },
+  {
+    "_id": { "$oid": "650000000000000000000006" },
+    "status": "PAID",
+    "customer": { "id": "c3", "email": "cy@example.dev" },
+    "total": { "$numberDecimal": "8.00" },
+    "created_at": { "$date": "2026-03-06T10:00:00Z" },
+    "items": [
+      { "sku": "SKU-1", "qty": 1, "price": { "$numberDecimal": "2.00" } },
+      { "sku": "SKU-2", "qty": "three", "price": { "$numberDecimal": "2.00" } }
+    ]
+  },
+  {
+    "_id": { "$oid": "650000000000000000000007" },
+    "status": "PAID",
+    "customer": { "id": "c1", "email": "ana@example.dev" },
+    "total": { "$numberDecimal": "1.005" },
+    "created_at": { "$date": "2026-03-07T10:00:00Z" },
+    "items": [
+      { "sku": "SKU-4", "qty": 1, "price": { "$numberDecimal": "1.005" } }
+    ]
+  },
+  {
+    "_id": { "$oid": "650000000000000000000008" },
+    "status": "Shipped",
+    "customer": { "id": "c3" },
+    "total": { "$numberDecimal": "3.00" },
+    "created_at": { "$date": "2026-03-08T10:00:00Z" },
+    "items": [
+      { "sku": "SKU-5", "qty": 3, "price": { "$numberDecimal": "1.00" } }
+    ]
+  },
+  {
+    "_id": { "$oid": "650000000000000000000009" },
+    "status": "PAID",
+    "customer": { "id": "c2", "email": "bo@example.dev" },
+    "total": { "$numberDecimal": "4.00" },
+    "items": [
+      { "sku": "SKU-1", "qty": 4, "price": { "$numberDecimal": "1.00" } }
+    ]
+  },
+  {
+    "_id": { "$oid": "65000000000000000000000a" },
+    "status": "PENDING",
+    "customer": null,
+    "total": { "$numberDecimal": "0.50" },
+    "created_at": { "$date": "2026-03-10T10:00:00Z" },
+    "items": [
+      { "sku": "SKU-6", "qty": 1, "price": { "$numberDecimal": "0.50" } }
+    ]
+  }
+]

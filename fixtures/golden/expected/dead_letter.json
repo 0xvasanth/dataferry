@@ -1,0 +1,3 @@
+[
+  { "_id": "650000000000000000000006", "path": "items[1].qty", "reason": "\"three\" is not an integer" }
+]
