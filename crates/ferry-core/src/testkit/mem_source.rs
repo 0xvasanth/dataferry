@@ -86,6 +86,24 @@ impl Source for MemSource {
         hint: &PartitionHint,
     ) -> Result<Vec<Partition>> {
         let rows = self.rows(entity.name())?;
+        if let Some(cp) = &hint.co_partition {
+            if entity.field(cp.column()).is_none() {
+                return Err(FerryError::CoPartitionUnsupported {
+                    column: cp.column().to_owned(),
+                    reason: format!("`{}` has no such column", entity.name()),
+                });
+            }
+            return Ok(cp
+                .ranges()
+                .into_iter()
+                .enumerate()
+                .map(|(i, range)| Partition {
+                    id: crate::PartitionId(format!("{}-{i}", entity.name())),
+                    entity: entity.name().to_owned(),
+                    scope: PartitionScope::KeyRange(range),
+                })
+                .collect());
+        }
         let whole = || {
             vec![Partition {
                 id: crate::PartitionId(format!("{}-0", entity.name())),

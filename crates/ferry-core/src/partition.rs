@@ -30,6 +30,157 @@ pub struct PartitionHint {
     /// Approximate rows per partition. Bounds the length of each partition's
     /// sink transaction.
     pub target_rows: u64,
+    /// When set, the source must split on exactly these boundaries instead
+    /// of choosing its own, or fail with
+    /// [`FerryError::CoPartitionUnsupported`].
+    pub co_partition: Option<CoPartition>,
+}
+
+impl PartitionHint {
+    pub fn rows(target_rows: u64) -> Self {
+        Self {
+            target_rows,
+            co_partition: None,
+        }
+    }
+}
+
+/// Key boundaries shared by two entities so that rows with equal keys land
+/// in partitions with the same index, which lets a merge stream partition by
+/// partition instead of staging one side. See `docs/decisions/0002`.
+///
+/// `n` boundaries `b0 < b1 < … < bn-1` define `n + 1` ranges:
+/// `(-∞, b0)`, `[b0, b1)`, …, `[bn-1, +∞)`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CoPartition {
+    column: String,
+    boundaries: Vec<KeyValue>,
+}
+
+impl CoPartition {
+    pub fn new(column: impl Into<String>, boundaries: Vec<KeyValue>) -> Result<Self> {
+        let column = column.into();
+        if let Some(w) = boundaries
+            .windows(2)
+            .find(|w| w[0].compare(&w[1]) != Some(Ordering::Less))
+        {
+            return Err(FerryError::CoPartitionUnsupported {
+                column,
+                reason: format!(
+                    "boundaries must be strictly increasing values of one kind, got {:?} then {:?}",
+                    w[0], w[1]
+                ),
+            });
+        }
+        Ok(Self { column, boundaries })
+    }
+
+    /// Boundaries of an already-planned driver entity, so another entity can
+    /// be split the same way on `column`. The driver's partitions must be
+    /// contiguous key ranges on one column, in order, covering every key.
+    pub fn from_partitions(column: impl Into<String>, driver: &[Partition]) -> Result<Self> {
+        let column = column.into();
+        let unsupported = |reason: String| FerryError::CoPartitionUnsupported {
+            column: column.clone(),
+            reason,
+        };
+        let ranges = driver
+            .iter()
+            .map(|p| match &p.scope {
+                PartitionScope::KeyRange(r) => Ok(r),
+                PartitionScope::Whole => Err(unsupported(format!(
+                    "driver partition {:?} is not a key range",
+                    p.id
+                ))),
+            })
+            .collect::<Result<Vec<_>>>()?;
+        let (Some(first), Some(last)) = (ranges.first(), ranges.last()) else {
+            return Err(unsupported("the driver has no partitions".into()));
+        };
+        if first.lower().is_some() || last.upper().is_some() {
+            return Err(unsupported(
+                "driver partitions must be unbounded at both ends to cover every key".into(),
+            ));
+        }
+        for w in ranges.windows(2) {
+            if w[0].column() != w[1].column() || w[0].upper() != w[1].lower() {
+                return Err(unsupported(format!(
+                    "driver partitions are not contiguous: {:?} is followed by {:?}",
+                    w[0], w[1]
+                )));
+            }
+        }
+        let boundaries = ranges[1..]
+            .iter()
+            .map(|r| r.lower().cloned().expect("checked contiguous"))
+            .collect();
+        Self::new(column, boundaries)
+    }
+
+    pub fn column(&self) -> &str {
+        &self.column
+    }
+
+    pub fn boundaries(&self) -> &[KeyValue] {
+        &self.boundaries
+    }
+
+    /// The ranges, in order, that a co-partitioned source must produce.
+    pub fn ranges(&self) -> Vec<KeyRange> {
+        let lowers = std::iter::once(None).chain(self.boundaries.iter().cloned().map(Some));
+        let uppers = self
+            .boundaries
+            .iter()
+            .cloned()
+            .map(Some)
+            .chain(std::iter::once(None));
+        lowers
+            .zip(uppers)
+            .map(|(lower, upper)| KeyRange {
+                column: self.column.clone(),
+                lower,
+                upper,
+            })
+            .collect()
+    }
+}
+
+/// Pairs each driver partition with the co-partitioned partition covering
+/// the same keys. Fails unless both sides have the same number of key-range
+/// partitions with identical bounds, in order.
+pub fn align(driver: &[Partition], other: &[Partition]) -> Result<Vec<(Partition, Partition)>> {
+    let mismatch = |reason: String| FerryError::CoPartitionUnsupported {
+        column: other
+            .first()
+            .and_then(|p| match &p.scope {
+                PartitionScope::KeyRange(r) => Some(r.column().to_owned()),
+                PartitionScope::Whole => None,
+            })
+            .unwrap_or_default(),
+        reason,
+    };
+    if driver.len() != other.len() {
+        return Err(mismatch(format!(
+            "{} driver partitions but {} co-partitioned ones",
+            driver.len(),
+            other.len()
+        )));
+    }
+    driver
+        .iter()
+        .zip(other)
+        .map(|(d, o)| match (&d.scope, &o.scope) {
+            (PartitionScope::KeyRange(a), PartitionScope::KeyRange(b))
+                if a.lower() == b.lower() && a.upper() == b.upper() =>
+            {
+                Ok((d.clone(), o.clone()))
+            }
+            _ => Err(mismatch(format!(
+                "partition {:?} does not cover the same keys as {:?}",
+                o.id, d.id
+            ))),
+        })
+        .collect()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

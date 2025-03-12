@@ -18,7 +18,9 @@ pub use checkpoint::Checkpoint;
 pub use entity::Entity;
 pub use error::{FerryError, Result};
 pub use lease::{Epoch, Lease};
-pub use partition::{KeyRange, KeyValue, Partition, PartitionHint, PartitionId, PartitionScope};
+pub use partition::{
+    CoPartition, KeyRange, KeyValue, Partition, PartitionHint, PartitionId, PartitionScope, align,
+};
 pub use sink::{IdempotencyStrategy, Sink, SinkCaps, SinkTxn, WriteMode, WriteSummary};
 pub use source::{BatchStream, Source, SourceCaps};
 pub use target::{ForeignKey, TargetSchema, TargetTable};

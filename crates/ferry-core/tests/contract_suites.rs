@@ -45,7 +45,10 @@ fn mem_source() -> MemSource {
         .with_batch_rows(2)
 }
 
-const HINT: PartitionHint = PartitionHint { target_rows: 3 };
+const HINT: PartitionHint = PartitionHint {
+    target_rows: 3,
+    co_partition: None,
+};
 
 #[tokio::test]
 async fn mem_source_passes_the_source_contract() {

@@ -36,6 +36,9 @@ pub enum FerryError {
     #[error("key column: {reason}")]
     InvalidKey { reason: String },
 
+    #[error("cannot co-partition on `{column}`: {reason}")]
+    CoPartitionUnsupported { column: String, reason: String },
+
     #[error("no input stream for entity `{entity}`")]
     MissingInput { entity: String },
 
