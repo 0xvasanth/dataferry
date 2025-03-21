@@ -1,0 +1,10 @@
+# Loaded through `include:` in ferry.yaml, not by the flows/ convention.
+flows:
+  - name: customers
+    from: app.public.customers
+    sink: reporting
+    mode: upsert
+    to:
+      customers:
+        key: [id]
+        columns: "*"            # 1:1 copy of every declared field

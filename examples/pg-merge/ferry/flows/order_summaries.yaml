@@ -1,0 +1,52 @@
+flows:
+  - name: order_summaries
+    # customer_id points at reporting.customers. FKs are validated at
+    # finalize anyway (A6), so this ordering is an optimization.
+    depends_on: [customers]
+
+    from:
+      - entity: app.public.orders           # driver: first, no join
+        as: o
+      - entity: app.public.customers
+        as: c
+        join:
+          cardinality: one                  # a duplicate customer id rejects the order
+          keys: {id: o.customer_id}         # c.id = o.customer_id
+      - entity: app.public.order_items
+        as: i
+        join:
+          cardinality: many
+          keys: {order_id: o.id}
+          # Partition order_items on order_id at the driver's boundaries
+          # (0002). Fail the plan instead of falling back to staging.
+          strategy: co_partition
+
+    where:
+      not_cancelled: status != 'cancelled'  # bare names are driver fields
+
+    sink: reporting
+    mode: upsert
+
+    to:
+      order_summaries:
+        key: [order_id]
+        columns:
+          order_id: id
+          customer_id: customer_id
+          customer_name: c.name             # null if the customer row is missing
+          status: status
+          placed_at: placed_at
+          total_cents: total_cents
+          items:
+            nest: i
+            order_by: [line_no]             # (order_id, line_no) appended as tie-breaker
+            where: qty > 0
+            columns:
+              sku: sku
+              qty: qty
+              unit_cents: unit_cents
+
+    # Meant for a full load into an empty reporting database (0003 §5.9).
+    expect:
+      one_row_per_order: count(order_summaries) == source.count()
+      totals_match: sum(order_summaries.total_cents) == source.sum(total_cents)

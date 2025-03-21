@@ -1,0 +1,9 @@
+runtime:
+  # Both flows write to `reporting`, so both get TxnWithState (0004 §8).
+  state:
+    backend: postgres
+    connection: reporting
+  workers: auto
+  memory_budget: 1GiB
+  partition_rows: 50000
+  on_error: fail

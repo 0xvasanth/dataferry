@@ -1,0 +1,9 @@
+# Postgres → Postgres merge: one order summary row per order, with the
+# customer looked up and the order's items nested as an ordered array.
+version: 1
+name: pg_order_summaries
+
+# Escape hatch for files outside the convention (0003 §8). Here, flows kept in
+# a legacy directory that is not flows/.
+include:
+  - legacy/*.yaml
