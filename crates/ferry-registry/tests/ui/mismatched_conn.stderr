@@ -1,0 +1,21 @@
+error[E0271]: type mismatch resolving `<BackendB as StateBackend>::Conn == ConnA`
+ --> tests/ui/mismatched_conn.rs:5:41
+  |
+5 |     registry.register_state_capable(Db, BackendB);
+  |              ----------------------     ^^^^^^^^ type mismatch resolving `<BackendB as StateBackend>::Conn == ConnA`
+  |              |
+  |              required by a bound introduced by this call
+  |
+note: expected this to be `ConnA`
+ --> tests/ui/handles.rs
+  |
+  |     type Conn = ConnB;
+  |                 ^^^^^
+note: required by a bound in `ConnectorRegistry::register_state_capable`
+ --> src/registry.rs
+  |
+  |     pub fn register_state_capable<C, B>(&mut self, connector: C, backend: B) -> &mut Self
+  |            ---------------------- required by a bound in this associated function
+...
+  |         B: StateBackend<Pool = C::Pool, Conn = C::Conn>,
+  |                                         ^^^^^^^^^^^^^^ required by this bound in `ConnectorRegistry::register_state_capable`

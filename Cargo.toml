@@ -2,6 +2,7 @@
 resolver = "3"
 members = [
     "crates/ferry-core",
+    "crates/ferry-registry",
     "crates/ferry-dsl",
     "crates/ferry-connectors/postgres",
     "crates/ferry-connectors/mongo",
@@ -19,6 +20,7 @@ repository = "https://github.com/0xvasanth/ferry"
 [workspace.dependencies]
 ferry-core = { path = "crates/ferry-core" }
 ferry-dsl = { path = "crates/ferry-dsl" }
+ferry-registry = { path = "crates/ferry-registry" }
 ferry-state = { path = "crates/ferry-state" }
 ferry-connector-postgres = { path = "crates/ferry-connectors/postgres" }
 ferry-connector-mongo = { path = "crates/ferry-connectors/mongo" }
