@@ -12,6 +12,8 @@ mod registry;
 mod schema;
 pub mod secret;
 pub mod state;
+#[cfg(feature = "testkit")]
+pub mod testkit;
 
 pub use connector::{
     BuildContext, BuildError, Built, Connector, Endpoints, OptionsError, RawConnection, Roles,
