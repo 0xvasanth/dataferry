@@ -350,3 +350,55 @@ fn url_password_finds_the_userinfo_password_only() {
         assert!(url_password(none).is_empty(), "{none}");
     }
 }
+
+#[test]
+fn escaped_forms_of_a_secret_are_redacted_too() {
+    let secret = "zq\"ss\\w0rd\u{7}";
+    let redactor = Redactor::new([secret]);
+    for rendered in [
+        secret.to_owned(),
+        format!("{secret:?}"),
+        serde_json::to_string(secret).unwrap(),
+        format!("{:?}", BuildError::option("url", format!("bad {secret:?}"))),
+    ] {
+        let out = redactor.redact(&rendered);
+        assert!(!out.contains("zq"), "{rendered} became {out}");
+    }
+
+    // Through the registry: a dyn connector that quotes the value as JSON,
+    // and an error whose Debug output escapes it again.
+    struct Quoting;
+    impl DynConnector for Quoting {
+        fn type_name(&self) -> &str {
+            "quoting"
+        }
+        fn roles(&self) -> Roles {
+            Roles::SOURCE
+        }
+        fn options_schema(&self, _: &mut SchemaGenerator) -> Schema {
+            json_schema!({
+                "type": "object",
+                "properties": { "key": { "type": "string", "x-ferry-secret": true } },
+            })
+        }
+        fn build(
+            &self,
+            _: &BuildContext<'_>,
+            options: Value,
+            _: Roles,
+        ) -> Result<Built, BuildError> {
+            Err(BuildError::option(
+                "key",
+                format!("rejected {}", options["key"]),
+            ))
+        }
+    }
+    let mut registry = ConnectorRegistry::new();
+    registry.register_dyn(Box::new(Quoting));
+    let raw: RawConnection =
+        serde_json::from_value(json!({ "name": "q", "type": "quoting", "key": secret })).unwrap();
+    let err = registry.build(&raw, Roles::SOURCE).unwrap_err();
+    for text in [err.to_string(), format!("{err:?}")] {
+        assert!(!text.contains("zq"), "{text}");
+    }
+}

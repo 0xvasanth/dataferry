@@ -166,12 +166,13 @@ impl Redactor {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.secrets.extend(
-            secrets
-                .into_iter()
-                .map(Into::into)
-                .filter(|s| !s.is_empty()),
-        );
+        for secret in secrets.into_iter().map(Into::into) {
+            if secret.is_empty() {
+                continue;
+            }
+            self.secrets.extend(escaped_forms(&secret));
+            self.secrets.push(secret);
+        }
         self.secrets
             .sort_by(|a, b| b.len().cmp(&a.len()).then_with(|| a.cmp(b)));
         self.secrets.dedup();
@@ -191,6 +192,31 @@ impl Redactor {
         }
         out
     }
+}
+
+/// How `secret` reads once quoted by `{:?}` or written as a JSON string,
+/// without the quotes, when that differs from the secret itself. Errors are
+/// often rendered either way, and `pa"ss` would then appear as `pa\"ss`.
+/// Two levels deep, for the `Debug` of an error whose message already quoted
+/// the secret.
+fn escaped_forms(secret: &str) -> Vec<String> {
+    let once = escape_once(secret);
+    let twice: Vec<String> = once.iter().flat_map(|s| escape_once(s)).collect();
+    let mut forms: Vec<String> = once.into_iter().chain(twice).collect();
+    forms.retain(|f| f != secret);
+    forms.sort();
+    forms.dedup();
+    forms
+}
+
+fn escape_once(text: &str) -> Vec<String> {
+    let debug = format!("{text:?}");
+    let json = serde_json::to_string(text).expect("a string always serializes");
+    [debug, json]
+        .into_iter()
+        .map(|quoted| quoted[1..quoted.len() - 1].to_owned())
+        .filter(|inner| inner != text)
+        .collect()
 }
 
 /// Lists how many secrets it holds, never the secrets.
