@@ -1,0 +1,11 @@
+# `name` and `type` are fixed by 0003 (`description` is reserved). The other
+# fields are each type's own, per 0004 §2. `schema` defaults to public.
+connections:
+  - name: shop
+    type: mongo
+    url: ${FERRY_GOLDEN_MONGO_URL}
+    database: shop
+
+  - name: warehouse
+    type: postgresql
+    url: ${FERRY_GOLDEN_PG_URL}

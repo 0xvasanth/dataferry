@@ -1,0 +1,47 @@
+flows:
+  - name: orders
+    from: shop.orders
+    sink: warehouse
+    mode: insert
+
+    # True when deleted_at is null *or* missing (B2), so …0001 and …0005 are
+    # kept and only …0004 is filtered. A flow filter removes the record from
+    # every target, so …0004's item is dropped too.
+    where:
+      not_deleted: deleted_at == null
+      recent: created_at >= '${CUTOFF}'
+
+    # Ten documents in partitions of four gives three partitions, which is
+    # enough to exercise resume. Allowed per flow because it only sizes this
+    # flow's own work (0003 §6), and left out of the config hash (§10.5).
+    runtime:
+      partition_rows: 4
+
+    to:
+      orders:
+        key: [id]
+        columns:
+          id: string(_id)
+          customer_id: customer.id          # null when customer is null (…000a)
+          status: lower(status)
+          placed_at:
+            expr: created_at                # null when missing (…0009)
+            type: timestamp(UTC)
+          total_cents: int(round(total * 100))   # decimal half-up: 1.005 → 101
+
+      # Part of S2: the first end-to-end run writes both tables.
+      order_items:
+        parent: orders
+        unnest: items                       # empty (…0002) or missing (…0003): no rows
+        key: [order_id, line_no]
+        columns:
+          order_id: $parent.id              # the mapped parent row
+          line_no: $index
+          sku: sku
+          qty: int(qty)                     # "three" (…0006) rejects the whole document
+          unit_cents: int(round(price * 100))
+
+    expect:
+      order_count: count(orders) == source.count()
+      order_total: sum(orders.total_cents) == source.sum(int(round(total * 100)))
+      item_count: count(order_items) == source.sum(coalesce(cardinality(items), 0))

@@ -1,0 +1,10 @@
+# Reached by two include: globs. Loaded once (0003 §8).
+flows:
+  - name: products
+    from: app.public.products
+    sink: reporting
+    depends_on: [categories]
+    to:
+      products:
+        key: [id]
+        columns: "*"

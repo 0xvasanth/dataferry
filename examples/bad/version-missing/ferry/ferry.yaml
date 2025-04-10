@@ -1,0 +1,3 @@
+# The golden demo: fixtures/golden/source/orders.json (Mongo) becomes
+# fixtures/golden/expected/{orders,order_items}.json (Postgres).
+name: golden_orders

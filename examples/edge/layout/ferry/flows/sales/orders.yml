@@ -1,0 +1,9 @@
+flows:
+  - name: orders
+    from: app.public.orders
+    sink: reporting
+    depends_on: [customers, products]   # products comes from an included file
+    to:
+      orders:
+        key: [id]
+        columns: "*"

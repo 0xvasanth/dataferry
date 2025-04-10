@@ -11,3 +11,6 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
+
+[dev-dependencies]
+saphyr-parser = "0.2"

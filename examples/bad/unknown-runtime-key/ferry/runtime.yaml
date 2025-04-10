@@ -1,0 +1,16 @@
+runtime:
+  # The state store is on the flow's sink connection, so data and the
+  # partition's done-record commit in one transaction (TxnWithState, 0004 §8).
+  # Any other connection here would make the flow fall back to
+  # DeletePartitionThenInsert.
+  state:
+    backend: postgres
+    connection: warehouse
+  # Tuning: workers and memory_budget are not in the config hash (0003 §10.5).
+  wrokers: 2
+  memory_budget: 256MiB
+  # …0006 has one bad item: the whole document goes to _ferry_dlq and the
+  # run carries on. One dead letter is under max_errors, so `ferry run`
+  # still exits 0.
+  on_error: dead_letter
+  max_errors: 10

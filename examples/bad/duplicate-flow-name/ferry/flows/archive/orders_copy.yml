@@ -1,0 +1,8 @@
+# A second flow called `orders`, in a nested directory and a .yml file.
+flows:
+  - name: orders
+    from: shop.orders
+    sink: warehouse
+    to:
+      orders_copy:
+        columns: "*"

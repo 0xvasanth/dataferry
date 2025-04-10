@@ -1,0 +1,4 @@
+runtime:
+  state:
+    backend: file
+    path: .ferry/state

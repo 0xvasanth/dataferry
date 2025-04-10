@@ -1,0 +1,10 @@
+# A valid config whose layout exercises the loader: flows in nested
+# directories and in a .yml file, a README the loader ignores, and include:
+# globs that overlap with each other and with flows/ (0003 §2, §8).
+version: 1
+name: edge_layout
+
+include:
+  - shared/*.yaml               # products.yaml
+  - shared/**/*.yaml            # products.yaml again, plus catalog/categories.yaml
+  - flows/sales/*.yml           # already loaded by the flows/ convention
