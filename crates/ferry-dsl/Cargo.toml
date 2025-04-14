@@ -11,6 +11,13 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
+glob = "0.3"
+# YAML 1.2 event parser with positions; the maintained successor of
+# yaml-rust (serde_yaml is archived). See config/yaml.rs.
+saphyr-parser = "0.2"
+schemars = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 [dev-dependencies]
-saphyr-parser = "0.2"
+tempfile = "3"
