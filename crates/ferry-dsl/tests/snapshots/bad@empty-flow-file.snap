@@ -1,0 +1,6 @@
+---
+source: crates/ferry-dsl/tests/bad_configs.rs
+expression: rendered
+---
+error: flows/returns.yaml:1:1 a flow file is empty
+  help: a flow file must contain `flows:`; write `flows: []` to keep a placeholder

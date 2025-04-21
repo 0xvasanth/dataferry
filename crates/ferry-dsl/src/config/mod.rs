@@ -5,12 +5,13 @@ mod de;
 mod error;
 mod load;
 pub mod model;
+pub mod schema;
 mod span;
 mod validate;
 mod yaml;
 
 pub use error::{ConfigError, ConfigErrors, ErrorKind};
-pub use load::{DEFAULT_DIR, FileKind, SourceFile, load, load_default};
+pub use load::{DEFAULT_DIR, FileKind, SourceFile, check_file, file_to_json, load, load_default};
 pub use model::{Connection, Flow, Runtime, Version};
 pub use span::{FieldPath, Location, Spanned};
 

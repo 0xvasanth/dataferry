@@ -21,3 +21,7 @@ serde_json = "1"
 
 [dev-dependencies]
 tempfile = "3"
+insta = "1"
+jsonschema = { version = "0.58", default-features = false }
+# The round-trip test reads serialized JSON back, and column order matters.
+serde_json = { version = "1", features = ["preserve_order"] }

@@ -28,6 +28,18 @@ pub enum FileKind {
 }
 
 impl FileKind {
+    /// The kind of a file by its path relative to `ferry/`: a well-known
+    /// name, something under `flows/`, or else an included file.
+    pub fn for_path(path: &str) -> FileKind {
+        match path {
+            "ferry.yaml" | "ferry.yml" => FileKind::Ferry,
+            "connections.yaml" | "connections.yml" => FileKind::Connections,
+            "runtime.yaml" | "runtime.yml" => FileKind::Runtime,
+            _ if path.starts_with("flows/") => FileKind::Flows,
+            _ => FileKind::Included,
+        }
+    }
+
     fn allowed(self) -> &'static [&'static str] {
         match self {
             FileKind::Ferry => &["version", "name", "include"],
@@ -219,7 +231,11 @@ impl Loader {
             flows,
             sources: self.sources,
         };
-        self.errors.extend(validate::check(&config));
+        // Checks across files only make sense on a complete model: with a
+        // file missing they would report names it defines as undefined.
+        if self.errors.is_empty() {
+            self.errors.extend(validate::check(&config));
+        }
         if self.errors.is_empty() {
             Ok(config)
         } else {
@@ -394,6 +410,31 @@ impl Loader {
     }
 }
 
+/// Checks one file on its own against the model for `kind`: YAML, keys and
+/// value types, but nothing that needs other files (names defined
+/// elsewhere, includes, `depends_on`). This is exactly what the file's JSON
+/// Schema checks too. `path` is what errors show.
+pub fn check_file(kind: FileKind, path: &str, text: &str) -> Result<(), ConfigErrors> {
+    let display: Arc<str> = path.into();
+    let result = match kind {
+        FileKind::Ferry => parse_file(&display, text, kind, parse_as::<FerryFile>).map(drop),
+        FileKind::Connections => {
+            parse_file(&display, text, kind, parse_as::<ConnectionsFile>).map(drop)
+        }
+        FileKind::Runtime => parse_file(&display, text, kind, parse_as::<RuntimeFile>).map(drop),
+        FileKind::Flows => parse_file(&display, text, kind, parse_as::<FlowsFile>).map(drop),
+        FileKind::Included => parse_file(&display, text, kind, parse_as::<IncludedFile>).map(drop),
+    };
+    result.map_err(ConfigErrors)
+}
+
+/// A file as JSON, the form its JSON Schema validates. An empty file is
+/// `null`.
+pub fn file_to_json(path: &str, text: &str) -> Result<serde_json::Value, ConfigError> {
+    let root = yaml::parse(&path.into(), text)?;
+    Ok(root.map_or(serde_json::Value::Null, |node| node.to_json()))
+}
+
 /// Parses `text` as a file of `kind`, on its own: YAML, top-level keys and
 /// the serde model, but nothing that needs other files.
 pub(crate) fn parse_file<T>(
@@ -557,4 +598,49 @@ fn display_path(dir: &Path, path: &Path) -> Arc<str> {
         }
     };
     relative.join("/").into()
+}
+
+#[cfg(test)]
+mod tests {
+    use serde::Serialize;
+    use serde::de::DeserializeOwned;
+
+    use super::*;
+
+    fn example(path: &str) -> String {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples");
+        std::fs::read_to_string(root.join(path)).unwrap()
+    }
+
+    /// Parse, serialize to JSON, read the JSON back through the same
+    /// deserializer: the model must come back unchanged, defaults included.
+    fn round_trip<T: Serialize + DeserializeOwned + PartialEq + std::fmt::Debug>(
+        path: &str,
+        kind: FileKind,
+    ) {
+        let text = example(path);
+        let display: Arc<str> = path.into();
+        let parsed: T = parse_file(&display, &text, kind, parse_as::<T>).unwrap();
+        let json = serde_json::to_value(&parsed).unwrap();
+        let node = Node::from_json(&json, &Location::new("json", 1, 1));
+        let again: T = parse_as(&node, kind).unwrap_or_else(|e| panic!("{path}: {e}\n{json:#}"));
+        assert_eq!(parsed, again, "{path}");
+        // And serializing again gives the same JSON.
+        assert_eq!(serde_json::to_value(&again).unwrap(), json, "{path}");
+    }
+
+    #[test]
+    fn example_models_survive_serialize_and_parse() {
+        for dir in ["golden/ferry", "pg-merge/ferry", "edge/layout/ferry"] {
+            round_trip::<FerryFile>(&format!("{dir}/ferry.yaml"), FileKind::Ferry);
+            round_trip::<ConnectionsFile>(
+                &format!("{dir}/connections.yaml"),
+                FileKind::Connections,
+            );
+            round_trip::<RuntimeFile>(&format!("{dir}/runtime.yaml"), FileKind::Runtime);
+        }
+        round_trip::<FlowsFile>("golden/ferry/flows/orders.yaml", FileKind::Flows);
+        round_trip::<FlowsFile>("pg-merge/ferry/flows/order_summaries.yaml", FileKind::Flows);
+        round_trip::<IncludedFile>("pg-merge/ferry/legacy/customers.yaml", FileKind::Included);
+    }
 }

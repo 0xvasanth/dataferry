@@ -1,0 +1,5 @@
+---
+source: crates/ferry-dsl/tests/bad_configs.rs
+expression: rendered
+---
+error: ferry.yaml:3:10 version: unsupported version 2: this ferry reads version 1

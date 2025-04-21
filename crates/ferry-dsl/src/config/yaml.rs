@@ -54,6 +54,64 @@ impl Node {
         self.get("name").and_then(Node::as_str)
     }
 
+    /// The node as JSON, for JSON Schema validation and for connection fields
+    /// handed to the registry. Non-finite floats have no JSON form and become
+    /// strings.
+    pub fn to_json(&self) -> serde_json::Value {
+        use serde_json::Value;
+        match &self.kind {
+            NodeKind::Null => Value::Null,
+            NodeKind::Bool(b) => Value::Bool(*b),
+            NodeKind::Int(i) => Value::from(*i),
+            NodeKind::Float(x) => serde_json::Number::from_f64(*x)
+                .map(Value::Number)
+                .unwrap_or_else(|| Value::String(x.to_string())),
+            NodeKind::Str(s) => Value::String(s.clone()),
+            NodeKind::Seq(items) => Value::Array(items.iter().map(Node::to_json).collect()),
+            NodeKind::Map(entries) => Value::Object(
+                entries
+                    .iter()
+                    .map(|(k, v)| (k.as_str().unwrap_or_default().to_owned(), v.to_json()))
+                    .collect(),
+            ),
+        }
+    }
+
+    /// The reverse of [`Node::to_json`], every node at `location`. Used to
+    /// read a serialized model back through the loader's deserializer.
+    #[cfg(test)]
+    pub fn from_json(value: &serde_json::Value, location: &Location) -> Node {
+        use serde_json::Value;
+        let kind = match value {
+            Value::Null => NodeKind::Null,
+            Value::Bool(b) => NodeKind::Bool(*b),
+            Value::Number(n) => match n.as_i64() {
+                Some(i) => NodeKind::Int(i),
+                None => NodeKind::Float(n.as_f64().unwrap_or(f64::NAN)),
+            },
+            Value::String(s) => NodeKind::Str(s.clone()),
+            Value::Array(items) => {
+                NodeKind::Seq(items.iter().map(|v| Node::from_json(v, location)).collect())
+            }
+            Value::Object(entries) => NodeKind::Map(
+                entries
+                    .iter()
+                    .map(|(k, v)| {
+                        let key = Node {
+                            kind: NodeKind::Str(k.clone()),
+                            location: location.clone(),
+                        };
+                        (key, Node::from_json(v, location))
+                    })
+                    .collect(),
+            ),
+        };
+        Node {
+            kind,
+            location: location.clone(),
+        }
+    }
+
     /// A short description of what this node is, for "expected X, found Y".
     pub fn describe(&self) -> String {
         match &self.kind {

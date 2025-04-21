@@ -1,0 +1,47 @@
+{
+  "$defs": {
+    "Connection": {
+      "description": "A connection. `name` and `type` are fixed; the other keys belong to the connector type (0004).",
+      "not": {
+        "required": [
+          "description"
+        ]
+      },
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/Ident"
+        },
+        "type": {
+          "description": "A connector type registered with this ferry binary.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "type"
+      ],
+      "type": "object"
+    },
+    "Ident": {
+      "description": "Lowercase letters, digits and `_`, starting with a letter.",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "0xferry config grammar version 1: ferry/connections.yaml (decision 0003).",
+  "properties": {
+    "connections": {
+      "items": {
+        "$ref": "#/$defs/Connection"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "connections"
+  ],
+  "title": "0xferry connections.yaml",
+  "type": "object"
+}

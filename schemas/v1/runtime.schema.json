@@ -1,0 +1,145 @@
+{
+  "$defs": {
+    "ByteSize": {
+      "description": "A size such as `512MiB` (units B, KiB, MiB, GiB, TiB) or a number of bytes.",
+      "oneOf": [
+        {
+          "pattern": "^[1-9][0-9]*(B|KiB|MiB|GiB|TiB)$",
+          "type": "string"
+        },
+        {
+          "minimum": 1,
+          "type": "integer"
+        }
+      ]
+    },
+    "OnError": {
+      "description": "`on_error:` (0003 §4).",
+      "enum": [
+        "fail",
+        "dead_letter"
+      ],
+      "type": "string"
+    },
+    "Runtime": {
+      "additionalProperties": false,
+      "description": "`runtime:` (0003 §1, §4). Every key is optional.",
+      "properties": {
+        "max_errors": {
+          "description": "How many records may be dead-lettered before the run fails. Default\nunbounded.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "memory_budget": {
+          "$ref": "#/$defs/ByteSize",
+          "default": 1073741824,
+          "description": "Memory the runner may use, e.g. `512MiB`. Default `1GiB`."
+        },
+        "on_error": {
+          "$ref": "#/$defs/OnError",
+          "default": "fail",
+          "description": "`fail` stops at the first error row, `dead_letter` writes it to\n`_ferry_dlq` and carries on. Default `fail`."
+        },
+        "partition_rows": {
+          "default": 100000,
+          "description": "Target rows per partition (`PartitionHint::target_rows`). Default 100000.",
+          "format": "uint64",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "source_max_connections": {
+          "description": "Connection cap across every source (A5).",
+          "format": "uint32",
+          "minimum": 1,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "source_rows_per_sec": {
+          "description": "Read rate cap across every source (A5).",
+          "format": "uint64",
+          "minimum": 1,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "state": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StateConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Where run state lives. Default: `{backend: file}`."
+        },
+        "workers": {
+          "$ref": "#/$defs/Workers",
+          "default": "auto",
+          "description": "Worker count. Default `auto`: one per core."
+        }
+      },
+      "type": "object"
+    },
+    "StateConfig": {
+      "additionalProperties": false,
+      "description": "`runtime.state:` (0003 §4). `backend: file` keeps state in `path`; any\nother backend is a state-capable connector type and `connection:` names\na connection of that type (checked by the registry, 0004 §8).",
+      "properties": {
+        "backend": {
+          "type": "string"
+        },
+        "connection": {
+          "description": "For any other backend: the connection holding the state.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "description": "For `backend: file`: the state directory. Default chosen by A4.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "backend"
+      ],
+      "type": "object"
+    },
+    "Workers": {
+      "description": "`auto` (one per core) or a positive number.",
+      "oneOf": [
+        {
+          "const": "auto"
+        },
+        {
+          "maximum": 4294967295,
+          "minimum": 1,
+          "type": "integer"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "0xferry config grammar version 1: ferry/runtime.yaml (decision 0003).",
+  "properties": {
+    "runtime": {
+      "$ref": "#/$defs/Runtime"
+    }
+  },
+  "required": [
+    "runtime"
+  ],
+  "title": "0xferry runtime.yaml",
+  "type": "object"
+}

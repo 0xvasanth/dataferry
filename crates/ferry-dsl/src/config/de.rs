@@ -60,11 +60,11 @@ impl de::Error for DeError {
     }
 
     fn invalid_type(unexp: de::Unexpected<'_>, exp: &dyn de::Expected) -> Self {
-        Self::new(format!("expected {exp}, found {unexp}"))
+        Self::new(format!("expected {}, found {unexp}", plain(exp)))
     }
 
     fn invalid_value(unexp: de::Unexpected<'_>, exp: &dyn de::Expected) -> Self {
-        Self::new(format!("expected {exp}, found {unexp}"))
+        Self::new(format!("expected {}, found {unexp}", plain(exp)))
     }
 
     fn unknown_field(field: &str, expected: &'static [&'static str]) -> Self {
@@ -89,6 +89,19 @@ impl de::Error for DeError {
         // The path names the missing key; the location stays the map's.
         error.path = Some(FieldPath::root().key(field));
         error
+    }
+}
+
+/// Serde names number types the Rust way (`u64`); config errors say what
+/// to write instead.
+fn plain(expected: &dyn de::Expected) -> String {
+    let expected = expected.to_string();
+    match expected.as_str() {
+        "u8" | "u16" | "u32" | "u64" | "u128" | "usize" => "a whole number, 0 or more".into(),
+        "i8" | "i16" | "i32" | "i64" | "i128" | "isize" => "a whole number".into(),
+        "f32" | "f64" => "a number".into(),
+        _ if expected.starts_with("a nonzero u") => "a whole number, 1 or more".into(),
+        _ => expected,
     }
 }
 
