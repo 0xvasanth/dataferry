@@ -393,7 +393,7 @@ impl Loader {
                 return None;
             }
         };
-        let result = parse_file(&file.display, &text, file.kind, parse);
+        let result = parse_file(&file.display, &text, file.kind, parse, true);
         self.sources.push(SourceFile {
             path: file.display,
             absolute: file.absolute,
@@ -417,13 +417,17 @@ impl Loader {
 pub fn check_file(kind: FileKind, path: &str, text: &str) -> Result<(), ConfigErrors> {
     let display: Arc<str> = path.into();
     let result = match kind {
-        FileKind::Ferry => parse_file(&display, text, kind, parse_as::<FerryFile>).map(drop),
+        FileKind::Ferry => parse_file(&display, text, kind, parse_as::<FerryFile>, false).map(drop),
         FileKind::Connections => {
-            parse_file(&display, text, kind, parse_as::<ConnectionsFile>).map(drop)
+            parse_file(&display, text, kind, parse_as::<ConnectionsFile>, false).map(drop)
         }
-        FileKind::Runtime => parse_file(&display, text, kind, parse_as::<RuntimeFile>).map(drop),
-        FileKind::Flows => parse_file(&display, text, kind, parse_as::<FlowsFile>).map(drop),
-        FileKind::Included => parse_file(&display, text, kind, parse_as::<IncludedFile>).map(drop),
+        FileKind::Runtime => {
+            parse_file(&display, text, kind, parse_as::<RuntimeFile>, false).map(drop)
+        }
+        FileKind::Flows => parse_file(&display, text, kind, parse_as::<FlowsFile>, false).map(drop),
+        FileKind::Included => {
+            parse_file(&display, text, kind, parse_as::<IncludedFile>, false).map(drop)
+        }
     };
     result.map_err(ConfigErrors)
 }
@@ -437,11 +441,16 @@ pub fn file_to_json(path: &str, text: &str) -> Result<serde_json::Value, ConfigE
 
 /// Parses `text` as a file of `kind`, on its own: YAML, top-level keys and
 /// the serde model, but nothing that needs other files.
+///
+/// With `env_check`, `${` anywhere in a flow is also an error (0003 §9).
+/// That rule is the loader's: JSON Schema can't express it, so single-file
+/// checks leave it out to stay in step with the schema.
 pub(crate) fn parse_file<T>(
     display: &Arc<str>,
     text: &str,
     kind: FileKind,
     parse: impl FnOnce(&Node, FileKind) -> Result<T, ConfigError>,
+    env_check: bool,
 ) -> Result<T, Vec<ConfigError>> {
     let root = yaml::parse(display, text).map_err(|e| vec![e])?;
     let Some(root) = root else {
@@ -455,7 +464,40 @@ pub(crate) fn parse_file<T>(
         };
         return Err(vec![error]);
     };
-    parse(&root, kind).map_err(|e| vec![e])
+    let mut errors = Vec::new();
+    if env_check && matches!(kind, FileKind::Flows | FileKind::Included) {
+        if let Some(flows) = root.get("flows") {
+            errors.extend(env_in_flows(flows, &FieldPath::root().key("flows")));
+        }
+    }
+    match parse(&root, kind) {
+        Ok(value) if errors.is_empty() => Ok(value),
+        Ok(_) => Err(errors),
+        Err(error) => {
+            errors.insert(0, error);
+            Err(errors)
+        }
+    }
+}
+
+/// `${` anywhere in a flow, value or key, is an error whatever the
+/// environment holds (0003 §9).
+fn env_in_flows(node: &Node, path: &FieldPath) -> Vec<ConfigError> {
+    let mut errors = Vec::new();
+    node.walk(path, &mut |node, path| {
+        if node.as_str().is_some_and(|s| s.contains("${")) {
+            errors.push(
+                ConfigError::new(
+                    ErrorKind::Env,
+                    "`${` in a flow: environment variables are substituted only in connections and runtime.state",
+                )
+                .at(&node.location)
+                .path(path)
+                .help("write the value into the flow, so it is part of the config hash (0003 §9)"),
+            );
+        }
+    });
+    errors
 }
 
 fn expected_keys(kind: FileKind) -> String {
@@ -620,7 +662,7 @@ mod tests {
     ) {
         let text = example(path);
         let display: Arc<str> = path.into();
-        let parsed: T = parse_file(&display, &text, kind, parse_as::<T>).unwrap();
+        let parsed: T = parse_file(&display, &text, kind, parse_as::<T>, true).unwrap();
         let json = serde_json::to_value(&parsed).unwrap();
         let node = Node::from_json(&json, &Location::new("json", 1, 1));
         let again: T = parse_as(&node, kind).unwrap_or_else(|e| panic!("{path}: {e}\n{json:#}"));

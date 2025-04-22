@@ -10,10 +10,23 @@ use common::{manifest, repo};
 use ferry_dsl::config::{ConfigErrors, load};
 
 /// Tickets whose checks are in place. Rows owned by others are skipped.
-const CHECKED: &[&str] = &["B1a", "B1b"];
+const CHECKED: &[&str] = &["B1a", "B1b", "B1c"];
 
+/// A secret-looking value for the one variable every case sets. It must
+/// never show up in an error.
+const SECRET: &str = "pa55-w0rd-never-printed";
+
+/// Loads a case and substitutes `${ENV}` from a fixed environment, as
+/// `ferry validate` does.
 fn load_case(case: &str) -> Result<(), ConfigErrors> {
-    load(repo(&format!("examples/bad/{case}/ferry"))).map(|_| ())
+    let config = load(repo(&format!("examples/bad/{case}/ferry")))?;
+    config
+        .resolve_with(|name| match name {
+            "FERRY_GOLDEN_MONGO_URL" => Some("mongodb://localhost:27017".into()),
+            "FERRY_GOLDEN_PG_URL" => Some(format!("postgres://ferry:{SECRET}@db/warehouse")),
+            _ => None,
+        })
+        .map(|_| ())
 }
 
 fn checked_rows() -> Vec<BTreeMap<String, String>> {
@@ -51,7 +64,9 @@ fn every_checked_case_fails_where_the_manifest_says() {
 fn rendered_errors_match_their_snapshots() {
     for row in checked_rows() {
         let case = &row["Case"];
-        let rendered = load_case(case).unwrap_err().to_string();
+        let errors = load_case(case).unwrap_err();
+        let rendered = errors.to_string();
+        assert!(!format!("{rendered}{errors:?}").contains(SECRET), "{case}");
         insta::with_settings!({ snapshot_suffix => case.as_str(), prepend_module_to_snapshot => false }, {
             insta::assert_snapshot!("bad", rendered);
         });

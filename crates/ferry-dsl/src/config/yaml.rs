@@ -54,6 +54,26 @@ impl Node {
         self.get("name").and_then(Node::as_str)
     }
 
+    /// Visits every node with its field path, keys included.
+    pub fn walk(&self, path: &FieldPath, f: &mut impl FnMut(&Node, &FieldPath)) {
+        f(self, path);
+        match &self.kind {
+            NodeKind::Seq(items) => {
+                for (i, item) in items.iter().enumerate() {
+                    item.walk(&path.item(i, item.item_name()), f);
+                }
+            }
+            NodeKind::Map(entries) => {
+                for (key, value) in entries {
+                    let child = path.key(key.as_str().unwrap_or_default());
+                    f(key, &child);
+                    value.walk(&child, f);
+                }
+            }
+            _ => {}
+        }
+    }
+
     /// The node as JSON, for JSON Schema validation and for connection fields
     /// handed to the registry. Non-finite floats have no JSON form and become
     /// strings.

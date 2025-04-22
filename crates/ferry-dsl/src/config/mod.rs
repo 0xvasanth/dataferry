@@ -2,7 +2,9 @@
 //! need no connection (0003).
 
 mod de;
+mod env;
 mod error;
+mod hash;
 mod load;
 pub mod model;
 pub mod schema;
@@ -10,7 +12,9 @@ mod span;
 mod validate;
 mod yaml;
 
+pub use env::{Redactor, Resolved, ResolvedConnection, ResolvedState, mask_urls};
 pub use error::{ConfigError, ConfigErrors, ErrorKind};
+pub use hash::ConfigHash;
 pub use load::{DEFAULT_DIR, FileKind, SourceFile, check_file, file_to_json, load, load_default};
 pub use model::{Connection, Flow, Runtime, Version};
 pub use span::{FieldPath, Location, Spanned};
