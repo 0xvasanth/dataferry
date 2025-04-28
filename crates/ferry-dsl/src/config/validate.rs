@@ -36,6 +36,7 @@ pub(crate) fn check(config: &Config) -> Vec<ConfigError> {
     one_writer_per_table(config, &mut errors);
     check_state(config, &connections, &mut errors);
     errors.extend(super::env::check_syntax(config));
+    errors.extend(super::deps::check(config));
     errors
 }
 

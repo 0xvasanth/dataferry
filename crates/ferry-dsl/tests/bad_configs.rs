@@ -10,7 +10,7 @@ use common::{manifest, repo};
 use ferry_dsl::config::{ConfigErrors, load};
 
 /// Tickets whose checks are in place. Rows owned by others are skipped.
-const CHECKED: &[&str] = &["B1a", "B1b", "B1c"];
+const CHECKED: &[&str] = &["B1a", "B1b", "B1c", "B1d"];
 
 /// A secret-looking value for the one variable every case sets. It must
 /// never show up in an error.
@@ -82,5 +82,17 @@ fn cases_owned_by_the_registry_load_here() {
         if let Err(e) = load_case(case) {
             panic!("{case} should load in ferry-dsl: {e}");
         }
+    }
+}
+
+#[test]
+fn every_case_is_checked_here_or_owned_by_the_registry() {
+    for row in manifest() {
+        let owner = row["Owner"].as_str();
+        assert!(
+            CHECKED.contains(&owner) || owner == "C1",
+            "{}: owner {owner} is neither checked here nor the registry's",
+            row["Case"]
+        );
     }
 }

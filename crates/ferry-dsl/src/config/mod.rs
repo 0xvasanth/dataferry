@@ -2,6 +2,7 @@
 //! need no connection (0003).
 
 mod de;
+mod deps;
 mod env;
 mod error;
 mod hash;
@@ -12,6 +13,7 @@ mod span;
 mod validate;
 mod yaml;
 
+pub use deps::DependencyGraph;
 pub use env::{Redactor, Resolved, ResolvedConnection, ResolvedState, mask_urls};
 pub use error::{ConfigError, ConfigErrors, ErrorKind};
 pub use hash::ConfigHash;
