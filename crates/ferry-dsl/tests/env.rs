@@ -262,3 +262,29 @@ fn malformed_references_in_connections_are_rejected_at_load() {
         assert!(errors[0].message.contains(fragment), "{}", errors[0]);
     }
 }
+
+#[test]
+fn a_literal_state_path_shows_in_debug_and_a_substituted_one_does_not() {
+    let connections = (
+        "connections.yaml",
+        "connections:\n  - name: app\n    type: postgres\n    url: x\n",
+    );
+    let state = |path: &str| format!("runtime:\n  state:\n    backend: file\n    path: {path}\n");
+    let literal = state(".ferry/state");
+    let (_t1, dir) = write(&[connections, ("runtime.yaml", &literal)]);
+    let resolved = load(&dir).unwrap().resolve_with(env(&[])).unwrap();
+    assert!(
+        format!("{resolved:?}").contains("\".ferry/state\""),
+        "{resolved:?}"
+    );
+
+    let from_env = state("${STATE_DIR}");
+    let (_t2, dir) = write(&[connections, ("runtime.yaml", &from_env)]);
+    let resolved = load(&dir)
+        .unwrap()
+        .resolve_with(env(&[("STATE_DIR", "/secret/tenant-7")]))
+        .unwrap();
+    let debug = format!("{resolved:?}");
+    assert!(!debug.contains("tenant-7"), "{debug}");
+    assert!(debug.contains("***"), "{debug}");
+}

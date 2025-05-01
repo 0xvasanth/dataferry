@@ -205,15 +205,21 @@ pub struct ResolvedState {
     pub backend: String,
     pub path: Option<String>,
     pub connection: Option<String>,
+    /// Whether `path` came (partly) from the environment.
+    path_substituted: bool,
 }
 
 impl fmt::Debug for ResolvedState {
-    // The path can come from the environment, so it is masked like any other
-    // substituted value would be. Backend and connection are names.
+    // The path is masked when it came from the environment, like any other
+    // substituted value. Backend and connection are names.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let path = match (&self.path, self.path_substituted) {
+            (Some(_), true) => Some(Redactor::MASK),
+            (path, _) => path.as_deref(),
+        };
         f.debug_struct("ResolvedState")
             .field("backend", &self.backend)
-            .field("path", &self.path.as_ref().map(|_| Redactor::MASK))
+            .field("path", &path)
             .field("connection", &self.connection)
             .finish()
     }
@@ -340,16 +346,20 @@ impl Config {
             .map(|c| resolver.connection(c))
             .collect();
         let path = FieldPath::root().key("runtime").key("state");
-        let state = self.runtime.state.as_ref().map(|s| ResolvedState {
-            backend: resolver.string(&s.backend, path.key("backend")),
-            path: s
+        let state = self.runtime.state.as_ref().map(|s| {
+            let state_path = s
                 .path
                 .as_ref()
-                .map(|p| resolver.string(p, path.key("path"))),
-            connection: s
-                .connection
-                .as_ref()
-                .map(|c| resolver.string(c, path.key("connection"))),
+                .map(|p| resolver.string(p, path.key("path")));
+            ResolvedState {
+                backend: resolver.string(&s.backend, path.key("backend")).0,
+                path_substituted: state_path.as_ref().is_some_and(|(_, sub)| *sub),
+                path: state_path.map(|(p, _)| p),
+                connection: s
+                    .connection
+                    .as_ref()
+                    .map(|c| resolver.string(c, path.key("connection")).0),
+            }
         });
         if !resolver.missing.is_empty() {
             return Err(resolver.missing_error().into());
@@ -394,8 +404,9 @@ impl Resolver<'_> {
         (out, substituted)
     }
 
-    fn string(&mut self, value: &Spanned<String>, path: FieldPath) -> String {
-        self.substitute(value.as_str(), value.location(), &path).0
+    /// The substituted string, and whether anything was substituted.
+    fn string(&mut self, value: &Spanned<String>, path: FieldPath) -> (String, bool) {
+        self.substitute(value.as_str(), value.location(), &path)
     }
 
     fn connection(&mut self, connection: &Connection) -> ResolvedConnection {

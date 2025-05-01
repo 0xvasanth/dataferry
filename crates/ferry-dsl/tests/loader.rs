@@ -519,3 +519,20 @@ fn values_checked_after_reading_point_at_themselves_not_their_parent() {
     assert_eq!(errors[1].location.as_ref().unwrap().column, 11);
     assert_eq!(errors[1].path, "flows[Orders].name");
 }
+
+#[test]
+fn a_config_with_a_nan_field_equals_itself() {
+    let connections = format!("{CONNECTIONS}    ratio: .nan\n");
+    let orders = flow("orders");
+    let (_t1, one) = write(&[
+        ("ferry.yaml", FERRY),
+        ("connections.yaml", &connections),
+        ("flows/orders.yaml", &orders),
+    ]);
+    let (_t2, two) = write(&[
+        ("ferry.yaml", FERRY),
+        ("connections.yaml", &connections),
+        ("flows/orders.yaml", &orders),
+    ]);
+    assert_eq!(load_ok(&one), load_ok(&two));
+}

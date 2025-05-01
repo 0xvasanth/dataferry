@@ -503,7 +503,7 @@ impl JsonSchema for Connection {
 /// registry gets it as JSON ([`RawValue::to_json`]).
 pub type RawValue = Spanned<RawKind>;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum RawKind {
     Null,
     Bool(bool),
@@ -512,6 +512,23 @@ pub enum RawKind {
     Str(String),
     Seq(Vec<RawValue>),
     Map(OrderedMap<RawValue>),
+}
+
+/// Floats compare by bit pattern, so a value equals itself even when it is
+/// `.nan`, and two configs read from the same files are always equal.
+impl PartialEq for RawKind {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (RawKind::Null, RawKind::Null) => true,
+            (RawKind::Bool(a), RawKind::Bool(b)) => a == b,
+            (RawKind::Int(a), RawKind::Int(b)) => a == b,
+            (RawKind::Float(a), RawKind::Float(b)) => a.to_bits() == b.to_bits(),
+            (RawKind::Str(a), RawKind::Str(b)) => a == b,
+            (RawKind::Seq(a), RawKind::Seq(b)) => a == b,
+            (RawKind::Map(a), RawKind::Map(b)) => a == b,
+            _ => false,
+        }
+    }
 }
 
 impl RawKind {
