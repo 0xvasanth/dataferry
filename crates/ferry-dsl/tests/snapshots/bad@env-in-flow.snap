@@ -1,0 +1,6 @@
+---
+source: crates/ferry-dsl/tests/bad_configs.rs
+expression: rendered
+---
+error: flows/orders.yaml:12:15 flows[orders].where.recent: `${` in a flow: environment variables are substituted only in connections and runtime.state
+  help: write the value into the flow, so it is part of the config hash (0003 §9)

@@ -1,0 +1,368 @@
+{
+  "$defs": {
+    "Cardinality": {
+      "description": "`join.cardinality:`. Required, no default (0003 §5.2).",
+      "enum": [
+        "one",
+        "many"
+      ],
+      "type": "string"
+    },
+    "ColumnSpec": {
+      "description": "An expression, a typed column, or a nest column.",
+      "oneOf": [
+        {
+          "description": "An expression (B2).",
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "allow_lossy": {
+              "type": "boolean"
+            },
+            "expr": {
+              "type": "string"
+            },
+            "nullable": {
+              "type": "boolean"
+            },
+            "type": {
+              "description": "A canonical type name, e.g. `int64`, `decimal(12,2)`, `timestamp(UTC)`.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "expr"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "columns": {
+              "additionalProperties": {
+                "$ref": "#/$defs/ColumnSpec"
+              },
+              "type": "object"
+            },
+            "nest": {
+              "description": "A `many` alias.",
+              "type": "string"
+            },
+            "order_by": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "where": {
+              "$ref": "#/$defs/Where"
+            }
+          },
+          "required": [
+            "nest",
+            "columns"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Columns": {
+      "description": "\"*\" copies every field unchanged; otherwise target column → spec, in DDL order.",
+      "oneOf": [
+        {
+          "const": "*"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ColumnSpec"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "EntityRef": {
+      "description": "`<connection>.<entity>`, split at the first dot.",
+      "pattern": "^[a-z][a-z0-9_]*\\..+$",
+      "type": "string"
+    },
+    "Flow": {
+      "additionalProperties": false,
+      "description": "One flow (0003 §5).",
+      "properties": {
+        "depends_on": {
+          "description": "Flows that must finish before this one starts (0003 §7).",
+          "items": {
+            "$ref": "#/$defs/Ident"
+          },
+          "type": "array"
+        },
+        "expect": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Named assertions checked after the run (0003 §5.9).",
+          "type": "object"
+        },
+        "from": {
+          "$ref": "#/$defs/From",
+          "description": "One entity (`shop.orders`) or a merge: a driver plus joined entries."
+        },
+        "mode": {
+          "$ref": "#/$defs/Mode"
+        },
+        "name": {
+          "$ref": "#/$defs/Ident",
+          "description": "Unique across every file."
+        },
+        "runtime": {
+          "$ref": "#/$defs/FlowRuntime",
+          "description": "Per-flow overrides of the settings that only affect this flow (0003 §6)."
+        },
+        "sink": {
+          "$ref": "#/$defs/Ident",
+          "description": "The one connection this flow writes to."
+        },
+        "to": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Target"
+          },
+          "description": "Target tables, each with its columns.",
+          "type": "object"
+        },
+        "where": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Where"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Filter on the driver record."
+        }
+      },
+      "required": [
+        "name",
+        "from",
+        "sink",
+        "to"
+      ],
+      "type": "object"
+    },
+    "FlowRuntime": {
+      "additionalProperties": false,
+      "description": "A flow's `runtime:`. Only the settings whose effect is limited to the\nflow can be overridden (0003 §6).",
+      "properties": {
+        "max_errors": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "on_error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OnError"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "partition_rows": {
+          "format": "uint64",
+          "minimum": 1,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "From": {
+      "description": "One entity, or a merge: the driver first (no `join`), then joined entries.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/EntityRef"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/FromEntry"
+          },
+          "type": "array"
+        }
+      ]
+    },
+    "FromEntry": {
+      "additionalProperties": false,
+      "description": "One entry of a merge `from:` list (0003 §5.2).",
+      "properties": {
+        "as": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Ident"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The alias expressions use. Default: the last part of the entity name."
+        },
+        "entity": {
+          "$ref": "#/$defs/EntityRef"
+        },
+        "join": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Join"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Absent on the driver (the first entry), required on every other."
+        }
+      },
+      "required": [
+        "entity"
+      ],
+      "type": "object"
+    },
+    "Ident": {
+      "description": "Lowercase letters, digits and `_`, starting with a letter.",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "type": "string"
+    },
+    "Join": {
+      "additionalProperties": false,
+      "properties": {
+        "cardinality": {
+          "$ref": "#/$defs/Cardinality"
+        },
+        "keys": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "`{<column of this entry>: <alias>.<column>}`, each pair an equality.",
+          "type": "object"
+        },
+        "strategy": {
+          "$ref": "#/$defs/JoinStrategy"
+        }
+      },
+      "required": [
+        "cardinality",
+        "keys"
+      ],
+      "type": "object"
+    },
+    "JoinStrategy": {
+      "description": "`join.strategy:` (0003 §5.2).",
+      "enum": [
+        "auto",
+        "co_partition",
+        "stage"
+      ],
+      "type": "string"
+    },
+    "Mode": {
+      "description": "`mode:` per flow (0003 §5.5).",
+      "enum": [
+        "insert",
+        "upsert"
+      ],
+      "type": "string"
+    },
+    "OnError": {
+      "description": "`on_error:` (0003 §4).",
+      "enum": [
+        "fail",
+        "dead_letter"
+      ],
+      "type": "string"
+    },
+    "Target": {
+      "additionalProperties": false,
+      "description": "A target table under `to:` (0003 §5.3).",
+      "properties": {
+        "columns": {
+          "$ref": "#/$defs/Columns"
+        },
+        "key": {
+          "description": "Target columns forming the primary key. Required when `mode: upsert`.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "parent": {
+          "description": "Another target of this flow that this one is a child of.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "unnest": {
+          "description": "A path or a `many` alias: one row per element.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "where": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Where"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Filter on this target's rows."
+        }
+      },
+      "required": [
+        "columns"
+      ],
+      "type": "object"
+    },
+    "Where": {
+      "description": "An expression, or named predicates that must all hold.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "0xferry config grammar version 1: ferry/flows/**/*.yaml and *.yml (decision 0003).",
+  "properties": {
+    "flows": {
+      "items": {
+        "$ref": "#/$defs/Flow"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "flows"
+  ],
+  "title": "0xferry flow file",
+  "type": "object"
+}

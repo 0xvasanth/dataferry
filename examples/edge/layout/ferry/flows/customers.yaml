@@ -1,0 +1,8 @@
+flows:
+  - name: customers
+    from: app.public.customers
+    sink: reporting
+    to:
+      customers:
+        key: [id]
+        columns: "*"

@@ -1,0 +1,6 @@
+---
+source: crates/ferry-dsl/tests/bad_configs.rs
+expression: rendered
+---
+error: flows/orders.yaml:18:7 flows[orders].runtime.workers: unknown key `workers`
+  help: `workers` can't be set per flow: it is shared by every flow in the process. Set it in runtime.yaml (0003 §6)

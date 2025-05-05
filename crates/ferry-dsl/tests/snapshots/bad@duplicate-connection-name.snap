@@ -1,0 +1,5 @@
+---
+source: crates/ferry-dsl/tests/bad_configs.rs
+expression: rendered
+---
+error: connections.yaml:13:11 connections[shop].name: connection `shop` is defined twice: first at connections.yaml:4:11, again here

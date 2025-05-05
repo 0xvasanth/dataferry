@@ -1,0 +1,17 @@
+# Two audit flows that wait for each other: a cycle (0003 §7).
+flows:
+  - name: order_audit
+    from: shop.orders
+    sink: warehouse
+    depends_on: [status_audit]
+    to:
+      order_audit:
+        columns: "*"
+
+  - name: status_audit
+    from: shop.orders
+    sink: warehouse
+    depends_on: [order_audit]
+    to:
+      status_audit:
+        columns: "*"

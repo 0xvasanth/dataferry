@@ -11,3 +11,18 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
+glob = "0.3"
+# YAML 1.2 event parser with positions; the maintained successor of
+# yaml-rust (serde_yaml is archived). See config/yaml.rs.
+saphyr-parser = "0.2"
+schemars = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+
+[dev-dependencies]
+tempfile = "3"
+insta = "1"
+jsonschema = { version = "0.58", default-features = false }
+# The round-trip test reads serialized JSON back, and column order matters.
+serde_json = { version = "1", features = ["preserve_order"] }

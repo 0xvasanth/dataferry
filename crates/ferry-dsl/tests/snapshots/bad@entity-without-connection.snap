@@ -1,0 +1,5 @@
+---
+source: crates/ferry-dsl/tests/bad_configs.rs
+expression: rendered
+---
+error: flows/orders.yaml:3:11 flows[orders].from: `orders` is not an entity reference: write `<connection>.<entity>`, e.g. `shop.orders`

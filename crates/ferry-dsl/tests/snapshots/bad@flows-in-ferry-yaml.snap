@@ -1,0 +1,6 @@
+---
+source: crates/ferry-dsl/tests/bad_configs.rs
+expression: rendered
+---
+error: ferry.yaml:5:1 flows: unknown key `flows`
+  help: flows go in files under flows/, or in a file listed in `include:` (0003 §2)

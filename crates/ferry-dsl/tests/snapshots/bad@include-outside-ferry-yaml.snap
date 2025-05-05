@@ -1,0 +1,6 @@
+---
+source: crates/ferry-dsl/tests/bad_configs.rs
+expression: rendered
+---
+error: flows/orders.yaml:1:1 include: unknown key `include`
+  help: `include:` is only allowed in ferry.yaml (0003 §8)

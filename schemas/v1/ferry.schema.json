@@ -1,0 +1,40 @@
+{
+  "$defs": {
+    "Ident": {
+      "description": "Lowercase letters, digits and `_`, starting with a letter.",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "type": "string"
+    },
+    "Version": {
+      "const": 1,
+      "description": "Version of the config grammar. Only 1 exists.",
+      "type": "integer"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "0xferry config grammar version 1: ferry/ferry.yaml (decision 0003).",
+  "properties": {
+    "include": {
+      "description": "Extra files to load, as paths or globs relative to the `ferry/`\ndirectory (0003 §8). Each holds `flows:`, `connections:` or both.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "name": {
+      "$ref": "#/$defs/Ident",
+      "description": "Names the migration in state and reports."
+    },
+    "version": {
+      "$ref": "#/$defs/Version",
+      "description": "Version of the config grammar. Only `1` exists."
+    }
+  },
+  "required": [
+    "version",
+    "name"
+  ],
+  "title": "0xferry ferry.yaml",
+  "type": "object"
+}
