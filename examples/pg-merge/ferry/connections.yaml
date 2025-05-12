@@ -1,0 +1,9 @@
+# `name` and `type` are fixed by 0003. `url` is the postgres field from 0004 §2.
+connections:
+  - name: app
+    type: postgres
+    url: ${APP_DATABASE_URL}
+
+  - name: reporting
+    type: postgres
+    url: ${REPORTING_DATABASE_URL}
