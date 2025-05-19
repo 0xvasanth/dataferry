@@ -16,11 +16,13 @@ use ferry_core::{
     PartitionScope, Result, Source, SourceCaps,
 };
 use futures::{StreamExt, TryStreamExt, stream};
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_postgres::types::{FromSql, ToSql, Type};
-use tokio_postgres::{Client, NoTls};
+use tokio_postgres::{Client, Connection, NoTls};
 
 use crate::columns::ColumnBuilder;
 use crate::pg_type::{PgType, to_canonical};
+use crate::tls::{self, Tls};
 
 /// Reads the tables of one Postgres schema.
 ///
@@ -29,6 +31,7 @@ use crate::pg_type::{PgType, to_canonical};
 /// bounds follow byte order. Other tables are read as one partition.
 pub struct PostgresSource {
     config: tokio_postgres::Config,
+    tls: Tls,
     schema: String,
     batch_rows: usize,
 }
@@ -36,13 +39,14 @@ pub struct PostgresSource {
 impl PostgresSource {
     pub const DEFAULT_BATCH_ROWS: usize = 8192;
 
-    /// `url` is a libpq-style connection string or URL.
+    /// `url` is a libpq-style connection string or URL. Its `sslmode` and
+    /// `sslrootcert` follow the TLS policy in [`crate::tls`]. Does no I/O:
+    /// the first trait call connects.
     pub fn new(url: &str, schema: impl Into<String>) -> Result<Self> {
-        let config = url
-            .parse()
-            .map_err(|e| connector_error(format!("invalid connection string: {e}")))?;
+        let (config, tls) = tls::parse(url)?;
         Ok(Self {
             config,
+            tls,
             schema: schema.into(),
             batch_rows: Self::DEFAULT_BATCH_ROWS,
         })
@@ -55,17 +59,31 @@ impl PostgresSource {
     }
 
     async fn connect(&self) -> Result<Client> {
-        let (client, connection) = self.config.connect(NoTls).await.map_err(pg_error)?;
-        // Connection errors also surface on the client's next request.
-        tokio::spawn(async move {
-            let _ = connection.await;
-        });
-        Ok(client)
+        match self.tls.connector()? {
+            Some(tls) => spawn_connection(self.config.connect(tls).await),
+            None => spawn_connection(self.config.connect(NoTls).await),
+        }
     }
 
     fn table(&self, entity: &Entity) -> String {
         format!("{}.{}", quote(&self.schema), quote(entity.name()))
     }
+}
+
+/// Drives a new connection in the background and returns its client.
+fn spawn_connection<S, T>(
+    connected: std::result::Result<(Client, Connection<S, T>), tokio_postgres::Error>,
+) -> Result<Client>
+where
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    T: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    let (client, connection) = connected.map_err(pg_error)?;
+    // Connection errors also surface on the client's next request.
+    tokio::spawn(async move {
+        let _ = connection.await;
+    });
+    Ok(client)
 }
 
 pub(crate) fn connector_error(message: impl Into<String>) -> FerryError {
@@ -76,10 +94,23 @@ pub(crate) fn connector_error(message: impl Into<String>) -> FerryError {
 }
 
 fn pg_error(e: tokio_postgres::Error) -> FerryError {
-    match e.as_db_error() {
-        Some(db) => connector_error(db.to_string()),
-        None => connector_error(e.to_string()),
+    if let Some(db) = e.as_db_error() {
+        return connector_error(db.to_string());
     }
+    connector_error(with_causes(&e))
+}
+
+/// An error's message followed by its causes. tokio-postgres keeps the
+/// reason (say, why a certificate was refused) in the source chain, not in
+/// its own message.
+pub(crate) fn with_causes(e: &dyn Error) -> String {
+    let mut message = e.to_string();
+    let mut source = e.source();
+    while let Some(cause) = source {
+        message += &format!(": {cause}");
+        source = cause.source();
+    }
+    message
 }
 
 /// Quotes an identifier.
