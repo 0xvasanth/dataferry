@@ -864,7 +864,16 @@ version = "0.0.1"
 name = "ferry-connector-mongo"
 version = "0.0.1"
 dependencies = [
+ "arrow-array",
+ "arrow-buffer",
+ "arrow-schema",
+ "async-trait",
+ "ferry-connector-tls",
+ "ferry-core",
+ "futures",
  "mongodb",
+ "rcgen",
+ "serde_json",
  "testcontainers-modules",
  "tokio",
 ]
