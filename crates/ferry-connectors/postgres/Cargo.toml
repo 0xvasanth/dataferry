@@ -11,8 +11,20 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
+ferry-core.workspace = true
+ferry-connector-tls.workspace = true
+arrow-array = "60"
+arrow-buffer = "60"
+arrow-schema = "60"
+async-trait = "0.1"
+futures = "0.3"
+postgres-protocol = "0.6"
+tokio = { version = "1", features = ["rt"] }
+tokio-postgres = "0.7"
+tokio-postgres-rustls = "0.14"
 
 [dev-dependencies]
+ferry-core = { workspace = true, features = ["testkit"] }
 tokio.workspace = true
 testcontainers-modules.workspace = true
-tokio-postgres = "0.7"
+rcgen = "0.14"

@@ -11,8 +11,19 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
+ferry-core.workspace = true
+ferry-connector-tls.workspace = true
+arrow-array = "60"
+arrow-buffer = "60"
+arrow-schema = "60"
+async-trait = "0.1"
+futures = "0.3"
+mongodb = "3"
+serde_json = "1"
+tokio = { version = "1", features = ["sync"] }
 
 [dev-dependencies]
+ferry-core = { workspace = true, features = ["testkit"] }
 tokio.workspace = true
 testcontainers-modules.workspace = true
-mongodb = "3"
+rcgen = "0.14"

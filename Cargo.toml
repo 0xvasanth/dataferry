@@ -4,6 +4,7 @@ members = [
     "crates/ferry-core",
     "crates/ferry-registry",
     "crates/ferry-dsl",
+    "crates/ferry-connectors/tls",
     "crates/ferry-connectors/postgres",
     "crates/ferry-connectors/mongo",
     "crates/ferry-state",
@@ -22,6 +23,7 @@ ferry-core = { path = "crates/ferry-core" }
 ferry-dsl = { path = "crates/ferry-dsl" }
 ferry-registry = { path = "crates/ferry-registry" }
 ferry-state = { path = "crates/ferry-state" }
+ferry-connector-tls = { path = "crates/ferry-connectors/tls" }
 ferry-connector-postgres = { path = "crates/ferry-connectors/postgres" }
 ferry-connector-mongo = { path = "crates/ferry-connectors/mongo" }
 
