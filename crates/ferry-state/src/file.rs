@@ -1,0 +1,414 @@
+//! `backend: file`: one JSON file per run in a local directory.
+//!
+//! For a single process. Every change rewrites the run's file (to a temp
+//! file, then renamed over it), so a crash leaves either the old state or
+//! the new one. Runs are cached in memory after their first use; the cache
+//! is the source of truth while the process runs, which is why two
+//! processes must not share a directory.
+
+use std::collections::BTreeMap;
+use std::fs;
+use std::io::{ErrorKind, Write};
+use std::path::PathBuf;
+use std::sync::Mutex;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+use async_trait::async_trait;
+use ferry_core::{Epoch, Lease, Partition, PartitionId, Result, WriteSummary};
+use ferry_registry::StateStore;
+use ferry_registry::state::{NewRun, PartitionCounts, PartitionRows, RunId, RunRecord, RunTotals};
+use serde::{Deserialize, Serialize};
+
+use crate::{already_planned, duplicate_id, fence, id_in_other_flow, new_run_id, store_error};
+
+const BACKEND: &str = "file";
+
+/// Bumped when the file layout changes incompatibly.
+const FORMAT: u32 = 1;
+
+pub struct FileStateStore {
+    dir: PathBuf,
+    runs: Mutex<BTreeMap<String, RunFile>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct RunFile {
+    format: u32,
+    id: String,
+    config_hash: String,
+    engine_version: String,
+    connections: Vec<(String, String)>,
+    /// The last epoch issued to any partition of the run.
+    last_epoch: u64,
+    /// Every flow's partitions, in planned order.
+    partitions: Vec<Entry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Entry {
+    flow: String,
+    partition: Partition,
+    /// 0 until first leased.
+    epoch: u64,
+    status: Status,
+    read: u64,
+    dead_lettered: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "status", rename_all = "snake_case")]
+enum Status {
+    Pending,
+    Leased { expires_at_ms: u64 },
+    Done { written: BTreeMap<String, u64> },
+    Failed { error: String },
+}
+
+impl FileStateStore {
+    /// No I/O: the directory is created with the first run.
+    pub fn new(dir: impl Into<PathBuf>) -> Self {
+        Self {
+            dir: dir.into(),
+            runs: Mutex::new(BTreeMap::new()),
+        }
+    }
+
+    fn path(&self, id: &str) -> PathBuf {
+        self.dir.join(format!("{id}.json"))
+    }
+
+    /// Reads a run into the cache. `None` if no such run exists.
+    fn load<'a>(
+        &self,
+        runs: &'a mut BTreeMap<String, RunFile>,
+        run: &RunId,
+    ) -> Result<Option<&'a mut RunFile>> {
+        // Run ids come from the command line (`ferry resume <run-id>`), so
+        // one that could leave the directory names no run.
+        let valid = !run.0.is_empty()
+            && run
+                .0
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+        if !valid {
+            return Ok(None);
+        }
+        if !runs.contains_key(&run.0) {
+            let path = self.path(&run.0);
+            let text = match fs::read_to_string(&path) {
+                Ok(text) => text,
+                Err(e) if e.kind() == ErrorKind::NotFound => return Ok(None),
+                Err(e) => {
+                    return Err(store_error(
+                        BACKEND,
+                        format!("reading {}: {e}", path.display()),
+                    ));
+                }
+            };
+            let file: RunFile = serde_json::from_str(&text).map_err(|e| {
+                store_error(
+                    BACKEND,
+                    format!("{} is not a run file: {e}", path.display()),
+                )
+            })?;
+            if file.format != FORMAT || file.id != run.0 {
+                return Err(store_error(
+                    BACKEND,
+                    format!(
+                        "{} has format {} for run `{}`, expected format {FORMAT} for `{}`",
+                        path.display(),
+                        file.format,
+                        file.id,
+                        run.0
+                    ),
+                ));
+            }
+            runs.insert(run.0.clone(), file);
+        }
+        Ok(runs.get_mut(&run.0))
+    }
+
+    /// Reads `run` without changing it.
+    fn read<T>(&self, run: &RunId, f: impl FnOnce(&RunFile) -> T) -> Result<T> {
+        let mut runs = self.runs.lock().unwrap();
+        let file = self.load(&mut runs, run)?.ok_or_else(|| no_run(run))?;
+        Ok(f(file))
+    }
+
+    /// Applies `f` to a copy of `run` and writes it out; the cache only
+    /// changes once the file did.
+    fn update<T>(&self, run: &RunId, f: impl FnOnce(&mut RunFile) -> Result<T>) -> Result<T> {
+        let mut runs = self.runs.lock().unwrap();
+        let file = self.load(&mut runs, run)?.ok_or_else(|| no_run(run))?;
+        let mut next = file.clone();
+        let out = f(&mut next)?;
+        self.write(&next)?;
+        *file = next;
+        Ok(out)
+    }
+
+    /// Updates the partition `lease` is for, if the lease is current.
+    fn fenced<T>(
+        &self,
+        run: &RunId,
+        lease: &Lease,
+        f: impl FnOnce(&mut Entry) -> Result<T>,
+    ) -> Result<T> {
+        self.update(run, |file| {
+            let entry = file
+                .partitions
+                .iter_mut()
+                .find(|e| e.partition.id == lease.partition)
+                .ok_or_else(|| unknown_partition(run, &lease.partition))?;
+            fence(lease, Epoch(entry.epoch), BACKEND)?;
+            f(entry)
+        })
+    }
+
+    fn write(&self, file: &RunFile) -> Result<()> {
+        let io = |what: &str, e: std::io::Error| store_error(BACKEND, format!("{what}: {e}"));
+        fs::create_dir_all(&self.dir).map_err(|e| io(&self.dir.display().to_string(), e))?;
+        let path = self.path(&file.id);
+        let tmp = path.with_extension("json.tmp");
+        let text = serde_json::to_vec_pretty(file).expect("a run file serializes");
+        let mut out = fs::File::create(&tmp).map_err(|e| io(&tmp.display().to_string(), e))?;
+        out.write_all(&text)
+            .and_then(|()| out.sync_all())
+            .map_err(|e| io(&tmp.display().to_string(), e))?;
+        fs::rename(&tmp, &path).map_err(|e| io(&path.display().to_string(), e))
+    }
+}
+
+fn now_ms() -> u64 {
+    let since = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default();
+    u64::try_from(since.as_millis()).unwrap_or(u64::MAX)
+}
+
+fn ms(d: Duration) -> u64 {
+    u64::try_from(d.as_millis()).unwrap_or(u64::MAX)
+}
+
+fn no_run(run: &RunId) -> ferry_core::FerryError {
+    store_error(BACKEND, format!("no run `{}`", run.0))
+}
+
+fn unknown_partition(run: &RunId, partition: &PartitionId) -> ferry_core::FerryError {
+    store_error(
+        BACKEND,
+        format!("run `{}` has no partition `{}`", run.0, partition.0),
+    )
+}
+
+fn not_leased(partition: &PartitionId, status: &Status) -> ferry_core::FerryError {
+    let status = match status {
+        Status::Pending => "pending",
+        Status::Leased { .. } => "leased",
+        Status::Done { .. } => "done",
+        Status::Failed { .. } => "failed",
+    };
+    store_error(
+        BACKEND,
+        format!("partition `{}` is {status}, not leased", partition.0),
+    )
+}
+
+#[async_trait]
+impl StateStore for FileStateStore {
+    async fn create_run(&self, run: NewRun) -> Result<RunId> {
+        let file = RunFile {
+            format: FORMAT,
+            id: new_run_id(),
+            config_hash: run.config_hash,
+            engine_version: run.engine_version,
+            connections: run.connections,
+            last_epoch: 0,
+            partitions: Vec::new(),
+        };
+        self.write(&file)?;
+        let id = RunId(file.id.clone());
+        self.runs.lock().unwrap().insert(file.id.clone(), file);
+        Ok(id)
+    }
+
+    async fn load_run(&self, run: &RunId) -> Result<Option<RunRecord>> {
+        let mut runs = self.runs.lock().unwrap();
+        Ok(self.load(&mut runs, run)?.map(|f| RunRecord {
+            id: run.clone(),
+            config_hash: f.config_hash.clone(),
+            engine_version: f.engine_version.clone(),
+            connections: f.connections.clone(),
+        }))
+    }
+
+    async fn store_partitions(
+        &self,
+        run: &RunId,
+        flow: &str,
+        partitions: &[Partition],
+    ) -> Result<()> {
+        self.update(run, |file| {
+            let planned: Vec<&Partition> = file
+                .partitions
+                .iter()
+                .filter(|e| e.flow == flow)
+                .map(|e| &e.partition)
+                .collect();
+            if !planned.is_empty() {
+                return if planned.iter().copied().eq(partitions) {
+                    Ok(())
+                } else {
+                    Err(already_planned(BACKEND, run, flow))
+                };
+            }
+            let mut seen = std::collections::BTreeSet::new();
+            for p in partitions {
+                if !seen.insert(&p.id) {
+                    return Err(duplicate_id(BACKEND, flow, &p.id));
+                }
+                if let Some(other) = file.partitions.iter().find(|e| e.partition.id == p.id) {
+                    return Err(id_in_other_flow(BACKEND, flow, &p.id, &other.flow));
+                }
+            }
+            file.partitions.extend(partitions.iter().map(|p| Entry {
+                flow: flow.to_owned(),
+                partition: p.clone(),
+                epoch: 0,
+                status: Status::Pending,
+                read: 0,
+                dead_lettered: 0,
+            }));
+            Ok(())
+        })
+    }
+
+    async fn load_partitions(&self, run: &RunId, flow: &str) -> Result<Vec<Partition>> {
+        self.read(run, |file| {
+            file.partitions
+                .iter()
+                .filter(|e| e.flow == flow)
+                .map(|e| e.partition.clone())
+                .collect()
+        })
+    }
+
+    async fn lease_next(&self, run: &RunId, flow: &str, ttl: Duration) -> Result<Option<Lease>> {
+        let now = now_ms();
+        let available = |e: &Entry| {
+            e.flow == flow
+                && match e.status {
+                    Status::Pending => true,
+                    Status::Leased { expires_at_ms } => expires_at_ms <= now,
+                    Status::Done { .. } | Status::Failed { .. } => false,
+                }
+        };
+        if !self.read(run, |file| file.partitions.iter().any(available))? {
+            return Ok(None);
+        }
+        self.update(run, |file| {
+            let epoch = file.last_epoch + 1;
+            let Some(entry) = file.partitions.iter_mut().find(|e| available(e)) else {
+                return Ok(None);
+            };
+            entry.epoch = epoch;
+            entry.status = Status::Leased {
+                expires_at_ms: now.saturating_add(ms(ttl)),
+            };
+            let lease = Lease {
+                partition: entry.partition.id.clone(),
+                epoch: Epoch(epoch),
+            };
+            file.last_epoch = epoch;
+            Ok(Some(lease))
+        })
+    }
+
+    async fn renew(&self, run: &RunId, lease: &Lease, ttl: Duration) -> Result<()> {
+        self.fenced(run, lease, |entry| match entry.status {
+            Status::Leased { .. } => {
+                entry.status = Status::Leased {
+                    expires_at_ms: now_ms().saturating_add(ms(ttl)),
+                };
+                Ok(())
+            }
+            ref other => Err(not_leased(&lease.partition, other)),
+        })
+    }
+
+    async fn mark_done(&self, run: &RunId, lease: &Lease, summary: &WriteSummary) -> Result<()> {
+        self.fenced(run, lease, |entry| match entry.status {
+            Status::Leased { .. } | Status::Done { .. } => {
+                entry.status = Status::Done {
+                    written: summary.rows_written.clone(),
+                };
+                Ok(())
+            }
+            ref other => Err(not_leased(&lease.partition, other)),
+        })
+    }
+
+    async fn mark_failed(&self, run: &RunId, lease: &Lease, error: &str) -> Result<()> {
+        self.fenced(run, lease, |entry| match entry.status {
+            Status::Leased { .. } => {
+                entry.status = Status::Failed {
+                    error: error.to_owned(),
+                };
+                Ok(())
+            }
+            ref other => Err(not_leased(&lease.partition, other)),
+        })
+    }
+
+    async fn record_rows(&self, run: &RunId, lease: &Lease, rows: &PartitionRows) -> Result<()> {
+        self.fenced(run, lease, |entry| match entry.status {
+            Status::Leased { .. } => {
+                entry.read = rows.read;
+                entry.dead_lettered = rows.dead_lettered;
+                Ok(())
+            }
+            ref other => Err(not_leased(&lease.partition, other)),
+        })
+    }
+
+    async fn is_done(&self, run: &RunId, partition: &PartitionId) -> Result<bool> {
+        self.read(run, |file| {
+            file.partitions
+                .iter()
+                .any(|e| e.partition.id == *partition && matches!(e.status, Status::Done { .. }))
+        })
+    }
+
+    async fn counts(&self, run: &RunId) -> Result<PartitionCounts> {
+        let now = now_ms();
+        self.read(run, |file| {
+            let mut counts = PartitionCounts::default();
+            for e in &file.partitions {
+                match e.status {
+                    Status::Pending => counts.pending += 1,
+                    Status::Leased { expires_at_ms } if expires_at_ms <= now => counts.pending += 1,
+                    Status::Leased { .. } => counts.leased += 1,
+                    Status::Done { .. } => counts.done += 1,
+                    Status::Failed { .. } => counts.failed += 1,
+                }
+            }
+            counts
+        })
+    }
+
+    async fn totals(&self, run: &RunId) -> Result<RunTotals> {
+        self.read(run, |file| {
+            let mut totals = RunTotals::default();
+            for e in &file.partitions {
+                if let Status::Done { written } = &e.status {
+                    totals.read += e.read;
+                    totals.dead_lettered += e.dead_lettered;
+                    for (target, n) in written {
+                        *totals.written.entry(target.clone()).or_default() += n;
+                    }
+                }
+            }
+            totals
+        })
+    }
+}

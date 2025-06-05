@@ -1043,6 +1043,19 @@ dependencies = [
 [[package]]
 name = "ferry-state"
 version = "0.0.1"
+dependencies = [
+ "async-trait",
+ "ferry-core",
+ "ferry-dsl",
+ "ferry-registry",
+ "ferry-state",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "uuid",
+]
 
 [[package]]
 name = "find-msvc-tools"
