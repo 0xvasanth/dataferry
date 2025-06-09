@@ -3,6 +3,10 @@
 //!
 //! - [`FileStateStore`] keeps one JSON file per run in a local directory,
 //!   for a single process (`backend: file`).
+//! - `PgStateBackend` (feature `postgres`) keeps state in tables in the
+//!   state connection's database, and gives the sink a [`Ledger`] so a
+//!   partition's rows and its done-record commit in one transaction
+//!   (`TxnWithState`, 0004 §8).
 //!
 //! A run is pinned to its config hash and engine version when it is
 //! created; [`resume`] refuses to continue it if either changed. Partitions
@@ -10,8 +14,12 @@
 //!
 //! Partition ids are unique within a run, across its flows: `is_done` and
 //! the ledger name a partition without its flow.
+//!
+//! [`Ledger`]: ferry_registry::Ledger
 
 mod file;
+#[cfg(feature = "postgres")]
+mod postgres;
 mod resume;
 #[cfg(feature = "testkit")]
 pub mod testkit;
@@ -20,6 +28,8 @@ use ferry_core::{Epoch, FerryError, Lease, PartitionId};
 use ferry_registry::state::RunId;
 
 pub use file::FileStateStore;
+#[cfg(feature = "postgres")]
+pub use postgres::{PgLedger, PgStateBackend, PgStateStore};
 pub use resume::{ResumeError, resume};
 
 /// Checks `lease` against the partition's current epoch: a newer lease makes

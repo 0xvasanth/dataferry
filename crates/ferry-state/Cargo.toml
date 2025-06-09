@@ -11,6 +11,9 @@ repository.workspace = true
 workspace = true
 
 [features]
+# The state store kept in the state connection's Postgres database
+# (`PgStateBackend`, 0004 §8).
+postgres = ["dep:deadpool-postgres", "dep:tokio", "dep:tokio-postgres"]
 # The state store contract suite (`check_state_store`).
 testkit = []
 
@@ -22,10 +25,18 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
 uuid = { version = "1", features = ["v4"] }
+deadpool-postgres = { version = "0.14", optional = true }
+tokio = { version = "1", features = ["sync"], optional = true }
+tokio-postgres = { version = "0.7", features = ["with-serde_json-1"], optional = true }
 
 [dev-dependencies]
-ferry-state = { path = ".", features = ["testkit"] }
+ferry-state = { path = ".", features = ["postgres", "testkit"] }
 ferry-core = { workspace = true, features = ["testkit"] }
+ferry-registry = { workspace = true, features = ["testkit"] }
 ferry-dsl.workspace = true
+arrow-array = "60"
+futures = "0.3"
+schemars = "1"
 tempfile = "3"
 tokio.workspace = true
+testcontainers-modules.workspace = true
