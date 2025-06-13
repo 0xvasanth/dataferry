@@ -10,6 +10,7 @@
 //! types; after that the runner only sees `Arc<dyn Sink>` and
 //! `Arc<dyn StateStore>`. No `Any`, no downcasts.
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -51,6 +52,24 @@ pub struct PartitionCounts {
     pub leased: u64,
     pub done: u64,
     pub failed: u64,
+}
+
+/// Row counts the runner reports for one partition, besides what the sink
+/// wrote (which the done-record carries as a [`WriteSummary`]).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct PartitionRows {
+    pub read: u64,
+    pub dead_lettered: u64,
+}
+
+/// Row counts over a run's done partitions, for the report. A partition
+/// that re-ran counts once, with its last attempt's numbers.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct RunTotals {
+    pub read: u64,
+    /// Per target table.
+    pub written: BTreeMap<String, u64>,
+    pub dead_lettered: u64,
 }
 
 /// The state store as the runner sees it: runs, plans, leases, done-records.
@@ -98,10 +117,19 @@ pub trait StateStore: Send + Sync {
     /// Records the partition failed, with a message for the report.
     async fn mark_failed(&self, run: &RunId, lease: &Lease, error: &str) -> Result<()>;
 
+    /// Records what the partition read and dead-lettered under `lease`,
+    /// replacing an earlier attempt's numbers. The runner calls it before
+    /// the sink commits, so it holds under every strategy. Fails with
+    /// `StaleLease` like `renew`.
+    async fn record_rows(&self, run: &RunId, lease: &Lease, rows: &PartitionRows) -> Result<()>;
+
     /// Whether a done-record exists for the partition.
     async fn is_done(&self, run: &RunId, partition: &PartitionId) -> Result<bool>;
 
     async fn counts(&self, run: &RunId) -> Result<PartitionCounts>;
+
+    /// Row counts over the run's done partitions.
+    async fn totals(&self, run: &RunId) -> Result<RunTotals>;
 }
 
 /// The one piece of state store work that runs inside a sink's transaction.

@@ -21,7 +21,7 @@ use ferry_core::{
     Epoch, FerryError, IdempotencyStrategy, Lease, Partition, PartitionId, PartitionScope, Result,
     Sink, SinkCaps, SinkTxn, TargetSchema, TargetTable, WriteMode, WriteSummary,
 };
-use ferry_registry::state::{NewRun, PartitionCounts, RunId, RunRecord};
+use ferry_registry::state::{NewRun, PartitionCounts, PartitionRows, RunId, RunRecord, RunTotals};
 use ferry_registry::{
     BuildContext, BuildError, Connector, Endpoints, Ledger, Roles, Secret, StateBackend,
     StateCapable, StateStore,
@@ -44,6 +44,7 @@ pub struct Db {
     rows: BTreeMap<PartitionId, BTreeMap<String, u64>>,
     done: BTreeMap<PartitionId, Epoch>,
     failed: BTreeMap<PartitionId, String>,
+    reported: BTreeMap<PartitionId, PartitionRows>,
     leases: BTreeMap<PartitionId, LeaseState>,
     runs: BTreeMap<RunId, RunRecord>,
     plans: BTreeMap<(RunId, String), Vec<Partition>>,
@@ -304,6 +305,12 @@ impl StateStore for FakeStore {
         })
     }
 
+    async fn record_rows(&self, _: &RunId, lease: &Lease, rows: &PartitionRows) -> Result<()> {
+        self.checked(lease, |db| {
+            db.reported.insert(lease.partition.clone(), *rows);
+        })
+    }
+
     async fn is_done(&self, _: &RunId, partition: &PartitionId) -> Result<bool> {
         Ok(self.pool.db.lock().unwrap().done.contains_key(partition))
     }
@@ -325,6 +332,20 @@ impl StateStore for FakeStore {
             }
         }
         Ok(counts)
+    }
+
+    async fn totals(&self, _: &RunId) -> Result<RunTotals> {
+        let db = self.pool.db.lock().unwrap();
+        let mut totals = RunTotals::default();
+        for partition in db.done.keys() {
+            let rows = db.reported.get(partition).copied().unwrap_or_default();
+            totals.read += rows.read;
+            totals.dead_lettered += rows.dead_lettered;
+            for (target, n) in db.rows.get(partition).into_iter().flatten() {
+                *totals.written.entry(target.clone()).or_default() += n;
+            }
+        }
+        Ok(totals)
     }
 }
 
