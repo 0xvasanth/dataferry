@@ -1,0 +1,4 @@
+connections:
+  - name: inventory
+    type: fake
+    url: ${FERRY_FAKE_URL}

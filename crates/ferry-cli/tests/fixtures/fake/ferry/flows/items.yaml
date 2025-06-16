@@ -1,0 +1,9 @@
+flows:
+  - name: items
+    from: inventory.items
+    sink: inventory
+    to:
+      items_copy:
+        key: [id]
+        columns:
+          id: id

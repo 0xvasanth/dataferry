@@ -1,0 +1,4 @@
+# Uses only the `fake` connection type, which acme-ferry registers and the
+# stock ferry binary does not.
+version: 1
+name: fake_demo
