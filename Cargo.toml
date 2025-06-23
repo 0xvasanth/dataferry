@@ -9,6 +9,7 @@ members = [
     "crates/ferry-connectors/mongo",
     "crates/ferry-state",
     "crates/ferry-cli",
+    "crates/ferry-cli/tests/acme-ferry",
 ]
 
 [workspace.package]

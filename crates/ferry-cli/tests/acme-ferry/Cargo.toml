@@ -1,0 +1,32 @@
+# A third-party binary built on ferry-cli's library, the way 0004 §5 says one
+# is written: its connectors depend on ferry-core and ferry-registry only,
+# and it gets every ferry subcommand from `Ferry`. Test-only.
+[package]
+name = "acme-ferry"
+description = "Test-only third-party ferry binary with fake connectors"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+# No built-ins: this binary brings its own `postgres` and `mongo`, and must
+# keep working when the stock ones are registered by `with_builtins`.
+ferry-cli = { path = "../..", default-features = false }
+ferry-core.workspace = true
+ferry-registry.workspace = true
+async-trait = "0.1"
+schemars = "1"
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+assert_cmd = "2"
+ferry-dsl.workspace = true
+insta = "1"
+jsonschema = { version = "0.58", default-features = false }
+serde_json = "1"
+tempfile = "3"
