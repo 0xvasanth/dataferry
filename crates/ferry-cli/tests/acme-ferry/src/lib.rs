@@ -18,7 +18,7 @@ use ferry_core::{
     WriteSummary,
 };
 use ferry_registry::secret::url_password;
-use ferry_registry::state::{NewRun, PartitionCounts, RunId, RunRecord};
+use ferry_registry::state::{NewRun, PartitionCounts, PartitionRows, RunId, RunRecord, RunTotals};
 use ferry_registry::{
     BuildContext, BuildError, Connector, Endpoints, Ledger, Roles, Secret, StateBackend,
     StateCapable, StateStore,
@@ -224,6 +224,14 @@ impl StateStore for Store {
 
     async fn renew(&self, _: &RunId, _: &Lease, _: Duration) -> Result<()> {
         panic!("{NEVER}: renew")
+    }
+
+    async fn record_rows(&self, _: &RunId, _: &Lease, _: &PartitionRows) -> Result<()> {
+        panic!("{NEVER}: record_rows")
+    }
+
+    async fn totals(&self, _: &RunId) -> Result<RunTotals> {
+        panic!("{NEVER}: totals")
     }
 
     async fn mark_done(&self, _: &RunId, _: &Lease, _: &WriteSummary) -> Result<()> {
