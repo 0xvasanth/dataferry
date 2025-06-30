@@ -211,6 +211,12 @@ impl StateStore for Unfenced {
     async fn counts(&self, run: &RunId) -> Result<PartitionCounts> {
         self.0.counts(run).await
     }
+    async fn flow_counts(&self, run: &RunId, flow: &str) -> Result<PartitionCounts> {
+        self.0.flow_counts(run, flow).await
+    }
+    async fn reset_failed(&self, run: &RunId) -> Result<u64> {
+        self.0.reset_failed(run).await
+    }
     async fn totals(&self, run: &RunId) -> Result<RunTotals> {
         self.0.totals(run).await
     }

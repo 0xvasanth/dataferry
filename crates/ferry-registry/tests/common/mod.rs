@@ -205,6 +205,29 @@ pub struct FakeStore {
 }
 
 impl FakeStore {
+    /// Counts the partitions of `run`, or of one of its flows.
+    fn counted(&self, run: &RunId, flow: Option<&str>) -> PartitionCounts {
+        let db = self.pool.db.lock().unwrap();
+        let now = Instant::now();
+        let mut counts = PartitionCounts::default();
+        let plans = db
+            .plans
+            .iter()
+            .filter(|((r, f), _)| r == run && flow.is_none_or(|flow| f == flow));
+        for p in plans.flat_map(|(_, plan)| plan) {
+            if db.done.contains_key(&p.id) {
+                counts.done += 1;
+            } else if db.failed.contains_key(&p.id) {
+                counts.failed += 1;
+            } else if db.leases.get(&p.id).is_some_and(|l| l.expires > now) {
+                counts.leased += 1;
+            } else {
+                counts.pending += 1;
+            }
+        }
+        counts
+    }
+
     fn checked(&self, lease: &Lease, f: impl FnOnce(&mut Db)) -> Result<()> {
         let mut db = self.pool.db.lock().unwrap();
         check_current(&db, lease)?;
@@ -316,22 +339,30 @@ impl StateStore for FakeStore {
     }
 
     async fn counts(&self, run: &RunId) -> Result<PartitionCounts> {
-        let db = self.pool.db.lock().unwrap();
-        let now = Instant::now();
-        let mut counts = PartitionCounts::default();
-        let plans = db.plans.iter().filter(|((r, _), _)| r == run);
-        for p in plans.flat_map(|(_, plan)| plan) {
-            if db.done.contains_key(&p.id) {
-                counts.done += 1;
-            } else if db.failed.contains_key(&p.id) {
-                counts.failed += 1;
-            } else if db.leases.get(&p.id).is_some_and(|l| l.expires > now) {
-                counts.leased += 1;
-            } else {
-                counts.pending += 1;
-            }
+        Ok(self.counted(run, None))
+    }
+
+    async fn flow_counts(&self, run: &RunId, flow: &str) -> Result<PartitionCounts> {
+        Ok(self.counted(run, Some(flow)))
+    }
+
+    async fn reset_failed(&self, run: &RunId) -> Result<u64> {
+        let mut db = self.pool.db.lock().unwrap();
+        if !db.runs.contains_key(run) {
+            return Err(FerryError::Connector {
+                connector: "state:fake".into(),
+                message: format!("no run `{}`", run.0),
+            });
         }
-        Ok(counts)
+        let ids: Vec<PartitionId> = db
+            .plans
+            .iter()
+            .filter(|((r, _), _)| r == run)
+            .flat_map(|(_, plan)| plan.iter().map(|p| p.id.clone()))
+            .collect();
+        let before = db.failed.len();
+        db.failed.retain(|id, _| !ids.contains(id));
+        Ok((before - db.failed.len()) as u64)
     }
 
     async fn totals(&self, _: &RunId) -> Result<RunTotals> {

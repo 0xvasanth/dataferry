@@ -249,6 +249,14 @@ impl StateStore for Store {
     async fn counts(&self, _: &RunId) -> Result<PartitionCounts> {
         panic!("{NEVER}: counts")
     }
+
+    async fn flow_counts(&self, _: &RunId, _: &str) -> Result<PartitionCounts> {
+        panic!("{NEVER}: flow_counts")
+    }
+
+    async fn reset_failed(&self, _: &RunId) -> Result<u64> {
+        panic!("{NEVER}: reset_failed")
+    }
 }
 
 #[async_trait]

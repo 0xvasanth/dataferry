@@ -128,6 +128,17 @@ pub trait StateStore: Send + Sync {
 
     async fn counts(&self, run: &RunId) -> Result<PartitionCounts>;
 
+    /// [`counts`](StateStore::counts) over the partitions planned under
+    /// `flow` only. The runner uses it to tell a flow with nothing left to
+    /// lease from one whose partitions are still leased by another worker.
+    async fn flow_counts(&self, run: &RunId, flow: &str) -> Result<PartitionCounts>;
+
+    /// Puts every failed partition of `run` back to pending, for `ferry
+    /// retry --failed`. Done partitions are left alone, and a reset
+    /// partition's next lease gets a higher epoch than its failed attempt.
+    /// Returns how many partitions were reset.
+    async fn reset_failed(&self, run: &RunId) -> Result<u64>;
+
     /// Row counts over the run's done partitions.
     async fn totals(&self, run: &RunId) -> Result<RunTotals>;
 }
