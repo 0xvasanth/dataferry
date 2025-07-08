@@ -190,6 +190,21 @@ fn ms(d: Duration) -> u64 {
     u64::try_from(d.as_millis()).unwrap_or(u64::MAX)
 }
 
+fn count<'a>(entries: impl Iterator<Item = &'a Entry>) -> PartitionCounts {
+    let now = now_ms();
+    let mut counts = PartitionCounts::default();
+    for e in entries {
+        match e.status {
+            Status::Pending => counts.pending += 1,
+            Status::Leased { expires_at_ms } if expires_at_ms <= now => counts.pending += 1,
+            Status::Leased { .. } => counts.leased += 1,
+            Status::Done { .. } => counts.done += 1,
+            Status::Failed { .. } => counts.failed += 1,
+        }
+    }
+    counts
+}
+
 fn no_run(run: &RunId) -> ferry_core::FerryError {
     store_error(BACKEND, format!("no run `{}`", run.0))
 }
@@ -380,19 +395,27 @@ impl StateStore for FileStateStore {
     }
 
     async fn counts(&self, run: &RunId) -> Result<PartitionCounts> {
-        let now = now_ms();
+        self.read(run, |file| count(file.partitions.iter()))
+    }
+
+    async fn flow_counts(&self, run: &RunId, flow: &str) -> Result<PartitionCounts> {
         self.read(run, |file| {
-            let mut counts = PartitionCounts::default();
-            for e in &file.partitions {
-                match e.status {
-                    Status::Pending => counts.pending += 1,
-                    Status::Leased { expires_at_ms } if expires_at_ms <= now => counts.pending += 1,
-                    Status::Leased { .. } => counts.leased += 1,
-                    Status::Done { .. } => counts.done += 1,
-                    Status::Failed { .. } => counts.failed += 1,
-                }
+            count(file.partitions.iter().filter(|e| e.flow == flow))
+        })
+    }
+
+    async fn reset_failed(&self, run: &RunId) -> Result<u64> {
+        let failed = |e: &Entry| matches!(e.status, Status::Failed { .. });
+        if !self.read(run, |file| file.partitions.iter().any(failed))? {
+            return Ok(0);
+        }
+        self.update(run, |file| {
+            let mut reset = 0;
+            for entry in file.partitions.iter_mut().filter(|e| failed(e)) {
+                entry.status = Status::Pending;
+                reset += 1;
             }
-            counts
+            Ok(reset)
         })
     }
 

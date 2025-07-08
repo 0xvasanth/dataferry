@@ -16,6 +16,7 @@ splits, merges, nesting and unnesting.
 | `ferry-connector-postgres` | `crates/ferry-connectors/postgres` | Track A: data plane |
 | `ferry-connector-mongo` | `crates/ferry-connectors/mongo` | Track A: data plane |
 | `ferry-state` | `crates/ferry-state` | Track A: data plane |
+| `ferry-runtime` | `crates/ferry-runtime` | Track A: data plane (the runner, A5) |
 | `ferry-cli` | `crates/ferry-cli` | Shared; wired at integration points |
 
 ## Development

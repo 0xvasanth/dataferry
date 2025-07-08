@@ -39,7 +39,10 @@ const LONG: Duration = Duration::from_secs(600);
 ///   partitions are never leased again, and an epoch the store never issued
 ///   is refused;
 /// - counts and row totals follow the partitions, counting a re-run
-///   partition once.
+///   partition once, and `flow_counts` counts one flow's partitions only;
+/// - `reset_failed` puts failed partitions (and only those) back to
+///   pending, their next lease outranks the failed attempt's, and a second
+///   reset finds nothing to do.
 pub async fn check_state_store(open: &dyn Fn() -> Arc<dyn StateStore>) -> Vec<String> {
     let mut v = Vec::new();
     for (name, check) in CHECKS {
@@ -57,7 +60,7 @@ type Check =
 
 type BoxFuture<'a> = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>;
 
-const CHECKS: [(&str, Check); 7] = [
+const CHECKS: [(&str, Check); 9] = [
     ("runs", |s, r, v| Box::pin(runs(s, r, v))),
     ("planning", |s, r, v| Box::pin(planning(s, r, v))),
     ("leasing", |s, r, v| Box::pin(leasing(s, r, v))),
@@ -65,6 +68,8 @@ const CHECKS: [(&str, Check); 7] = [
     ("heartbeats", |s, r, v| Box::pin(heartbeats(s, r, v))),
     ("terminal states", |s, r, v| Box::pin(terminal(s, r, v))),
     ("totals", |s, r, v| Box::pin(totals(s, r, v))),
+    ("flow counts", |s, r, v| Box::pin(flow_counts(s, r, v))),
+    ("retrying failed", |s, r, v| Box::pin(retrying(s, r, v))),
 ];
 
 /// Not a real hash: the store must not parse or normalize it.
@@ -551,6 +556,140 @@ async fn totals(
         v.push(format!(
             "totals are {totals:?}, not read 15, dead-lettered 1, written {want_written:?}"
         ));
+    }
+    Ok(())
+}
+
+async fn flow_counts(
+    store: Arc<dyn StateStore>,
+    reopened: Arc<dyn StateStore>,
+    v: &mut Vec<String>,
+) -> Result<()> {
+    let (run, _) = planned(store.as_ref(), 3).await?;
+    store
+        .store_partitions(&run, "items", &partitions("items", 2))
+        .await?;
+    let order = store
+        .lease_next(&run, "orders", LONG)
+        .await?
+        .expect("pending");
+    store.mark_done(&run, &order, &summary(&[])).await?;
+    let item = store
+        .lease_next(&run, "items", LONG)
+        .await?
+        .expect("pending");
+    store.mark_failed(&run, &item, "bad row").await?;
+    store.lease_next(&run, "items", LONG).await?;
+
+    let orders = reopened.flow_counts(&run, "orders").await?;
+    let want = PartitionCounts {
+        pending: 2,
+        done: 1,
+        ..Default::default()
+    };
+    if orders != want {
+        v.push(format!("flow `orders` counts {orders:?}, not {want:?}"));
+    }
+    let items = reopened.flow_counts(&run, "items").await?;
+    let want = PartitionCounts {
+        leased: 1,
+        failed: 1,
+        ..Default::default()
+    };
+    if items != want {
+        v.push(format!("flow `items` counts {items:?}, not {want:?}"));
+    }
+    let none = reopened.flow_counts(&run, "never-planned").await?;
+    if none != PartitionCounts::default() {
+        v.push(format!("a flow with no partitions counts {none:?}"));
+    }
+    Ok(())
+}
+
+async fn retrying(
+    store: Arc<dyn StateStore>,
+    reopened: Arc<dyn StateStore>,
+    v: &mut Vec<String>,
+) -> Result<()> {
+    let (run, parts) = planned(store.as_ref(), 3).await?;
+    let mut leases = Vec::new();
+    while let Some(lease) = store.lease_next(&run, "orders", LONG).await? {
+        leases.push(lease);
+    }
+    let [done, failed, still_failed] = leases.as_slice() else {
+        v.push(format!("leased {leases:?}, not the 3 planned partitions"));
+        return Ok(());
+    };
+    store
+        .mark_done(&run, done, &summary(&[("orders", 3)]))
+        .await?;
+    store.mark_failed(&run, failed, "bad row").await?;
+    store.mark_failed(&run, still_failed, "bad row").await?;
+
+    // Another run's failures are its own.
+    let (other, _) = planned(store.as_ref(), 1).await?;
+    let lease = store
+        .lease_next(&other, "orders", LONG)
+        .await?
+        .expect("pending");
+    store.mark_failed(&other, &lease, "bad row").await?;
+
+    let reset = reopened.reset_failed(&run).await?;
+    if reset != 2 {
+        v.push(format!("reset_failed reset {reset} partitions, not 2"));
+    }
+    let counts = store.counts(&run).await?;
+    let want = PartitionCounts {
+        pending: 2,
+        done: 1,
+        ..Default::default()
+    };
+    if counts != want {
+        v.push(format!(
+            "after reset_failed, counts are {counts:?}, not {want:?}"
+        ));
+    }
+    if store.counts(&other).await?.failed != 1 {
+        v.push("reset_failed reset another run's failed partition".into());
+    }
+    if !store.is_done(&run, &parts[0].id).await? {
+        v.push("reset_failed undid a done partition".into());
+    }
+
+    let mut retried = Vec::new();
+    while let Some(lease) = store.lease_next(&run, "orders", LONG).await? {
+        retried.push(lease);
+    }
+    let ids: Vec<&PartitionId> = retried.iter().map(|l| &l.partition).collect();
+    if ids != [&failed.partition, &still_failed.partition] {
+        v.push(format!(
+            "after reset_failed, leases went to {ids:?}, not the failed partitions"
+        ));
+    }
+    for (old, new) in [failed, still_failed].into_iter().zip(&retried) {
+        if new.epoch <= old.epoch {
+            v.push(format!(
+                "a retried partition got epoch {} after its failed epoch {}",
+                new.epoch.0, old.epoch.0
+            ));
+        }
+        expect_stale(
+            v,
+            "mark_done by the failed attempt",
+            store.mark_done(&run, old, &summary(&[])).await,
+            old,
+            new.epoch,
+        );
+    }
+    if reopened.reset_failed(&run).await? != 0 {
+        v.push("a second reset_failed found failed partitions".into());
+    }
+    if store
+        .reset_failed(&RunId("no-such-run".into()))
+        .await
+        .is_ok()
+    {
+        v.push("reset_failed succeeded for a run that doesn't exist".into());
     }
     Ok(())
 }

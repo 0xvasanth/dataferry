@@ -177,6 +177,36 @@ impl PgStateStore {
     }
 }
 
+impl PgStateStore {
+    /// Counts the partitions of `run`, or of one of its flows.
+    async fn count(&self, run: &RunId, flow: Option<&str>) -> Result<PartitionCounts> {
+        let client = self.client().await?;
+        let rows = client
+            .query(
+                "SELECT CASE WHEN status = 'leased' AND expires_at <= now() THEN 'pending'
+                             ELSE status END AS state,
+                        count(*)
+                   FROM _ferry_partitions
+                  WHERE run_id = $1 AND ($2::text IS NULL OR flow = $2)
+                  GROUP BY 1",
+                &[&run.0, &flow],
+            )
+            .await
+            .map_err(|e| pg_error("counting partitions", e))?;
+        let mut counts = PartitionCounts::default();
+        for row in rows {
+            let n = to_u64(row.get(1));
+            match row.get::<_, &str>(0) {
+                "pending" => counts.pending = n,
+                "leased" => counts.leased = n,
+                "done" => counts.done = n,
+                _ => counts.failed = n,
+            }
+        }
+        Ok(counts)
+    }
+}
+
 /// Locks the partition's row and checks `lease` is its current lease.
 /// Returns the partition's status.
 async fn lock_current(
@@ -441,29 +471,31 @@ impl StateStore for PgStateStore {
     }
 
     async fn counts(&self, run: &RunId) -> Result<PartitionCounts> {
+        self.count(run, None).await
+    }
+
+    async fn flow_counts(&self, run: &RunId, flow: &str) -> Result<PartitionCounts> {
+        self.count(run, Some(flow)).await
+    }
+
+    async fn reset_failed(&self, run: &RunId) -> Result<u64> {
+        const CONTEXT: &str = "resetting failed partitions";
         let client = self.client().await?;
-        let rows = client
-            .query(
-                "SELECT CASE WHEN status = 'leased' AND expires_at <= now() THEN 'pending'
-                             ELSE status END AS state,
-                        count(*)
-                   FROM _ferry_partitions WHERE run_id = $1
-                  GROUP BY 1",
+        let exists = client
+            .query_opt("SELECT 1 FROM _ferry_runs WHERE run_id = $1", &[&run.0])
+            .await
+            .map_err(|e| pg_error(CONTEXT, e))?;
+        if exists.is_none() {
+            return Err(store_error(BACKEND, format!("no run `{}`", run.0)));
+        }
+        client
+            .execute(
+                "UPDATE _ferry_partitions SET status = 'pending', error = NULL \
+                 WHERE run_id = $1 AND status = 'failed'",
                 &[&run.0],
             )
             .await
-            .map_err(|e| pg_error("counting partitions", e))?;
-        let mut counts = PartitionCounts::default();
-        for row in rows {
-            let n = to_u64(row.get(1));
-            match row.get::<_, &str>(0) {
-                "pending" => counts.pending = n,
-                "leased" => counts.leased = n,
-                "done" => counts.done = n,
-                _ => counts.failed = n,
-            }
-        }
-        Ok(counts)
+            .map_err(|e| pg_error(CONTEXT, e))
     }
 
     async fn totals(&self, run: &RunId) -> Result<RunTotals> {
