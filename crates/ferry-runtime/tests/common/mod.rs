@@ -149,6 +149,12 @@ pub enum Event {
     Abort(Lease),
     MarkDone(Lease),
     MarkFailed(Lease),
+    /// A `WriteObserver` was told the flow's sink is prepared.
+    Prepared(String),
+    /// A `PartitionObserver` saw an output with this many rows.
+    Observed(Lease, usize),
+    /// A `PartitionObserver` finished with these rows.
+    Finished(Lease, PartitionRows),
 }
 
 #[derive(Clone, Default)]
