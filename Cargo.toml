@@ -9,6 +9,7 @@ members = [
     "crates/ferry-connectors/mongo",
     "crates/ferry-state",
     "crates/ferry-runtime",
+    "crates/ferry-verify",
     "crates/ferry-cli",
     "crates/ferry-cli/tests/acme-ferry",
 ]
@@ -26,6 +27,7 @@ ferry-dsl = { path = "crates/ferry-dsl" }
 ferry-registry = { path = "crates/ferry-registry" }
 ferry-state = { path = "crates/ferry-state" }
 ferry-runtime = { path = "crates/ferry-runtime" }
+ferry-verify = { path = "crates/ferry-verify" }
 ferry-connector-tls = { path = "crates/ferry-connectors/tls" }
 ferry-connector-postgres = { path = "crates/ferry-connectors/postgres" }
 ferry-connector-mongo = { path = "crates/ferry-connectors/mongo" }
