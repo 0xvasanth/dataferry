@@ -13,6 +13,7 @@ use tokio::time::Instant;
 use crate::budget::Budget;
 use crate::error::RunError;
 use crate::flow::{Flow, namespaced, unit_reads, unnamespaced};
+use crate::observe::WriteObserver;
 use crate::settings::Settings;
 use crate::throttle::Throttle;
 use crate::work::{FlowRun, Outcome, Shared, Unit, process};
@@ -27,6 +28,7 @@ pub struct Runner {
     store: Arc<dyn StateStore>,
     flows: Vec<Flow>,
     settings: Settings,
+    observer: Option<Arc<dyn WriteObserver>>,
 }
 
 /// How a run stands when [`Runner::execute`] returns.
@@ -131,7 +133,14 @@ impl Runner {
             store,
             flows,
             settings,
+            observer: None,
         })
+    }
+
+    /// Shows every partition's writes to `observer` (the verifier, A8).
+    pub fn with_observer(mut self, observer: Arc<dyn WriteObserver>) -> Self {
+        self.observer = Some(observer);
+        self
     }
 
     /// Creates a run, then [`execute`](Runner::execute)s it.
@@ -193,6 +202,7 @@ impl Runner {
                 self.settings.source_max_connections,
                 self.settings.source_rows_per_sec,
             ),
+            observer: self.observer.clone(),
         });
         Coordinator::new(shared, flows).run().await
     }
@@ -214,6 +224,9 @@ impl Runner {
             .prepare(&flow.target, flow.mode)
             .await
             .map_err(in_flow)?;
+        if let Some(observer) = &self.observer {
+            observer.prepared(run, flow).await.map_err(in_flow)?;
+        }
 
         let mut stored = self
             .store

@@ -19,6 +19,7 @@ use tokio::time::Instant;
 
 use crate::budget::{AheadSender, Budget, batch_size, read_ahead};
 use crate::flow::Flow;
+use crate::observe::{PartitionObserver, WriteObserver};
 use crate::settings::Settings;
 use crate::throttle::Throttle;
 
@@ -29,6 +30,7 @@ pub(crate) struct Shared {
     pub settings: Settings,
     pub budget: Budget,
     pub throttle: Throttle,
+    pub observer: Option<Arc<dyn WriteObserver>>,
 }
 
 /// A flow as it runs: its strategy, and what each stored partition reads.
@@ -88,7 +90,16 @@ pub(crate) async fn process(
         Some(Err(e)) => return fail(e).await,
         Some(Ok(txn)) => txn,
     };
-    let rows = match until_lost(&mut lost, write_unit(&shared, &flow, unit, txn.as_mut())).await {
+    let mut observer = shared
+        .observer
+        .as_ref()
+        .map(|o| o.begin(&shared.run, &flow.flow.name, &lease));
+    let written = until_lost(
+        &mut lost,
+        write_unit(&shared, &flow, unit, txn.as_mut(), observer.as_mut()),
+    )
+    .await;
+    let rows = match written {
         None => {
             let _ = txn.abort().await;
             return Ok(Outcome::LeaseLost);
@@ -113,6 +124,20 @@ pub(crate) async fn process(
         Err(e) => {
             let _ = txn.abort().await;
             return Err(e);
+        }
+    }
+    // Also before the commit, so no partition commits without its record.
+    if let Some(observer) = observer {
+        match until_lost(&mut lost, observer.finish(&rows)).await {
+            Some(Ok(())) => {}
+            None | Some(Err(FerryError::StaleLease { .. })) => {
+                let _ = txn.abort().await;
+                return Ok(Outcome::LeaseLost);
+            }
+            Some(Err(e)) => {
+                let _ = txn.abort().await;
+                return fail(e).await;
+            }
         }
     }
     // Under `TxnWithState` the sink's commit writes the done-record through
@@ -195,6 +220,7 @@ async fn write_unit(
     flow: &FlowRun,
     unit: &Unit,
     txn: &mut dyn SinkTxn,
+    mut observer: Option<&mut Box<dyn PartitionObserver>>,
 ) -> Result<PartitionRows> {
     let mut connections = shared.throttle.connections(unit.reads.len()).await;
     let read_ahead_bytes = shared.budget.read_ahead(unit.reads.len());
@@ -239,6 +265,9 @@ async fn write_unit(
                     rejected.error
                 ),
             });
+        }
+        if let Some(observer) = observer.as_mut() {
+            observer.output(&output)?;
         }
         batcher.push(output.targets, txn).await?;
     }

@@ -1349,6 +1349,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "ferry-verify"
+version = "0.0.1"
+dependencies = [
+ "arrow-array",
+ "arrow-buffer",
+ "arrow-schema",
+ "arrow-select",
+ "async-trait",
+ "deadpool-postgres",
+ "ferry-connector-postgres",
+ "ferry-core",
+ "ferry-registry",
+ "ferry-runtime",
+ "ferry-state",
+ "futures",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "testcontainers-modules",
+ "tokio",
+ "tokio-postgres",
+ "twox-hash",
+]
+
+[[package]]
 name = "find-msvc-tools"
 version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4044,6 +4069,12 @@ dependencies = [
  "termcolor",
  "toml",
 ]
+
+[[package]]
+name = "twox-hash"
+version = "2.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86a801b3cea342a06d468c8710662aa29e5e05e4f5c0d62f00bbb7f2ad7941c2"
 
 [[package]]
 name = "typed-builder"
