@@ -11,7 +11,7 @@ use std::time::Duration;
 use common::*;
 use ferry_core::testkit::{MemSink, MemSinkFaults, MemSource};
 use ferry_core::{
-    FerryError, IdempotencyStrategy, IdentityPlan, PartitionId, TargetSchema, WriteMode,
+    FerryError, IdempotencyStrategy, IdentityPlan, Lease, PartitionId, TargetSchema, WriteMode,
 };
 use ferry_registry::StateStore;
 use ferry_registry::state::{PartitionCounts, RunId};
@@ -240,12 +240,17 @@ async fn resume_reads_back_the_stored_partitions_after_a_crash() {
             Arc::new(fx.spy.clone()),
         )
     };
-    // The 4th commit never returns: the process "dies" there, holding
-    // leases it will never renew or release.
+    // From the 4th on, commits never return: the process "dies" once every
+    // worker is stuck in one, holding leases it will never renew or release.
+    let workers = settings().workers;
     let commits = Arc::new(AtomicUsize::new(0));
-    let seen = Arc::clone(&commits);
+    let stalled = Arc::new(tokio::sync::Notify::new());
+    let (seen, all_stuck) = (Arc::clone(&commits), Arc::clone(&stalled));
     fx.spy.on_commit(move |_| {
         let n = seen.fetch_add(1, Ordering::SeqCst) + 1;
+        if n == 3 + workers {
+            all_stuck.notify_one();
+        }
         async move {
             if n >= 4 {
                 std::future::pending::<()>().await;
@@ -255,8 +260,10 @@ async fn resume_reads_back_the_stored_partitions_after_a_crash() {
     });
     let runner = Runner::new(fx.store(), vec![flow()], settings()).unwrap();
     let run = runner.create(new_run()).await.unwrap();
-    let crashed = tokio::time::timeout(Duration::from_secs(2), runner.execute(&run)).await;
-    assert!(crashed.is_err(), "the run should hang on its 4th commit");
+    tokio::select! {
+        ended = runner.execute(&run) => panic!("the run should hang on its 4th commit: {ended:?}"),
+        () = stalled.notified() => {}
+    }
     drop(runner);
     assert_eq!(fx.store.counts(&run).await.unwrap().done, 3);
 
@@ -322,12 +329,46 @@ async fn resume_refuses_an_unknown_run_or_a_changed_config() {
     ));
 }
 
-#[tokio::test]
+/// Per lease, when each of its renewals was asked for, counted from when
+/// the lease was.
+fn renewals(log: &Log) -> Vec<(Lease, Vec<Duration>)> {
+    let timeline = log.timeline();
+    timeline
+        .iter()
+        .filter_map(|(leased, e)| match e {
+            Event::Leased(lease) => Some((lease.clone(), *leased)),
+            _ => None,
+        })
+        .map(|(lease, leased)| {
+            let renewed = timeline
+                .iter()
+                .filter(|(_, e)| *e == Event::Renewed(lease.clone()))
+                .map(|(at, _)| *at - leased)
+                .collect();
+            (lease, renewed)
+        })
+        .collect()
+}
+
+/// Every heartbeat that falls `within` this long after the lease was asked
+/// for.
+fn every_heartbeat(within: Duration) -> Vec<Duration> {
+    let heartbeat = settings().heartbeat;
+    (1..=within.as_nanos() / heartbeat.as_nanos())
+        .map(|k| heartbeat * k as u32)
+        .collect()
+}
+
+// On tokio's paused clock: the heartbeat schedule is exact, whatever else
+// runs on the machine (the store's own I/O takes no time on it).
+#[tokio::test(start_paused = true)]
 async fn heartbeats_keep_a_slow_partition_leased() {
     let fx = Fixture::new();
-    // Each write takes longer than the lease: only renewals keep it.
-    fx.spy
-        .on_write(|_| tokio::time::sleep(Duration::from_millis(700)).boxed());
+    // Each write takes longer than the lease, and ends between two
+    // heartbeats: only renewals keep it.
+    let s = settings();
+    let write = s.lease_ttl + s.heartbeat / 2;
+    fx.spy.on_write(move |_| tokio::time::sleep(write).boxed());
     let mut flow = fx.orders_flow(200);
     flow.inputs[0].source = orders_source(200, 100);
     let runner = Runner::new(fx.store(), vec![flow], settings()).unwrap();
@@ -335,8 +376,101 @@ async fn heartbeats_keep_a_slow_partition_leased() {
 
     assert!(report.is_complete(), "{report:?}");
     assert_eq!(report.leases_lost, 0);
-    assert_eq!(fx.log.count(|e| matches!(e, Event::Leased(_))), 2);
-    assert!(fx.log.count(|e| matches!(e, Event::Renewed(_))) >= 2 * 5);
+    let renewed = renewals(&fx.log);
+    assert_eq!(renewed.len(), 2, "{renewed:?}");
+    for (lease, at) in renewed {
+        assert_eq!(at, every_heartbeat(write), "{lease:?}");
+    }
+}
+
+/// Runs two partitions whose writes outlast the lease, against a store that
+/// takes `latency(event, log)` to answer each lease and renewal. Returns
+/// how long each lease was held for, and when each of its renewals was
+/// asked for, counted from the lease's.
+async fn renewals_with_a_store_that_answers_after(
+    latency: impl Fn(&Event, &Log) -> Duration + Send + Sync + 'static,
+) -> Vec<(Lease, Duration, Vec<Duration>)> {
+    let fx = Fixture::new();
+    let s = settings();
+    let log = fx.log.clone();
+    fx.store.reply_after(move |event| latency(event, &log));
+    let write = s.lease_ttl + s.heartbeat / 2;
+    fx.spy.on_write(move |_| tokio::time::sleep(write).boxed());
+    let mut flow = fx.orders_flow(200);
+    flow.inputs[0].source = orders_source(200, 100);
+    let runner = Runner::new(fx.store(), vec![flow], settings()).unwrap();
+    let report = runner.start(new_run()).await.unwrap();
+
+    assert!(report.is_complete(), "{report:?}");
+    assert_eq!(report.leases_lost, 0);
+    let timeline = fx.log.timeline();
+    let renewed = renewals(&fx.log);
+    assert_eq!(renewed.len(), 2, "{renewed:?}");
+    renewed
+        .into_iter()
+        .map(|(lease, at)| {
+            // Held from the lease's ask until its commit.
+            let at_event = |want: &Event| {
+                timeline
+                    .iter()
+                    .find_map(|(t, e)| (e == want).then_some(*t))
+                    .unwrap()
+            };
+            let held =
+                at_event(&Event::Commit(lease.clone())) - at_event(&Event::Leased(lease.clone()));
+            (lease, held, at)
+        })
+        .collect()
+}
+
+#[tokio::test(start_paused = true)]
+async fn renewals_keep_to_the_heartbeat_however_slowly_the_store_answers() {
+    // The schedule counts from when the lease was asked for, and doesn't
+    // slip by the time each renewal takes: renewing `latency` late every
+    // time would lose a heartbeat of margin every few renewals.
+    let latency = settings().heartbeat * 3 / 10;
+    for (lease, held, at) in renewals_with_a_store_that_answers_after(move |_, _| latency).await {
+        assert_eq!(at, every_heartbeat(held), "{lease:?}");
+    }
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_renewal_slower_than_the_heartbeat_is_followed_by_the_next_at_once() {
+    // Every lease and renewal takes longer than the heartbeat: the next
+    // renewal is asked for the moment the one before comes back (the first
+    // the moment the lease does), so two are never further apart than the
+    // slow one took.
+    let latency = settings().heartbeat * 3 / 2;
+    for (lease, held, at) in renewals_with_a_store_that_answers_after(move |_, _| latency).await {
+        let expected: Vec<Duration> = (1..)
+            .map(|k| latency * k)
+            .take_while(|at| *at < held)
+            .collect();
+        assert!(expected.len() >= 4, "{expected:?}");
+        assert_eq!(at, expected, "{lease:?}");
+    }
+}
+
+#[tokio::test(start_paused = true)]
+async fn after_one_slow_renewal_the_heartbeat_keeps_its_schedule() {
+    // Each lease's 2nd renewal takes 2.5 heartbeats: the 3rd is asked for
+    // the moment it returns, and the rest fall back on the schedule counted
+    // from the lease, rather than a new one counted from the late renewal.
+    let heartbeat = settings().heartbeat;
+    let slow = heartbeat * 5 / 2;
+    let renewed = renewals_with_a_store_that_answers_after(move |event, log| match event {
+        Event::Renewed(lease) if log.count(|e| *e == Event::Renewed(lease.clone())) == 2 => slow,
+        _ => Duration::ZERO,
+    })
+    .await;
+    for (lease, held, at) in renewed {
+        let back = heartbeat * 2 + slow;
+        let expected: Vec<Duration> = [heartbeat, heartbeat * 2, back]
+            .into_iter()
+            .chain(every_heartbeat(held).into_iter().filter(|at| *at > back))
+            .collect();
+        assert_eq!(at, expected, "{lease:?}");
+    }
 }
 
 #[tokio::test]
@@ -374,9 +508,10 @@ async fn a_superseded_lease_aborts_the_transaction() {
     assert_eq!(ids(&fx.sink, "orders"), (0..300).collect::<Vec<_>>());
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn renewals_that_keep_failing_give_the_lease_up_before_it_expires() {
     let fx = Fixture::new();
+    let s = settings();
     fx.store.on_renew(|lease| {
         (lease.partition.0 == "orders/orders-0" && lease.epoch.0 == 1).then(|| {
             Err(FerryError::Connector {
@@ -385,7 +520,10 @@ async fn renewals_that_keep_failing_give_the_lease_up_before_it_expires() {
             })
         })
     });
-    let started = tokio::time::Instant::now();
+    // The lease comes back late: its expiry still counts from when it was
+    // asked for, as the store's does.
+    let latency = s.heartbeat * 3 / 10;
+    fx.store.reply_after(move |_| latency);
     let aborted_at = Arc::new(std::sync::Mutex::new(None));
     let at = Arc::clone(&aborted_at);
     fx.spy.on_write(move |lease| {
@@ -394,16 +532,13 @@ async fn renewals_that_keep_failing_give_the_lease_up_before_it_expires() {
         async move {
             if stuck {
                 // Dropped when the runner gives the lease up.
-                struct Mark(
-                    Arc<std::sync::Mutex<Option<Duration>>>,
-                    tokio::time::Instant,
-                );
+                struct Mark(Arc<std::sync::Mutex<Option<tokio::time::Instant>>>);
                 impl Drop for Mark {
                     fn drop(&mut self) {
-                        *self.0.lock().unwrap() = Some(self.1.elapsed());
+                        *self.0.lock().unwrap() = Some(tokio::time::Instant::now());
                     }
                 }
-                let _mark = Mark(at, started);
+                let _mark = Mark(at);
                 std::future::pending::<()>().await;
             }
         }
@@ -416,14 +551,20 @@ async fn renewals_that_keep_failing_give_the_lease_up_before_it_expires() {
 
     assert_eq!(report.leases_lost, 1);
     assert!(report.is_complete(), "{report:?}");
-    // Given up once a renewal failed past the lease's 600ms, not at the
-    // first failure (100ms).
+    // Given up at the first failed renewal once the lease's ttl had passed
+    // since it was asked for, not at the first failure (one heartbeat in).
+    let leased = fx
+        .log
+        .timeline()
+        .into_iter()
+        .find_map(|(at, e)| (e == Event::Leased(lease("orders/orders-0", 1))).then_some(at))
+        .expect("the stuck lease");
     let gave_up = aborted_at
         .lock()
         .unwrap()
-        .expect("the stuck write was dropped");
-    assert!(gave_up >= Duration::from_millis(600), "{gave_up:?}");
-    assert!(gave_up < Duration::from_millis(1200), "{gave_up:?}");
+        .expect("the stuck write was dropped")
+        - leased;
+    assert_eq!(gave_up, s.lease_ttl);
 }
 
 #[tokio::test]

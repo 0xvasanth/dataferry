@@ -476,11 +476,12 @@ impl Coordinator {
         let shared = &self.shared;
         let name = &self.flows[i].flow.name;
         let ttl = shared.settings.lease_ttl;
+        let asked = Instant::now();
         if let Some(lease) = shared.store.lease_next(&shared.run, name, ttl).await? {
             let shared = Arc::clone(shared);
             let flow = Arc::clone(&self.flows[i]);
             self.tasks.spawn(async move {
-                let outcome = process(shared, flow, lease.clone()).await;
+                let outcome = process(shared, flow, lease.clone(), asked).await;
                 (i, lease, outcome)
             });
             self.in_flight[i] += 1;
