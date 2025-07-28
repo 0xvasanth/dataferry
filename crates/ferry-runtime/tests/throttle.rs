@@ -118,7 +118,11 @@ fn rate(pulls: &[(Instant, usize)]) -> f64 {
     rows as f64 / (pulls.last().unwrap().0 - pulls[0].0).as_secs_f64()
 }
 
-#[tokio::test]
+// Both tests run on tokio's paused clock, which the throttle and the slow
+// source sleep on: a loaded machine can't stretch a second or keep the
+// workers' reads from overlapping (the store's own I/O takes no time on it).
+
+#[tokio::test(start_paused = true)]
 async fn the_read_rate_stays_within_ten_percent_of_source_rows_per_sec() {
     const RATE: u64 = 10_000;
     let within = |rate: f64| (rate - RATE as f64).abs() <= RATE as f64 * 0.10;
@@ -148,7 +152,7 @@ async fn the_read_rate_stays_within_ten_percent_of_source_rows_per_sec() {
     assert!(unthrottled > 3.0 * RATE as f64, "{unthrottled:.0} rows/s");
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn no_more_read_streams_are_open_than_source_max_connections() {
     let run = |limit: Option<usize>| async move {
         let dir = tempfile::tempdir().unwrap();
