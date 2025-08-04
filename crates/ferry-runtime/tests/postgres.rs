@@ -721,8 +721,19 @@ async fn a_crash_between_the_commit_and_mark_done_re_runs_the_partition_without_
         .boxed()
     });
     let run = runner.create(new_run()).await.unwrap();
-    let crashed = tokio::time::timeout(Duration::from_secs(3), runner.execute(&run)).await;
-    assert!(crashed.is_err());
+    // The process dies once the 5th is stuck and the four before it are
+    // recorded, however long the run takes to get there.
+    let crashed = async {
+        while calls.load(std::sync::atomic::Ordering::SeqCst) < 5
+            || spy.log.count(|e| matches!(e, Event::MarkDone(_))) < 4
+        {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    };
+    tokio::select! {
+        ended = runner.execute(&run) => panic!("the run should hang on its 5th mark_done: {ended:?}"),
+        () = crashed => {}
+    }
     drop(runner);
     // Rows of partitions that committed but were never recorded are in
     // the target already.

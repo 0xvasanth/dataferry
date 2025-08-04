@@ -26,6 +26,7 @@ use ferry_registry::state::{NewRun, PartitionCounts, PartitionRows, RunId, RunRe
 use ferry_runtime::{Flow, Input, Settings};
 use futures::future::BoxFuture;
 use futures::{StreamExt, stream};
+use tokio::time::Instant;
 
 pub const HASH: &str = "sha256:runner-tests";
 pub const ENGINE: &str = "0.0.1-test";
@@ -157,20 +158,31 @@ pub enum Event {
     Finished(Lease, PartitionRows),
 }
 
+/// Events in the order they happened, each with the (tokio) instant it was
+/// logged at.
 #[derive(Clone, Default)]
-pub struct Log(Arc<Mutex<Vec<Event>>>);
+pub struct Log(Arc<Mutex<Vec<(Instant, Event)>>>);
 
 impl Log {
     pub fn push(&self, event: Event) {
-        self.0.lock().unwrap().push(event);
+        self.0.lock().unwrap().push((Instant::now(), event));
     }
 
     pub fn events(&self) -> Vec<Event> {
+        self.0
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|(_, e)| e.clone())
+            .collect()
+    }
+
+    pub fn timeline(&self) -> Vec<(Instant, Event)> {
         self.0.lock().unwrap().clone()
     }
 
     pub fn count(&self, f: impl Fn(&Event) -> bool) -> usize {
-        self.0.lock().unwrap().iter().filter(|e| f(e)).count()
+        self.0.lock().unwrap().iter().filter(|(_, e)| f(e)).count()
     }
 }
 
@@ -278,15 +290,19 @@ impl SinkTxn for SpyTxn {
 }
 
 type RenewHook = Arc<dyn Fn(&Lease) -> Option<Result<()>> + Send + Sync>;
+type LatencyHook = Arc<dyn Fn(&Event) -> Duration + Send + Sync>;
 
 /// Wraps a state store, logging the calls the runner makes per partition.
-/// `on_renew` can answer a renewal instead of the store.
+/// `on_renew` can answer a renewal instead of the store. `reply_after`
+/// makes leases and renewals slow to come back: they are logged when the
+/// store took them, and returned as much later as it says for that event.
 #[derive(Clone)]
 pub struct SpyStore {
     inner: Arc<dyn StateStore>,
     pub log: Log,
     on_renew: Arc<Mutex<Option<RenewHook>>>,
     on_mark_done: Arc<Mutex<Option<Hook>>>,
+    latency: Arc<Mutex<Option<LatencyHook>>>,
 }
 
 impl SpyStore {
@@ -296,6 +312,19 @@ impl SpyStore {
             log,
             on_renew: Arc::default(),
             on_mark_done: Arc::default(),
+            latency: Arc::default(),
+        }
+    }
+
+    pub fn reply_after(&self, latency: impl Fn(&Event) -> Duration + Send + Sync + 'static) {
+        *self.latency.lock().unwrap() = Some(Arc::new(latency));
+    }
+
+    async fn reply(&self, logged: Event) {
+        let hook = self.latency.lock().unwrap().clone();
+        let latency = hook.map_or(Duration::ZERO, |hook| hook(&logged));
+        if !latency.is_zero() {
+            tokio::time::sleep(latency).await;
         }
     }
 
@@ -330,6 +359,7 @@ impl StateStore for SpyStore {
         let lease = self.inner.lease_next(run, flow, ttl).await?;
         if let Some(lease) = &lease {
             self.log.push(Event::Leased(lease.clone()));
+            self.reply(Event::Leased(lease.clone())).await;
         }
         Ok(lease)
     }
@@ -340,6 +370,7 @@ impl StateStore for SpyStore {
         }
         self.inner.renew(run, lease, ttl).await?;
         self.log.push(Event::Renewed(lease.clone()));
+        self.reply(Event::Renewed(lease.clone())).await;
         Ok(())
     }
     async fn mark_done(&self, run: &RunId, lease: &Lease, summary: &WriteSummary) -> Result<()> {

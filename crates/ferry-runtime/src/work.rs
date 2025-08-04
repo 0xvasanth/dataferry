@@ -15,7 +15,7 @@ use ferry_registry::state::{PartitionRows, RunId};
 use futures::StreamExt;
 use tokio::sync::{OwnedSemaphorePermit, watch};
 use tokio::task::JoinSet;
-use tokio::time::Instant;
+use tokio::time::{Instant, MissedTickBehavior};
 
 use crate::budget::{AheadSender, Budget, batch_size, read_ahead};
 use crate::flow::Flow;
@@ -58,12 +58,14 @@ pub(crate) enum Outcome {
     LeaseLost,
 }
 
-/// Processes one leased partition. An `Err` is a state store failure that
-/// leaves the partition's state unknown, and stops the run.
+/// Processes one leased partition, whose lease was asked for at `asked`.
+/// An `Err` is a state store failure that leaves the partition's state
+/// unknown, and stops the run.
 pub(crate) async fn process(
     shared: Arc<Shared>,
     flow: Arc<FlowRun>,
     lease: Lease,
+    asked: Instant,
 ) -> Result<Outcome> {
     let Some(unit) = flow.units.get(&lease.partition) else {
         return Err(FerryError::Connector {
@@ -75,7 +77,12 @@ pub(crate) async fn process(
         });
     };
     let (lost_tx, mut lost) = watch::channel(false);
-    let heartbeat = tokio::spawn(heartbeat(Arc::clone(&shared), lease.clone(), lost_tx));
+    let heartbeat = tokio::spawn(heartbeat(
+        Arc::clone(&shared),
+        lease.clone(),
+        asked,
+        lost_tx,
+    ));
     let _heartbeat = AbortOnDrop(heartbeat);
 
     let fail = |error: FerryError| mark_failed(&shared, &lease, error.to_string());
@@ -185,14 +192,24 @@ async fn until_lost<T>(
     }
 }
 
-/// Renews the lease every `heartbeat`. Reports it lost when the store says
-/// a newer lease exists, or when renewals kept failing until the lease
-/// would have expired.
-async fn heartbeat(shared: Arc<Shared>, lease: Lease, lost: watch::Sender<bool>) {
+/// Renews the lease every `heartbeat`, counted from `asked`, when the lease
+/// was asked for. Reports it lost when the store says a newer lease exists,
+/// or when renewals kept failing until the lease would have expired.
+async fn heartbeat(shared: Arc<Shared>, lease: Lease, asked: Instant, lost: watch::Sender<bool>) {
     let ttl = shared.settings.lease_ttl;
-    let mut expires = Instant::now() + ttl;
+    // The store set the expiry no earlier than it was asked to: counting
+    // from when the lease came back would believe in it for too long.
+    let mut expires = asked + ttl;
+    // Every heartbeat from `asked`, so a renewal that takes a while doesn't
+    // push the next one back by that long. One slower than the heartbeat is
+    // followed by the next as soon as it returns, and the rest stay on the
+    // schedule: two renewals are never further apart than the heartbeat or
+    // the slow one, whichever is longer.
+    let heartbeat = shared.settings.heartbeat;
+    let mut ticks = tokio::time::interval_at(asked + heartbeat, heartbeat);
+    ticks.set_missed_tick_behavior(MissedTickBehavior::Skip);
     loop {
-        tokio::time::sleep(shared.settings.heartbeat).await;
+        ticks.tick().await;
         let asked = Instant::now();
         match shared.store.renew(&shared.run, &lease, ttl).await {
             Ok(()) => expires = asked + ttl,
