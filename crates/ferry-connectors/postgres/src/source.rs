@@ -44,12 +44,21 @@ impl PostgresSource {
     /// the first trait call connects.
     pub fn new(url: &str, schema: impl Into<String>) -> Result<Self> {
         let (config, tls) = tls::parse(url)?;
-        Ok(Self {
+        Ok(Self::from_parts(config, tls, schema))
+    }
+
+    /// From a connection string already parsed under the TLS policy.
+    pub(crate) fn from_parts(
+        config: tokio_postgres::Config,
+        tls: Tls,
+        schema: impl Into<String>,
+    ) -> Self {
+        Self {
             config,
             tls,
             schema: schema.into(),
             batch_rows: Self::DEFAULT_BATCH_ROWS,
-        })
+        }
     }
 
     /// Maximum rows per emitted batch.
@@ -93,7 +102,7 @@ pub(crate) fn connector_error(message: impl Into<String>) -> FerryError {
     }
 }
 
-fn pg_error(e: tokio_postgres::Error) -> FerryError {
+pub(crate) fn pg_error(e: tokio_postgres::Error) -> FerryError {
     if let Some(db) = e.as_db_error() {
         return connector_error(db.to_string());
     }
@@ -114,7 +123,7 @@ pub(crate) fn with_causes(e: &dyn Error) -> String {
 }
 
 /// Quotes an identifier.
-fn quote(ident: &str) -> String {
+pub(crate) fn quote(ident: &str) -> String {
     format!("\"{}\"", ident.replace('"', "\"\""))
 }
 
