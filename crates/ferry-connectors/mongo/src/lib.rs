@@ -1,9 +1,11 @@
-//! MongoDB source for 0xferry.
+//! MongoDB source for 0xferry, and the `mongo` connector that registers it.
 
+mod connector;
 mod convert;
 mod decimal;
 mod infer;
 mod source;
 mod tls;
 
+pub use connector::{MongoConnector, MongoOptions};
 pub use source::MongoSource;
