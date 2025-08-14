@@ -3,9 +3,9 @@
 use arrow_buffer::i256;
 
 /// Microseconds between the Unix epoch and Postgres's epoch (2000-01-01).
-const PG_EPOCH_MICROS: i64 = 946_684_800_000_000;
+pub(crate) const PG_EPOCH_MICROS: i64 = 946_684_800_000_000;
 /// Days between the Unix epoch and Postgres's epoch.
-const PG_EPOCH_DAYS: i32 = 10_957;
+pub(crate) const PG_EPOCH_DAYS: i32 = 10_957;
 
 /// A binary `numeric` as the unscaled integer of a decimal with `scale`
 /// fractional digits, e.g. `12.34` at scale 3 is `12340`. Fails for NaN and

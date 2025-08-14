@@ -13,18 +13,25 @@ workspace = true
 [dependencies]
 ferry-core.workspace = true
 ferry-connector-tls.workspace = true
+ferry-registry.workspace = true
 arrow-array = "60"
 arrow-buffer = "60"
 arrow-schema = "60"
 async-trait = "0.1"
+bytes = "1"
+deadpool-postgres = { version = "0.14", default-features = false, features = ["rt_tokio_1"] }
 futures = "0.3"
 postgres-protocol = "0.6"
+schemars = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 tokio = { version = "1", features = ["rt"] }
 tokio-postgres = "0.7"
 tokio-postgres-rustls = "0.14"
 
 [dev-dependencies]
 ferry-core = { workspace = true, features = ["testkit"] }
+ferry-registry = { workspace = true, features = ["testkit"] }
 tokio.workspace = true
 testcontainers-modules.workspace = true
 rcgen = "0.14"

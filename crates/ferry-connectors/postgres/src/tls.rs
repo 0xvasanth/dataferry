@@ -14,12 +14,16 @@
 //! `sslrootcert`, so those settings are taken out of the connection string
 //! here before the rest is handed to it.
 
+use std::io;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 use ferry_connector_tls::{Requested, Transport, client_config, transport};
 use ferry_core::Result;
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_postgres::Config;
 use tokio_postgres::config::{Host, SslMode};
+use tokio_postgres::tls::MakeTlsConnect;
 use tokio_postgres_rustls::MakeRustlsConnect;
 
 use crate::source::{connector_error, with_causes};
@@ -41,6 +45,54 @@ impl Tls {
         let config = client_config(self.root_cert.as_deref())
             .map_err(|e| connector_error(format!("TLS: {e}")))?;
         Ok(Some(MakeRustlsConnect::new((*config).clone())))
+    }
+
+    pub(crate) fn is_plaintext(&self) -> bool {
+        self.transport == Transport::Plaintext
+    }
+}
+
+/// A TLS connector for a pool that builds itself on the first connect, so
+/// creating the pool does no I/O (reading `sslrootcert` included), and a bad
+/// CA file fails the connect that needs it, like the source's.
+#[derive(Clone)]
+pub(crate) struct LazyTls {
+    tls: Tls,
+    built: Arc<Mutex<Option<MakeRustlsConnect>>>,
+}
+
+impl LazyTls {
+    pub(crate) fn new(tls: Tls) -> Self {
+        Self {
+            tls,
+            built: Arc::default(),
+        }
+    }
+}
+
+impl<S> MakeTlsConnect<S> for LazyTls
+where
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    type Stream = <MakeRustlsConnect as MakeTlsConnect<S>>::Stream;
+    type TlsConnect = <MakeRustlsConnect as MakeTlsConnect<S>>::TlsConnect;
+    type Error = io::Error;
+
+    fn make_tls_connect(&mut self, hostname: &str) -> io::Result<Self::TlsConnect> {
+        let mut built = self.built.lock().unwrap_or_else(|e| e.into_inner());
+        if built.is_none() {
+            *built = self
+                .tls
+                .connector()
+                .map_err(|e| io::Error::other(e.to_string()))?;
+        }
+        let connector = built
+            .as_mut()
+            .ok_or_else(|| io::Error::other("TLS was requested on a plaintext connection"))?;
+        match MakeTlsConnect::<S>::make_tls_connect(connector, hostname) {
+            Ok(connect) => Ok(connect),
+            Err(never) => match never {},
+        }
     }
 }
 
