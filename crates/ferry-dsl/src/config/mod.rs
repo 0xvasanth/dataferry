@@ -15,6 +15,7 @@ mod yaml;
 
 pub use deps::DependencyGraph;
 pub use env::{Redactor, Resolved, ResolvedConnection, ResolvedState, mask_urls};
+pub(crate) use error::suggest;
 pub use error::{ConfigError, ConfigErrors, ErrorKind};
 pub use hash::ConfigHash;
 pub use load::{DEFAULT_DIR, FileKind, SourceFile, check_file, file_to_json, load, load_default};

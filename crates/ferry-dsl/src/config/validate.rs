@@ -6,7 +6,9 @@ use std::collections::{BTreeMap, HashSet};
 
 use super::Config;
 use super::error::{ConfigError, ErrorKind, suggest};
-use super::model::{Cardinality, Columns, FILE_BACKEND, Flow, From, Mode};
+use super::model::{
+    Cardinality, ColumnSpec, Columns, FILE_BACKEND, Flow, From, Mode, OrderedMap, Where,
+};
 use super::span::{FieldPath, Location, Spanned};
 
 pub(crate) fn check(config: &Config) -> Vec<ConfigError> {
@@ -37,7 +39,90 @@ pub(crate) fn check(config: &Config) -> Vec<ConfigError> {
     check_state(config, &connections, &mut errors);
     errors.extend(super::env::check_syntax(config));
     errors.extend(super::deps::check(config));
+    for flow in &config.flows {
+        expressions(flow, config.sources(), &mut errors);
+    }
     errors
+}
+
+/// Parses every expression of a flow (B2): syntax, reserved names, sigils
+/// and functions are checked here, without a schema. Names and types are
+/// checked against discovered entities later (B3). `expect:` assertions use
+/// aggregates and belong to B8.
+fn expressions(flow: &Flow, sources: &[super::SourceFile], errors: &mut Vec<ConfigError>) {
+    let path = flow_path(flow);
+    let mut parser = Parser { sources, errors };
+    parser.filter(&flow.filter, path.key("where"));
+    if let From::Merge(entries) = flow.from.value() {
+        for (i, entry) in entries.iter().enumerate() {
+            for (column, other) in entry.join.iter().flat_map(|j| j.keys.iter()) {
+                let key_path = path.key("from").item(i, None).key("join").key("keys");
+                parser.parse(other, other.location(), key_path.key(column.as_str()));
+            }
+        }
+    }
+    for (table, target) in flow.to.iter() {
+        let path = path.key("to").key(table.as_str());
+        if let Some(unnest) = &target.unnest {
+            parser.parse(unnest, unnest.location(), path.key("unnest"));
+        }
+        parser.filter(&target.filter, path.key("where"));
+        if let Columns::Map(map) = target.columns.value() {
+            parser.columns(map, path.key("columns"));
+        }
+    }
+}
+
+struct Parser<'a> {
+    sources: &'a [super::SourceFile],
+    errors: &'a mut Vec<ConfigError>,
+}
+
+impl Parser<'_> {
+    fn parse(&mut self, text: &str, at: &Location, path: FieldPath) {
+        if let Err(e) = crate::expr::Expression::parse_at(text, at) {
+            self.errors.push(e.to_config_error(&path, self.sources));
+        }
+    }
+
+    fn filter(&mut self, filter: &Option<Spanned<Where>>, path: FieldPath) {
+        match filter.as_ref().map(|f| (f.value(), f.location())) {
+            Some((Where::Expr(text), at)) => self.parse(text, at, path),
+            Some((Where::Named(named), _)) => {
+                for (name, expr) in named.iter() {
+                    self.parse(expr, expr.location(), path.key(name.as_str()));
+                }
+            }
+            None => {}
+        }
+    }
+
+    fn columns(&mut self, map: &OrderedMap<Spanned<ColumnSpec>>, path: FieldPath) {
+        for (name, spec) in map.iter() {
+            let path = path.key(name.as_str());
+            match spec.value() {
+                ColumnSpec::Expr(text) => self.parse(text, spec.location(), path),
+                ColumnSpec::Typed(typed) => self.parse(&typed.expr, typed.expr.location(), path),
+                ColumnSpec::Nest(nest) => {
+                    self.filter(&nest.filter, path.key("where"));
+                    for (i, term) in nest.order_by.iter().enumerate() {
+                        let at = path.key("order_by").item(i, None);
+                        self.parse(order_term(term), term.location(), at);
+                    }
+                    self.columns(&nest.columns, path.key("columns"));
+                }
+            }
+        }
+    }
+}
+
+/// An `order_by:` entry without its `asc` / `desc`.
+pub(crate) fn order_term(entry: &str) -> &str {
+    let trimmed = entry.trim_end();
+    [" desc", " DESC", " asc", " ASC"]
+        .iter()
+        .find_map(|suffix| trimmed.strip_suffix(suffix))
+        .unwrap_or(trimmed)
 }
 
 /// A name defined twice, in one file or in two, is one error at the second

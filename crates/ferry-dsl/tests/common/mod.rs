@@ -43,3 +43,5 @@ pub fn manifest() -> Vec<BTreeMap<String, String>> {
     let text = std::fs::read_to_string(repo("examples/bad/README.md")).unwrap();
     table(&text, "Case")
 }
+
+pub mod golden;

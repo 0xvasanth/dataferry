@@ -308,10 +308,10 @@ fn resolve_plain(text: &str) -> NodeKind {
     if let Some(i) = parsed {
         return NodeKind::Int(i);
     }
-    if is_float(text) {
-        if let Ok(x) = text.parse() {
-            return NodeKind::Float(x);
-        }
+    if is_float(text)
+        && let Ok(x) = text.parse()
+    {
+        return NodeKind::Float(x);
     }
     NodeKind::Str(text.to_owned())
 }
