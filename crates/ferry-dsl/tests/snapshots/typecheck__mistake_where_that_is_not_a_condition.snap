@@ -1,0 +1,6 @@
+---
+source: crates/ferry-dsl/tests/typecheck.rs
+expression: "snapshot_errors(&orders_flow(\"    where:\\n      not_deleted: deleted_at\\n\",\n\"          id: string(_id)\\n\"))"
+---
+error: flows/f.yaml:6:20 flows[orders].where.not_deleted: a `where:` predicate must be true or false, but `deleted_at` is timestamp(UTC)
+  help: a filter keeps a record when it is true: did you mean `deleted_at != null` (or `== null`)?

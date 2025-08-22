@@ -273,7 +273,7 @@ is the column order in the target DDL. A spec is one of:
   `allow_lossy: true` is the explicit opt-in B3 requires for a lossy
   conversion to `type:`. A cast written in the expression itself
   (`int(qty)`) also counts as explicit. A value that doesn't fit at run time
-  is an error row.
+  is an error row. See the amendment below for the exact rule and table.
 - a nest object (§5.8).
 
 `columns: "*"` copies every declared field of the entity unchanged
@@ -657,6 +657,65 @@ and shares the sink's transaction (0004 §8). What 0003 needs from 0004:
 - `golden/expected/filtered.json` gives the reason as prose ("deleted_at is
   set"). Under §5.6 the reason is the predicate's name or expression text,
   so the fixture and its README need to change together (Track B owns them).
+
+## Amendment 2026-10-17: lossy conversions and expression names (B2, B3)
+
+**Opt-in syntax (decided).** A lossy conversion is allowed per column, by
+`allow_lossy: true` on a typed column object:
+
+```yaml
+total_cents: {expr: "int(round(total * 100))", type: int32, allow_lossy: true}
+```
+
+- `allow_lossy` needs `type:` in the same object; on its own it is a model
+  error (the JSON Schema says so with `dependentRequired`). There is no
+  flow-wide or global switch: each lossy column says so where it is
+  written, and the opt-in is part of the config hash.
+- Only the conversion from the expression's inferred type to `type:` is
+  checked. Conversions written in the expression (`int(x)`, `CAST`) are
+  explicit already.
+- Conversions fall in three classes. *Safe* (every value converts exactly:
+  integer widening, `decimal(10,2)` → `decimal(12,4)`, anything → `utf8`)
+  needs nothing. *Lossy* needs `allow_lossy: true`; values that change are
+  changed as the table says, values that can't convert are error rows.
+  *Impossible* (`bool` → `timestamp`) is an error even with the opt-in.
+
+The canonical lossy table (`ferry_dsl::typecheck::cast::LOSSY`, each row
+tested both ways):
+
+| From | To | Effect once opted in |
+| --- | --- | --- |
+| `int64` | `int32` | out-of-range values are error rows (any integer narrowing) |
+| `int32` | `int16` | out-of-range values are error rows |
+| `uint64` | `int64` | values above int64's maximum are error rows |
+| `int64` | `uint64` | negative values are error rows |
+| `int64` | `float64` | integers beyond ±2^53 are rounded |
+| `float64` | `float32` | rounded to float32 |
+| `float64` | `int64` | the fraction is truncated toward zero; out-of-range values are error rows |
+| `decimal(38,10)` | `float64` | rounded to the nearest float64 (any decimal over 15 digits) |
+| `decimal(12,4)` | `decimal(12,2)` | scale shrinks: rounded half away from zero |
+| `decimal(12,2)` | `decimal(8,2)` | values with more integer digits are error rows |
+| `float64` | `decimal(12,2)` | rounded to the scale |
+| `decimal(12,2)` | `int64` | the fraction is dropped |
+| `timestamp(UTC)` | `timestamp` | the zone is dropped |
+| `timestamp` | `timestamp(UTC)` | the wall-clock time is read as UTC |
+| `timestamp(UTC)` | `date` | the time of day is dropped |
+| `utf8` | `int64` | text that isn't an integer is an error row (any parse from text) |
+| `utf8` | `uuid` | text that isn't a UUID is an error row |
+| `utf8` | `json` | text that isn't JSON is an error row |
+| `binary` | `utf8` | bytes that aren't UTF-8 are error rows |
+
+**Type names** for `type:` are `int8` … `int64`, `uint8` … `uint64`,
+`float32`, `float64`, `decimal(p,s)`, `bool`, `utf8`, `binary`, `date`,
+`timestamp`, `timestamp(<zone>)`, `uuid`, `json` and `list(<type>)`.
+
+**Expression names (B2, confirms §5.4).** The sigils are `$parent`,
+`$index`, `$item` and `$key`. Their bare words `parent`, `index`, `item` and
+`key` are reserved at the start of a path, so `line_no: index` is a load
+error that suggests `$index`; a field with one of those names is written
+quoted (`"index"`). Names are case-sensitive. `x == null` (and SQL's
+`x = null`) is true for null and missing; `missing(x)` is true only for
+missing.
 
 ## Open questions
 

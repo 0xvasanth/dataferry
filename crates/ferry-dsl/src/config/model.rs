@@ -1136,6 +1136,8 @@ pub struct TypedColumn {
     pub r#type: Option<Spanned<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub nullable: Option<bool>,
+    /// Allows a lossy conversion of `expr` to `type` (0003 §5.4, B3).
+    /// Only valid together with `type`.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub allow_lossy: bool,
 }
@@ -1210,6 +1212,11 @@ impl ColumnObject {
                         nested.join(", ")
                     )));
                 }
+                if self.allow_lossy.is_some() && self.r#type.is_none() {
+                    return Err(E::custom(
+                        "`allow_lossy` needs `type`: it allows a lossy conversion to that type",
+                    ));
+                }
                 Ok(ColumnSpec::Typed(TypedColumn {
                     expr: self
                         .expr
@@ -1280,9 +1287,10 @@ impl JsonSchema for ColumnSpec {
                         "expr": { "type": "string" },
                         "type": { "type": "string", "description": "A canonical type name, e.g. `int64`, `decimal(12,2)`, `timestamp(UTC)`." },
                         "nullable": { "type": "boolean" },
-                        "allow_lossy": { "type": "boolean" },
+                        "allow_lossy": { "type": "boolean", "description": "Allows a lossy conversion of `expr` to `type` (B3's lossy-cast table)." },
                     },
                     "required": ["expr"],
+                    "dependentRequired": { "allow_lossy": ["type"] },
                     "additionalProperties": false,
                 },
                 {

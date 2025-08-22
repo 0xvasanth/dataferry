@@ -2,4 +2,5 @@
 
 pub mod config;
 pub mod expr;
+pub mod typecheck;
 pub mod types;

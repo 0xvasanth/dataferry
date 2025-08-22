@@ -1,0 +1,6 @@
+---
+source: crates/ferry-dsl/tests/typecheck.rs
+expression: "snapshot_errors(&orders_flow(\"\",\n\"          total_cents: {expr: \\\"int(round(total * 100))\\\", type: int32}\\n\"))"
+---
+error: flows/f.yaml:8:31 flows[orders].to.orders.columns.total_cents: `int(round(total * 100))` is int64, but column `total_cents` is declared int32: int64 → int32: values outside int32's range fail
+  help: add `allow_lossy: true` to the column to accept it (values that don't convert become error rows)
