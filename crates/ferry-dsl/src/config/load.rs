@@ -465,10 +465,11 @@ pub(crate) fn parse_file<T>(
         return Err(vec![error]);
     };
     let mut errors = Vec::new();
-    if env_check && matches!(kind, FileKind::Flows | FileKind::Included) {
-        if let Some(flows) = root.get("flows") {
-            errors.extend(env_in_flows(flows, &FieldPath::root().key("flows")));
-        }
+    if env_check
+        && matches!(kind, FileKind::Flows | FileKind::Included)
+        && let Some(flows) = root.get("flows")
+    {
+        errors.extend(env_in_flows(flows, &FieldPath::root().key("flows")));
     }
     match parse(&root, kind) {
         Ok(value) if errors.is_empty() => Ok(value),

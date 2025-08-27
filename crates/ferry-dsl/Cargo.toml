@@ -3,7 +3,8 @@ name = "ferry-dsl"
 description = "0xferry configuration model, expression language and planner"
 version.workspace = true
 edition.workspace = true
-rust-version.workspace = true
+# DataFusion (main, arrow 60) needs 1.95.
+rust-version = "1.95"
 license.workspace = true
 repository.workspace = true
 
@@ -11,6 +12,19 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
+arrow-array = "60"
+arrow-buffer = "60"
+arrow-cast = "60"
+arrow-schema = "60"
+arrow-select = "60"
+datafusion-common.workspace = true
+datafusion-expr.workspace = true
+datafusion-functions.workspace = true
+datafusion-functions-nested.workspace = true
+datafusion-optimizer.workspace = true
+datafusion-physical-expr.workspace = true
+datafusion-sql.workspace = true
+ferry-core.workspace = true
 glob = "0.3"
 # YAML 1.2 event parser with positions; the maintained successor of
 # yaml-rust (serde_yaml is archived). See config/yaml.rs.
@@ -21,6 +35,7 @@ serde_json = "1"
 sha2 = "0.10"
 
 [dev-dependencies]
+proptest = "1"
 tempfile = "3"
 insta = "1"
 jsonschema = { version = "0.58", default-features = false }

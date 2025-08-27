@@ -1,0 +1,6 @@
+---
+source: crates/ferry-dsl/tests/typecheck.rs
+expression: "snapshot_errors(&orders_flow(\"\",\n\"          status_code: {expr: status, type: int64}\\n\"))"
+---
+error: flows/f.yaml:8:31 flows[orders].to.orders.columns.status_code: `status` is utf8, but column `status_code` is declared int64: utf8 → int64: text that isn't a valid int64 fails
+  help: add `allow_lossy: true` to the column to accept it (values that don't convert become error rows), or convert explicitly: `int(status)`

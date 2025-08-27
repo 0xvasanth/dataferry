@@ -1,0 +1,8 @@
+---
+source: crates/ferry-dsl/tests/typecheck.rs
+expression: "snapshot_errors(&orders_flow(\"\", \"          status: lower(stauts)\\n\"))"
+---
+error: flows/f.yaml:8:25 flows[orders].to.orders.columns.status: no field `stauts` in entity `shop.orders`
+   | lower(stauts)
+   |       ^^^^^^
+  help: did you mean `status`?

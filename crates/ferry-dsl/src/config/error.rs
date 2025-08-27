@@ -30,6 +30,11 @@ pub enum ErrorKind {
     Env,
     /// `depends_on:` names an unknown flow, the flow itself, or forms a cycle.
     DependsOn,
+    /// An expression doesn't parse, or names something that isn't in scope
+    /// (B2).
+    Expr,
+    /// An expression's type doesn't fit where it is used (B3).
+    Type,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

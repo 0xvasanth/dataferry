@@ -17,8 +17,14 @@
         },
         {
           "additionalProperties": false,
+          "dependentRequired": {
+            "allow_lossy": [
+              "type"
+            ]
+          },
           "properties": {
             "allow_lossy": {
+              "description": "Allows a lossy conversion of `expr` to `type` (B3's lossy-cast table).",
               "type": "boolean"
             },
             "expr": {

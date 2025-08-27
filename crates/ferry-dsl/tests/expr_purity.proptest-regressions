@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc e1f03d214be8f0ef009584532eca8917a0702be47d8482f09b037c530cdea0cf # shrinks to text = "((upper(lower(string((a + round(round(0.117), 1))))) in ('abc', 'Ab', '') and round((0.636 * d), 1) == null) or (trim('x') like 'a%' or CASE WHEN coalesce(7.227, b) > (b - a) THEN coalesce(7.227, b) ELSE (b - a) END == ((54 * greatest(d, 774)) + coalesce(b, greatest(b, a)))))", rows = [Row { a: None, b: Some(-793), d: Some(87246), s: None, t: Some("B"), f: None }, Row { a: Some(400), b: None, d: Some(98238), s: Some(None), t: Some("bAc A"), f: None }, Row { a: None, b: None, d: Some(-73347), s: Some(None), t: Some("C"), f: None }, Row { a: None, b: None, d: None, s: Some(None), t: None, f: None }, Row { a: None, b: Some(515), d: Some(85970), s: None, t: Some("Ab"), f: Some(false) }, Row { a: None, b: None, d: None, s: Some(Some("")), t: Some(""), f: None }, Row { a: Some(-352), b: None, d: Some(32043), s: None, t: Some("abc"), f: Some(true) }, Row { a: Some(271), b: Some(-164), d: None, s: Some(None), t: None, f: None }]

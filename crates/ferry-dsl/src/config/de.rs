@@ -125,27 +125,27 @@ impl<'a> NodeDe<'a> {
 
     // `missing_field` only knows the key's name: put it under this path.
     fn fix_missing(&self, mut error: DeError) -> DeError {
-        if error.location.is_none() && error.message.starts_with("missing key") {
-            if let Some(key) = error
+        if error.location.is_none()
+            && error.message.starts_with("missing key")
+            && let Some(key) = error
                 .path
                 .as_ref()
                 .and_then(|p| p.last_key().map(str::to_owned))
-            {
-                error.path = Some(self.path.key(key));
-            }
+        {
+            error.path = Some(self.path.key(key));
         }
         error
     }
 
     fn invalid(&self, expected: &str) -> DeError {
         let mut message = format!("expected {expected}, found {}", self.node.describe());
-        if expected.contains("string") {
-            if let Some(text) = scalar_text(&self.node.kind) {
-                message = format!(
-                    "expected {expected}, found {}: quote it (\"{text}\") to make it a string",
-                    self.node.describe()
-                );
-            }
+        if expected.contains("string")
+            && let Some(text) = scalar_text(&self.node.kind)
+        {
+            message = format!(
+                "expected {expected}, found {}: quote it (\"{text}\") to make it a string",
+                self.node.describe()
+            );
         }
         DeError::new(message).stamp(self.node, &self.path)
     }

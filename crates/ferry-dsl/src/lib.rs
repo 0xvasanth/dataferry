@@ -1,3 +1,6 @@
 //! 0xferry configuration model, expression language and planner.
 
 pub mod config;
+pub mod expr;
+pub mod typecheck;
+pub mod types;
