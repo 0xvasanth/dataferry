@@ -1,15 +1,17 @@
 //! What A3 promises when things go wrong, on a real Postgres: a crash in
 //! the middle of a partition, a crash between the sink's commit and the
 //! runner's done-record, a source that dropped an item between runs, and a
-//! commit under a superseded lease.
+//! commit under a superseded lease. Wherever a run's state is involved it
+//! is ferry-state's real `PgStateBackend`, with leases it granted.
 
 mod common;
 
 use std::sync::Arc;
+use std::time::Duration;
 
-use common::{Db, create_state_tables, db, items, lease, options, order_schema, orders, partition};
+use common::{Db, Run, db, items, lease, options, order_schema, orders, partition};
 use ferry_connector_postgres::PostgresSink;
-use ferry_core::{FerryError, IdempotencyStrategy, Sink, WriteMode};
+use ferry_core::{FerryError, IdempotencyStrategy, Lease, Sink, WriteMode};
 
 const APP: &str = "ferry_crash_test";
 
@@ -31,12 +33,10 @@ async fn kill_sink_backends(db: &Db) -> i64 {
 /// The rows of the full partition, in write order.
 async fn write_full_partition(
     sink: &dyn Sink,
-    epoch: u64,
+    lease: &Lease,
     strategy: IdempotencyStrategy,
 ) -> ferry_core::Result<ferry_core::WriteSummary> {
-    let mut txn = sink
-        .begin(&partition("orders-0"), &lease("orders-0", epoch), strategy)
-        .await?;
+    let mut txn = sink.begin(&partition("orders-0"), lease, strategy).await?;
     txn.write("orders", orders(&[("o1", "new"), ("o2", "paid")]))
         .await?;
     txn.write(
@@ -65,11 +65,13 @@ async fn assert_partition_written_once(db: &Db, schema: &str) {
 }
 
 /// Crash mid-partition, then re-run: under each strategy the first attempt
-/// leaves nothing, and the re-run writes each row exactly once.
+/// leaves nothing, and the re-run writes each row exactly once. Under
+/// `TxnWithState` the crashed attempt leaves no done-record either, and the
+/// re-run's lease (a second worker taking the partition over) is the one
+/// recorded.
 #[tokio::test]
 async fn a_crash_mid_partition_leaves_nothing_and_the_rerun_writes_each_row_once() {
     let db = db().await;
-    create_state_tables(&db.client).await;
     let url = db.url_with(&format!("application_name={APP}"));
     let cases = [
         (
@@ -79,30 +81,27 @@ async fn a_crash_mid_partition_leaves_nothing_and_the_rerun_writes_each_row_once
         ("txn_with_state", IdempotencyStrategy::TxnWithState),
     ];
     for (schema, strategy) in cases {
-        let sink: Arc<dyn Sink> = match strategy {
+        let (sink, run): (Arc<dyn Sink>, Option<Run>) = match strategy {
             IdempotencyStrategy::TxnWithState => {
-                let mut registry = ferry_registry::ConnectorRegistry::new();
-                registry.register_state_capable(
-                    ferry_connector_postgres::PostgresConnector,
-                    common::TestBackend,
-                );
                 let conn = serde_json::from_value(serde_json::json!({
                     "name": "warehouse", "type": "postgres", "url": url, "schema": schema,
                 }))
                 .unwrap();
-                let (built, _) = registry
-                    .build_with_state(&conn, ferry_registry::Roles::SINK)
-                    .unwrap();
-                built.endpoints.sink.unwrap()
+                let (sink, store) = common::sink_with_state(conn);
+                (sink, Some(Run::plan(store, &["orders-0"]).await))
             }
-            _ => Arc::new(PostgresSink::new(&url, schema).unwrap()),
+            _ => (Arc::new(PostgresSink::new(&url, schema).unwrap()), None),
         };
         sink.prepare(&order_schema(), WriteMode::Insert)
             .await
             .unwrap();
+        let first = match &run {
+            Some(run) => run.lease("orders-0").await,
+            None => lease("orders-0", 1),
+        };
 
         let mut txn = sink
-            .begin(&partition("orders-0"), &lease("orders-0", 1), strategy)
+            .begin(&partition("orders-0"), &first, strategy)
             .await
             .unwrap();
         txn.write("orders", orders(&[("o1", "new"), ("o2", "paid")]))
@@ -123,20 +122,26 @@ async fn a_crash_mid_partition_leaves_nothing_and_the_rerun_writes_each_row_once
         drop(txn);
         assert_eq!(db.count(schema, "orders").await, 0, "{schema}");
         assert_eq!(db.count(schema, "order_items").await, 0, "{schema}");
-        assert_eq!(db.done_epoch("orders-0").await, None, "{schema}");
 
-        let summary = write_full_partition(sink.as_ref(), 2, strategy)
+        let second = match &run {
+            Some(run) => {
+                assert!(!run.is_done("orders-0").await, "{schema}");
+                let second = run.lease("orders-0").await;
+                assert!(second.epoch > first.epoch);
+                second
+            }
+            None => lease("orders-0", 2),
+        };
+        let summary = write_full_partition(sink.as_ref(), &second, strategy)
             .await
             .unwrap();
         assert_eq!(summary.rows_written["order_items"], 3);
         assert_partition_written_once(&db, schema).await;
-        if strategy == IdempotencyStrategy::TxnWithState {
-            assert_eq!(db.done_epoch("orders-0").await, Some(2));
-            // Reset for the next case's partition of the same name.
-            db.client
-                .batch_execute("DELETE FROM ferry_test_state.done")
-                .await
-                .unwrap();
+        if let Some(run) = &run {
+            assert_eq!(
+                db.done_epoch(&run.id, "orders-0").await,
+                Some(second.epoch.0 as i64)
+            );
         }
     }
 }
@@ -167,9 +172,13 @@ async fn a_dropped_transaction_rolls_back_and_the_pool_stays_usable() {
         drop(txn);
     }
     assert_eq!(db.count("public", "orders").await, 0);
-    write_full_partition(&sink, 2, IdempotencyStrategy::DeletePartitionThenInsert)
-        .await
-        .unwrap();
+    write_full_partition(
+        &sink,
+        &lease("orders-0", 2),
+        IdempotencyStrategy::DeletePartitionThenInsert,
+    )
+    .await
+    .unwrap();
     assert_partition_written_once(&db, "public").await;
     let open = db
         .strings("SELECT state FROM pg_stat_activity WHERE state LIKE 'idle in transaction%'")
@@ -194,12 +203,85 @@ async fn a_crash_after_commit_but_before_the_done_record_reruns_without_duplicat
             .strategy_for(mode)
             .unwrap();
         assert_eq!(strategy, IdempotencyStrategy::DeletePartitionThenInsert);
-        write_full_partition(&sink, 1, strategy).await.unwrap();
+        write_full_partition(&sink, &lease("orders-0", 1), strategy)
+            .await
+            .unwrap();
         // ...the process dies here, before the state store hears of it.
-        write_full_partition(&sink, 2, strategy).await.unwrap();
-        write_full_partition(&sink, 3, strategy).await.unwrap();
+        write_full_partition(&sink, &lease("orders-0", 2), strategy)
+            .await
+            .unwrap();
+        write_full_partition(&sink, &lease("orders-0", 3), strategy)
+            .await
+            .unwrap();
         assert_partition_written_once(&db, &schema).await;
     }
+}
+
+/// The same crash window with the real state store on the run's state
+/// connection and the sink on another connection, so the sink has no ledger
+/// and falls back (A4): the store never hears of the first commit, the
+/// partition's lease expires, a second worker leases and re-runs it, and
+/// only its `mark_done` records the partition.
+#[tokio::test]
+async fn a_crash_after_commit_with_the_state_store_on_another_connection_reruns_once() {
+    let db = db().await;
+    let (_, store) = db.sink_with_state("public");
+    for mode in [WriteMode::Insert, WriteMode::Upsert] {
+        let schema = format!("elsewhere_{mode:?}").to_lowercase();
+        let run = Run::plan(Arc::clone(&store), &["orders-0"]).await;
+        let sink = db.plain_sink(&schema);
+        sink.prepare(&order_schema(), mode).await.unwrap();
+        let strategy = sink
+            .capabilities()
+            .await
+            .unwrap()
+            .strategy_for(mode)
+            .unwrap();
+        assert_eq!(
+            strategy,
+            IdempotencyStrategy::DeletePartitionThenInsert,
+            "{mode:?}"
+        );
+
+        let first = run.lease("orders-0").await;
+        write_full_partition(sink.as_ref(), &first, strategy)
+            .await
+            .unwrap();
+        // ...the process dies here: the rows are in, the store says pending.
+        assert!(!run.is_done("orders-0").await);
+        assert_eq!(db.done_epoch(&run.id, "orders-0").await, None);
+
+        let second = run.lease("orders-0").await;
+        assert!(second.epoch > first.epoch);
+        let summary = write_full_partition(sink.as_ref(), &second, strategy)
+            .await
+            .unwrap();
+        // The first worker can't record the partition it no longer holds.
+        let err = run
+            .store
+            .mark_done(&run.id, &first, &summary)
+            .await
+            .unwrap_err();
+        assert!(matches!(err, FerryError::StaleLease { .. }), "{err}");
+        run.store
+            .mark_done(&run.id, &second, &summary)
+            .await
+            .unwrap();
+
+        assert_partition_written_once(&db, &schema).await;
+        assert_eq!(
+            db.done_epoch(&run.id, "orders-0").await,
+            Some(second.epoch.0 as i64)
+        );
+        let totals = run.store.totals(&run.id).await.unwrap();
+        assert_eq!(totals.written["order_items"], 3, "{mode:?}");
+    }
+    // Neither sink wrote done-records of its own: both partitions were
+    // recorded by mark_done above.
+    let recorded = db
+        .strings("SELECT count(*)::text FROM _ferry_partitions WHERE status = 'done'")
+        .await;
+    assert_eq!(recorded, ["2"]);
 }
 
 async fn item_rows(db: &Db, schema: &str) -> Vec<String> {
@@ -222,9 +304,16 @@ async fn option_rows(db: &Db, schema: &str) -> Vec<String> {
 /// o3 with one. Between runs the source drops o1's third item, changes the
 /// quantity of its first, and empties o3; run 2's partition holds o1 and o3
 /// only.
-async fn lost_item_scenario(db: &Db, sink: &dyn Sink, schema: &str, strategy: IdempotencyStrategy) {
+async fn lost_item_scenario(
+    db: &Db,
+    sink: &dyn Sink,
+    schema: &str,
+    strategy: IdempotencyStrategy,
+    leases: [Lease; 2],
+) {
+    let [first, second] = leases;
     let mut txn = sink
-        .begin(&partition("orders-0"), &lease("orders-0", 1), strategy)
+        .begin(&partition("orders-0"), &first, strategy)
         .await
         .unwrap();
     txn.write(
@@ -255,7 +344,7 @@ async fn lost_item_scenario(db: &Db, sink: &dyn Sink, schema: &str, strategy: Id
     txn.commit().await.unwrap();
 
     let mut txn = sink
-        .begin(&partition("orders-1"), &lease("orders-1", 1), strategy)
+        .begin(&partition("orders-1"), &second, strategy)
         .await
         .unwrap();
     txn.write("orders", orders(&[("o1", "paid"), ("o3", "paid")]))
@@ -292,7 +381,6 @@ async fn lost_item_scenario(db: &Db, sink: &dyn Sink, schema: &str, strategy: Id
 #[tokio::test]
 async fn an_item_lost_between_runs_is_removed_on_upsert() {
     let db = db().await;
-    create_state_tables(&db.client).await;
     for strategy in [
         IdempotencyStrategy::UpsertByKey,
         IdempotencyStrategy::DeletePartitionThenInsert,
@@ -302,19 +390,24 @@ async fn an_item_lost_between_runs_is_removed_on_upsert() {
         sink.prepare(&order_schema(), WriteMode::Upsert)
             .await
             .unwrap();
-        lost_item_scenario(&db, sink.as_ref(), &schema, strategy).await;
+        let leases = [lease("orders-0", 1), lease("orders-1", 1)];
+        lost_item_scenario(&db, sink.as_ref(), &schema, strategy, leases).await;
     }
-    let (sink, _) = db.sink_with_state("txn_with_state").await;
+    let (sink, store) = db.sink_with_state("txn_with_state");
     sink.prepare(&order_schema(), WriteMode::Upsert)
         .await
         .unwrap();
+    let run = Run::plan(store, &["orders-0", "orders-1"]).await;
+    let leases = [run.lease("orders-0").await, run.lease("orders-1").await];
     lost_item_scenario(
         &db,
         sink.as_ref(),
         "txn_with_state",
         IdempotencyStrategy::TxnWithState,
+        leases,
     )
     .await;
+    assert!(run.is_done("orders-0").await && run.is_done("orders-1").await);
 }
 
 /// Insert mode re-running the same partition after the source lost an item
@@ -328,7 +421,7 @@ async fn an_item_lost_before_an_insert_rerun_is_removed() {
         .unwrap();
     write_full_partition(
         sink.as_ref(),
-        1,
+        &lease("orders-0", 1),
         IdempotencyStrategy::DeletePartitionThenInsert,
     )
     .await
@@ -361,40 +454,52 @@ async fn an_item_lost_before_an_insert_rerun_is_removed() {
 #[tokio::test]
 async fn a_commit_under_a_stale_epoch_is_rejected_and_writes_nothing() {
     let db = db().await;
-    create_state_tables(&db.client).await;
-    let (sink, _) = db.sink_with_state("public").await;
+    let (sink, store) = db.sink_with_state("public");
     sink.prepare(&order_schema(), WriteMode::Insert)
         .await
         .unwrap();
+    let run = Run::plan(store, &["orders-0"]).await;
 
-    // Another worker has since leased the partition at epoch 2.
-    db.lease("orders-0", 2).await;
-    let err = write_full_partition(sink.as_ref(), 1, IdempotencyStrategy::TxnWithState)
+    // A worker leases the partition, stalls past its lease, and another
+    // worker takes the partition over.
+    let stale = run.lease("orders-0").await;
+    let current = run.lease("orders-0").await;
+    let err = write_full_partition(sink.as_ref(), &stale, IdempotencyStrategy::TxnWithState)
         .await
         .unwrap_err();
     assert_eq!(
         err,
         FerryError::StaleLease {
             partition: "orders-0".into(),
-            epoch: 1,
-            current: 2
+            epoch: stale.epoch.0,
+            current: current.epoch.0,
         }
     );
     assert_eq!(db.count("public", "orders").await, 0);
     assert_eq!(db.count("public", "order_items").await, 0);
-    assert_eq!(db.done_epoch("orders-0").await, None);
+    assert!(!run.is_done("orders-0").await);
 
     // The current owner commits; the superseded one still can't afterwards.
-    write_full_partition(sink.as_ref(), 2, IdempotencyStrategy::TxnWithState)
+    write_full_partition(sink.as_ref(), &current, IdempotencyStrategy::TxnWithState)
         .await
         .unwrap();
-    let err = write_full_partition(sink.as_ref(), 1, IdempotencyStrategy::TxnWithState)
+    let err = write_full_partition(sink.as_ref(), &stale, IdempotencyStrategy::TxnWithState)
         .await
         .unwrap_err();
     assert!(
-        matches!(err, FerryError::StaleLease { current: 2, .. }),
+        matches!(err, FerryError::StaleLease { current: c, .. } if c == current.epoch.0),
         "{err}"
     );
     assert_partition_written_once(&db, "public").await;
-    assert_eq!(db.done_epoch("orders-0").await, Some(2));
+    assert_eq!(
+        db.done_epoch(&run.id, "orders-0").await,
+        Some(current.epoch.0 as i64)
+    );
+    // A done partition is not leased again.
+    let next = run
+        .store
+        .lease_next(&run.id, "orders-0", Duration::ZERO)
+        .await
+        .unwrap();
+    assert_eq!(next, None);
 }

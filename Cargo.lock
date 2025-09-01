@@ -1678,6 +1678,7 @@ dependencies = [
  "ferry-connector-tls",
  "ferry-core",
  "ferry-registry",
+ "ferry-state",
  "futures",
  "postgres-protocol",
  "rcgen",

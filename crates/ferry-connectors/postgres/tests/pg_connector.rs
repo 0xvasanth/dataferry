@@ -4,11 +4,12 @@
 
 mod common;
 
-use common::{Db, TestBackend, create_state_tables, db, lease, orders, partition, sink_fixture};
+use common::{Db, db, lease, orders, partition, sink_fixture};
 use ferry_connector_postgres::PostgresConnector;
 use ferry_core::{IdempotencyStrategy, WriteMode};
 use ferry_registry::testkit::{ConnectorFixture, check_connector, check_state_capable};
 use ferry_registry::{BuildError, ConnectorRegistry, RawConnection, Roles};
+use ferry_state::PgStateBackend;
 use serde_json::{Value, json};
 
 const PASSWORD: &str = "pg-s3cret-pw";
@@ -68,23 +69,29 @@ async fn passes_the_connector_contract() {
     }
 }
 
+/// The registry's state-capable suite with ferry-state's real backend: a
+/// crash before or after `record_done` commits neither the rows nor the
+/// done-record, and a clean commit makes both durable. Under both write
+/// modes, each into its own schema with its own run.
 #[tokio::test]
-async fn passes_the_state_capable_contract() {
+async fn passes_the_state_capable_contract_with_the_real_state_backend() {
     let db = db().await;
-    create_state_tables(&db.client).await;
-    let fixture = ConnectorFixture {
-        options: json!({"url": db.url, "schema": "contract"}),
-        secret: "postgres".into(),
-    };
-    let violations = check_state_capable(
-        PostgresConnector,
-        TestBackend,
-        &fixture,
-        &sink_fixture(WriteMode::Insert),
-        &db.probe("contract"),
-    )
-    .await;
-    assert!(violations.is_empty(), "{violations:#?}");
+    for mode in [WriteMode::Insert, WriteMode::Upsert] {
+        let schema = format!("contract_{mode:?}").to_lowercase();
+        let fixture = ConnectorFixture {
+            options: json!({"url": db.url, "schema": schema}),
+            secret: "postgres".into(),
+        };
+        let violations = check_state_capable(
+            PostgresConnector,
+            PgStateBackend,
+            &fixture,
+            &sink_fixture(mode),
+            &db.probe(&schema),
+        )
+        .await;
+        assert!(violations.is_empty(), "{mode:?}: {violations:#?}");
+    }
 }
 
 #[tokio::test]

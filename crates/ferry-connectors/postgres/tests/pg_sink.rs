@@ -15,41 +15,31 @@ use arrow_array::{
 };
 use arrow_buffer::i256;
 use arrow_schema::{DataType, Field, Fields, Schema};
-use common::{create_state_tables, db, int64, lease, orders, partition, sink_fixture, utf8};
+use common::{Run, db, int64, lease, orders, partition, sink_fixture, utf8};
 use ferry_connector_postgres::{PostgresSink, PostgresSource};
 use ferry_core::testkit::check_sink;
 use ferry_core::types::{CanonicalField, CanonicalType, DecimalSpec};
 use ferry_core::{IdempotencyStrategy, Sink, Source, TargetSchema, TargetTable, WriteMode};
 use futures::TryStreamExt;
 
+/// The generic suite on a plain sink. It re-runs a committed partition
+/// under made-up epochs, which a real state store never grants once the
+/// partition is done, so the sink with the state store is checked by the
+/// state-capable suite instead (`pg_connector`).
 #[tokio::test]
-async fn passes_the_sink_contract_under_every_strategy_and_mode() {
+async fn passes_the_sink_contract_in_every_mode() {
     let db = db().await;
-    create_state_tables(&db.client).await;
-    let cases = [
-        ("plain_insert", false, WriteMode::Insert),
-        ("plain_upsert", false, WriteMode::Upsert),
-        ("state_insert", true, WriteMode::Insert),
-        ("state_upsert", true, WriteMode::Upsert),
-    ];
-    for (schema, with_state, mode) in cases {
-        // Each case starts from an empty state store, as the suite requires.
-        db.client
-            .batch_execute("TRUNCATE ferry_test_state.done, ferry_test_state.leases")
-            .await
-            .unwrap();
-        let sink = if with_state {
-            db.sink_with_state(schema).await.0
-        } else {
-            db.plain_sink(schema)
-        };
+    for (schema, mode) in [
+        ("plain_insert", WriteMode::Insert),
+        ("plain_upsert", WriteMode::Upsert),
+    ] {
+        let sink = db.plain_sink(schema);
         let strategy = sink.capabilities().await.unwrap().strategy_for(mode);
-        let expected = if with_state {
-            IdempotencyStrategy::TxnWithState
-        } else {
-            IdempotencyStrategy::DeletePartitionThenInsert
-        };
-        assert_eq!(strategy, Some(expected), "{schema}");
+        assert_eq!(
+            strategy,
+            Some(IdempotencyStrategy::DeletePartitionThenInsert),
+            "{schema}"
+        );
         let violations = check_sink(sink.as_ref(), &db.probe(schema), &sink_fixture(mode)).await;
         assert!(violations.is_empty(), "{schema}: {violations:#?}");
     }
@@ -67,7 +57,7 @@ async fn only_a_sink_bound_to_a_ledger_offers_txn_with_state() {
         ]
     );
     assert!(plain.bulk_copy);
-    let (sink, _) = db.sink_with_state("public").await;
+    let (sink, _) = db.sink_with_state("public");
     assert_eq!(
         sink.capabilities().await.unwrap().strategies[0],
         IdempotencyStrategy::TxnWithState
@@ -254,8 +244,7 @@ async fn a_keyless_table_needs_the_state_store_for_inserts_and_a_key_for_upserts
         .to_string();
     assert!(err.contains("`events`: has no key"), "{err}");
 
-    create_state_tables(&db.client).await;
-    let (sink, _) = db.sink_with_state("public").await;
+    let (sink, store) = db.sink_with_state("public");
     let err = sink
         .prepare(&keyless, WriteMode::Upsert)
         .await
@@ -268,10 +257,11 @@ async fn a_keyless_table_needs_the_state_store_for_inserts_and_a_key_for_upserts
     sink.prepare(&keyless, WriteMode::Insert).await.unwrap();
     let what: ArrayRef = Arc::new(StringArray::from(vec!["x"]));
     let batch = RecordBatch::try_from_iter([("what", what)]).unwrap();
+    let run = Run::plan(store, &["p"]).await;
     let mut txn = sink
         .begin(
             &partition("p"),
-            &lease("p", 1),
+            &run.lease("p").await,
             IdempotencyStrategy::TxnWithState,
         )
         .await
@@ -279,6 +269,7 @@ async fn a_keyless_table_needs_the_state_store_for_inserts_and_a_key_for_upserts
     txn.write("events", batch.clone()).await.unwrap();
     txn.commit().await.unwrap();
     assert_eq!(db.count("public", "events").await, 1);
+    assert!(run.is_done("p").await);
 
     let mut txn = sink
         .begin(
