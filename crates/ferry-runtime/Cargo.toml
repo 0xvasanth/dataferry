@@ -30,6 +30,8 @@ fastrand = { version = "2", optional = true }
 [dev-dependencies]
 ferry-runtime = { path = ".", features = ["testkit"] }
 ferry-core = { workspace = true, features = ["testkit"] }
+# A3's sink, for the chaos run through the real Postgres sink.
+ferry-connector-postgres.workspace = true
 ferry-state = { workspace = true, features = ["postgres"] }
 arrow-json = "60"
 arrow-schema = "60"

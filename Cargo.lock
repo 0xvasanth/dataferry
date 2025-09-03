@@ -1776,6 +1776,7 @@ dependencies = [
  "async-trait",
  "deadpool-postgres",
  "fastrand",
+ "ferry-connector-postgres",
  "ferry-core",
  "ferry-registry",
  "ferry-runtime",
