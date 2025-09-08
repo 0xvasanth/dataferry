@@ -15,6 +15,18 @@ fn main() -> std::process::ExitCode {
 
 `tests/acme-ferry/` is such a binary, used by the tests.
 
+## Built-in connectors
+
+`with_builtins()` registers, through the same public calls:
+
+| Type | Roles | Cargo feature (default on) |
+| --- | --- | --- |
+| `postgres` | source and sink; holds the state store (`backend: postgres`, with ferry-state's `PgStateBackend`) | `postgres` |
+| `mongo` | source | `mongo` |
+
+Building with `--no-default-features` drops a driver; `with_builtins()` then
+registers only what is left.
+
 ## Commands
 
 | Command | What it does | Connects? |

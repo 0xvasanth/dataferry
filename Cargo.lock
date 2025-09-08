@@ -1638,6 +1638,7 @@ dependencies = [
  "ferry-connector-postgres",
  "ferry-dsl",
  "ferry-registry",
+ "ferry-state",
  "schemars 1.2.3",
  "serde_json",
  "tempfile",
