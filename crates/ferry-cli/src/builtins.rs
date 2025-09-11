@@ -5,21 +5,15 @@
 
 use crate::Ferry;
 
-/// TODO(C1 follow-up, 0XT-276): register the built-ins once their
-/// `Connector` impls land on main from track A (A1/A2/A3/A4):
-///
-/// ```ignore
-/// #[cfg(feature = "postgres")]
-/// let ferry = ferry.register_state_capable(
-///     ferry_connector_postgres::PostgresConnector,
-///     ferry_state::PgStateBackend,
-/// );
-/// #[cfg(feature = "mongo")]
-/// let ferry = ferry.register(ferry_connector_mongo::MongoConnector);
-/// ```
-///
-/// Until then the stock binary has no connection types, and `ferry validate`
-/// says so in its "unknown connection type" help.
+/// `postgres` (source and sink, and the home of the `postgres` state
+/// backend) and `mongo` (source), as their features allow.
 pub(crate) fn register(ferry: Ferry) -> Ferry {
+    #[cfg(feature = "postgres")]
+    let ferry = ferry.register_state_capable(
+        ferry_connector_postgres::PostgresConnector,
+        ferry_state::PgStateBackend,
+    );
+    #[cfg(feature = "mongo")]
+    let ferry = ferry.register(ferry_connector_mongo::MongoConnector);
     ferry
 }

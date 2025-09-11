@@ -32,6 +32,9 @@ tokio-postgres-rustls = "0.14"
 [dev-dependencies]
 ferry-core = { workspace = true, features = ["testkit"] }
 ferry-registry = { workspace = true, features = ["testkit"] }
+# The real state store, to test the sink's TxnWithState commit against
+# (ferry-state doesn't depend on this crate, so there is no cycle).
+ferry-state = { workspace = true, features = ["postgres"] }
 tokio.workspace = true
 testcontainers-modules.workspace = true
 rcgen = "0.14"

@@ -6,14 +6,19 @@
 //!   the target must then hold exactly the expected rows. Once with the
 //!   file state store (the sink deletes the partition's rows, then
 //!   inserts), once with the state store in the target database, where the
-//!   sink's commit writes the done-record (`TxnWithState`).
+//!   sink's commit writes the done-record (`TxnWithState`). And once with
+//!   A3's real Postgres sink and ferry-state's `PgStateBackend`, built
+//!   through the registry as a run's state connection is.
 //! - The two crash windows 0001 names, deterministically: after the commit
 //!   but before `mark_done`, and with `TxnWithState` the done-record only
 //!   ever written by the sink.
 //!
 //! The test sink stores each row as its JSON text next to its partition
 //! id, with no key: a partition written twice shows up as duplicates. The
-//! real Postgres sink (A3) replaces it in S2's run of the same harness.
+//! real sink's targets are declared without a primary key for the same
+//! reason (it COPYs keyless tables straight in, under `TxnWithState` only),
+//! so exactly-once rests on its ledger alone and a partition written twice
+//! still shows up as duplicate rows rather than a key violation.
 
 mod common;
 
@@ -26,6 +31,7 @@ use arrow_array::{BooleanArray, RecordBatch};
 use async_trait::async_trait;
 use common::{Event, Log, SpyStore};
 use deadpool_postgres::{Manager, Object, Pool};
+use ferry_connector_postgres::PostgresConnector;
 use ferry_core::types::{CanonicalField, CanonicalType};
 use ferry_core::{
     BatchStream, Entity, FerryError, IdempotencyStrategy, IdentityPlan, KeyRange, KeyValue, Lease,
@@ -33,7 +39,7 @@ use ferry_core::{
     SourceCaps, TargetSchema, TargetTable, WriteMode, WriteSummary,
 };
 use ferry_registry::state::NewRun;
-use ferry_registry::{Ledger, StateBackend, StateStore};
+use ferry_registry::{ConnectorRegistry, Ledger, RawConnection, Roles, StateBackend, StateStore};
 use ferry_runtime::testkit::chaos::{self, Progress, Scenario};
 use ferry_runtime::{Flow, Input, Runner, Settings};
 use ferry_state::{FileStateStore, PgStateBackend};
@@ -389,6 +395,9 @@ enum Backend {
     File,
     /// `backend: postgres` on the sink's own database: `TxnWithState`.
     Postgres,
+    /// `backend: postgres` with A3's Postgres sink on the same connection,
+    /// both built by the registry: `TxnWithState` through `PgLedger`.
+    PostgresSink,
 }
 
 impl Backend {
@@ -396,6 +405,7 @@ impl Backend {
         match self {
             Backend::File => "file",
             Backend::Postgres => "postgres",
+            Backend::PostgresSink => "postgres_sink",
         }
     }
 
@@ -403,43 +413,64 @@ impl Backend {
         match name {
             "file" => Backend::File,
             "postgres" => Backend::Postgres,
+            "postgres_sink" => Backend::PostgresSink,
             other => panic!("unknown backend {other}"),
         }
     }
 
     /// The state store and the sink for a run whose files are in `dir`.
-    fn open(self, url: &str, dir: &Path) -> (Arc<dyn StateStore>, JsonSink) {
-        let pool = pool(url);
+    fn open(self, url: &str, dir: &Path) -> (Arc<dyn StateStore>, Arc<dyn Sink>) {
         match self {
             Backend::File => (
                 Arc::new(FileStateStore::new(dir.join("state"))),
-                JsonSink { pool, ledger: None },
+                Arc::new(JsonSink {
+                    pool: pool(url),
+                    ledger: None,
+                }),
             ),
             Backend::Postgres => {
+                let pool = pool(url);
                 let (store, ledger) = PgStateBackend.open(pool.clone());
                 (
                     store,
-                    JsonSink {
+                    Arc::new(JsonSink {
                         pool,
                         ledger: Some(ledger),
-                    },
+                    }),
                 )
+            }
+            Backend::PostgresSink => {
+                let mut registry = ConnectorRegistry::new();
+                registry.register_state_capable(PostgresConnector, PgStateBackend);
+                let conn: RawConnection = serde_json::from_value(serde_json::json!({
+                    "name": "warehouse", "type": "postgres", "url": url,
+                }))
+                .unwrap();
+                let (built, store) = registry.build_with_state(&conn, Roles::SINK).unwrap();
+                (store, built.endpoints.sink.unwrap())
             }
         }
     }
 }
 
-fn table(entity: &Entity) -> TargetTable {
+/// The entity's table, keyed like the entity unless `keyed` is false.
+fn table(entity: &Entity, keyed: bool) -> TargetTable {
     TargetTable {
         name: entity.name().into(),
         fields: entity.fields().to_vec(),
-        primary_key: entity.primary_key().to_vec(),
+        primary_key: if keyed {
+            entity.primary_key().to_vec()
+        } else {
+            Vec::new()
+        },
         foreign_keys: Vec::new(),
     }
 }
 
 /// `orders` and, once it is done, `order_items`, each copied unchanged.
-fn flows(sink: Arc<dyn Sink>) -> Vec<Flow> {
+/// The real Postgres sink's tables get no key, so duplicates stay visible.
+fn flows(backend: Backend, sink: Arc<dyn Sink>) -> Vec<Flow> {
+    let keyed = backend != Backend::PostgresSink;
     let source: Arc<dyn Source> = Arc::new(Golden::new());
     let flow = |entity: Entity, depends_on: Vec<String>| Flow {
         name: entity.name().into(),
@@ -450,7 +481,7 @@ fn flows(sink: Arc<dyn Sink>) -> Vec<Flow> {
         }],
         plan: Arc::new(IdentityPlan::new(entity.clone(), entity.name())),
         sink: Arc::clone(&sink),
-        target: TargetSchema::new(vec![table(&entity)]).unwrap(),
+        target: TargetSchema::new(vec![table(&entity, keyed)]).unwrap(),
         mode: WriteMode::Insert,
         depends_on,
     };
@@ -482,22 +513,67 @@ fn new_run() -> NewRun {
     }
 }
 
-/// Every row in the target, as `(table, sorted rows)`, against the golden
-/// rows: `Err` lists what is missing and what is there too often.
-async fn verify(url: &str) -> std::result::Result<(), String> {
+/// What identifies a golden row in the real sink's tables, with a few of
+/// its values: `(table, SQL over the table, the same from a golden row)`.
+type RowKey = (&'static str, &'static str, fn(&serde_json::Value) -> String);
+
+const REAL_SINK_ROWS: [RowKey; 2] = [
+    (
+        "orders",
+        "SELECT id || ':' || status || ':' || total_cents FROM orders",
+        |r| format!("{}:{}:{}", s(&r["id"]), s(&r["status"]), r["total_cents"]),
+    ),
+    (
+        "order_items",
+        "SELECT order_id || '/' || line_no || ':' || sku || 'x' || qty || '@' || unit_cents \
+         FROM order_items",
+        |r| {
+            format!(
+                "{}/{}:{}x{}@{}",
+                s(&r["order_id"]),
+                r["line_no"],
+                s(&r["sku"]),
+                r["qty"],
+                r["unit_cents"]
+            )
+        },
+    ),
+];
+
+fn s(v: &serde_json::Value) -> &str {
+    v.as_str().unwrap()
+}
+
+/// Every row in the target, sorted, against the golden rows: `Err` lists
+/// what is missing and what is there too often. The test sink keeps each
+/// row's JSON; the real sink's rows are compared by key and values.
+async fn verify(url: &str, backend: Backend) -> std::result::Result<(), String> {
     let (client, connection) = tokio_postgres::connect(url, NoTls).await.unwrap();
     tokio::spawn(connection);
     let mut problems = Vec::new();
-    for (table, expected) in [("orders", golden_orders()), ("order_items", golden_items())] {
+    for (i, (table, expected)) in [("orders", golden_orders()), ("order_items", golden_items())]
+        .into_iter()
+        .enumerate()
+    {
+        let (sql, expected) = if backend == Backend::PostgresSink {
+            let (_, sql, key) = REAL_SINK_ROWS[i];
+            let mut rows: Vec<String> = json_rows(&expected)
+                .iter()
+                .map(|r| key(&serde_json::from_str(r).unwrap()))
+                .collect();
+            rows.sort();
+            (sql.to_owned(), rows)
+        } else {
+            (format!("SELECT row FROM {table}"), json_rows(&expected))
+        };
         let mut actual: Vec<String> = client
-            .query(&format!("SELECT row FROM {table}"), &[])
+            .query(&sql, &[])
             .await
             .map_err(|e| e.to_string())?
             .iter()
             .map(|r| r.get(0))
             .collect();
         actual.sort();
-        let expected = json_rows(&expected);
         if actual != expected {
             let mut counts: BTreeMap<&str, i64> = BTreeMap::new();
             for r in &expected {
@@ -566,7 +642,7 @@ async fn chaos_child() {
     let url = std::env::var(URL).unwrap();
     let backend = Backend::parse(&std::env::var(BACKEND).unwrap());
     let (store, sink) = backend.open(&url, &dir);
-    let runner = Runner::new(store, flows(Arc::new(sink)), settings()).unwrap();
+    let runner = Runner::new(store, flows(backend, sink), settings()).unwrap();
     let report = chaos::child_run(&runner, new_run(), &dir).await.unwrap();
     assert!(report.is_complete(), "{report:?}");
 }
@@ -622,11 +698,17 @@ impl Scenario for GoldenChaos {
     }
 
     async fn verify(&self) -> std::result::Result<(), String> {
-        verify(&self.url).await
+        verify(&self.url, self.backend).await
     }
 }
 
+/// One chaos run at a time: each calibrates its kill window on
+/// uninterrupted runs, which only holds if the machine is as busy during
+/// the kills as during the calibration.
+static CHAOS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 async fn chaos(backend: Backend, seed: u64) {
+    let _one_at_a_time = CHAOS.lock().await;
     let server = Server::start().await;
     let scenario = GoldenChaos {
         url: server.database(&format!("chaos_{}", backend.name())).await,
@@ -659,13 +741,18 @@ async fn chaos_kill_9_with_the_state_store_in_the_target_database() {
     chaos(Backend::Postgres, 0x5a_fe).await;
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn chaos_kill_9_through_the_postgres_sink_and_state_backend() {
+    chaos(Backend::PostgresSink, 0xa3_a4).await;
+}
+
 // ---- the crash windows, deterministically ----
 
 /// The run's flows on `backend`, with a spy on the store.
 fn spied(backend: Backend, url: &str, dir: &Path) -> (Runner, SpyStore) {
     let (store, sink) = backend.open(url, dir);
     let spy = SpyStore::new(store, Log::default());
-    let runner = Runner::new(Arc::new(spy.clone()), flows(Arc::new(sink)), settings()).unwrap();
+    let runner = Runner::new(Arc::new(spy.clone()), flows(backend, sink), settings()).unwrap();
     (runner, spy)
 }
 
@@ -679,7 +766,7 @@ async fn under_txn_with_state_only_the_sink_writes_done_records() {
     let report = runner.start(new_run()).await.unwrap();
 
     assert!(report.is_complete(), "{report:?}");
-    verify(&url).await.unwrap();
+    verify(&url, Backend::Postgres).await.unwrap();
     // Every partition is done, and the runner never called mark_done.
     assert_eq!(spy.log.count(|e| matches!(e, Event::MarkDone(_))), 0);
     let commits = spy.log.count(|e| matches!(e, Event::RecordRows(..)));
@@ -698,6 +785,27 @@ async fn under_txn_with_state_only_the_sink_writes_done_records() {
     assert_eq!(
         spy.log.count(|e| matches!(e, Event::MarkDone(_))) as u64,
         report.counts.done
+    );
+}
+
+/// The same through A3's sink: its commit, through `PgLedger`, is the only
+/// thing that records partitions done, and every golden row lands once.
+#[tokio::test(flavor = "multi_thread")]
+async fn under_txn_with_state_the_postgres_sink_writes_every_done_record() {
+    let server = Server::start().await;
+    let url = server.database("postgres_sink").await;
+    let dir = tempfile::tempdir().unwrap();
+    let (runner, spy) = spied(Backend::PostgresSink, &url, dir.path());
+
+    let report = runner.start(new_run()).await.unwrap();
+
+    assert!(report.is_complete(), "{report:?}");
+    verify(&url, Backend::PostgresSink).await.unwrap();
+    assert_eq!(spy.log.count(|e| matches!(e, Event::MarkDone(_))), 0);
+    assert!(report.counts.done > 2, "{report:?}");
+    assert_eq!(
+        report.totals.written.get("order_items"),
+        Some(&(7 * COPIES as u64))
     );
 }
 
@@ -757,5 +865,5 @@ async fn a_crash_between_the_commit_and_mark_done_re_runs_the_partition_without_
     let (runner, _) = spied(Backend::File, &url, dir.path());
     let report = runner.resume(&run, HASH, ENGINE).await.unwrap();
     assert!(report.is_complete(), "{report:?}");
-    verify(&url).await.unwrap();
+    verify(&url, Backend::File).await.unwrap();
 }
