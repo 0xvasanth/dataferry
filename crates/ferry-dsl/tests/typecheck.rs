@@ -11,6 +11,7 @@ use arrow_array::cast::AsArray;
 use arrow_array::types::Int64Type;
 use arrow_array::{Array, ArrayRef, RecordBatch, StringArray};
 use common::golden;
+use common::plan::pg_merge_catalog;
 use ferry_core::Entity;
 use ferry_core::types::{CanonicalField, CanonicalType};
 use ferry_dsl::config::{ConfigErrors, ErrorKind, load};
@@ -107,6 +108,7 @@ fn the_golden_config_type_checks() {
     assert_eq!(
         shape(1),
         owned(&[
+            ("id", "uuid", false),
             ("order_id", "utf8", false),
             ("line_no", "int64", false),
             ("sku", "utf8", true),
@@ -163,51 +165,6 @@ fn the_golden_orders_columns_compute_the_expected_rows() {
             want["id"]
         );
     }
-}
-
-fn pg_merge_catalog() -> Catalog {
-    let utc = CanonicalType::Timestamp {
-        tz: Some("UTC".into()),
-    };
-    let f = |n: &str, t: CanonicalType, null: bool| CanonicalField::new(n, t, null);
-    let customers = Entity::new(
-        "public.customers",
-        vec![
-            f("id", CanonicalType::Int64, false),
-            f("name", CanonicalType::Utf8, false),
-            f("email", CanonicalType::Utf8, true),
-        ],
-        vec!["id".into()],
-    )
-    .unwrap();
-    let orders = Entity::new(
-        "public.orders",
-        vec![
-            f("id", CanonicalType::Int64, false),
-            f("customer_id", CanonicalType::Int64, true),
-            f("status", CanonicalType::Utf8, false),
-            f("placed_at", utc, false),
-            f("total_cents", CanonicalType::Int64, false),
-        ],
-        vec!["id".into()],
-    )
-    .unwrap();
-    let items = Entity::new(
-        "public.order_items",
-        vec![
-            f("order_id", CanonicalType::Int64, false),
-            f("line_no", CanonicalType::Int32, false),
-            f("sku", CanonicalType::Utf8, false),
-            f("qty", CanonicalType::Int32, false),
-            f("unit_cents", CanonicalType::Int64, false),
-        ],
-        vec!["order_id".into(), "line_no".into()],
-    )
-    .unwrap();
-    Catalog::new()
-        .with("app", customers)
-        .with("app", orders)
-        .with("app", items)
 }
 
 #[test]

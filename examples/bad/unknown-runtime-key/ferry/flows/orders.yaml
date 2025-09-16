@@ -34,6 +34,7 @@ flows:
         unnest: items                       # empty (…0002) or missing (…0003): no rows
         key: [order_id, line_no]
         columns:
+          id: $key                          # UUIDv5 over (_id, items, $index)
           order_id: $parent.id              # the mapped parent row
           line_no: $index
           sku: sku

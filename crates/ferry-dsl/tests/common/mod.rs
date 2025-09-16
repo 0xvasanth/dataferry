@@ -45,3 +45,4 @@ pub fn manifest() -> Vec<BTreeMap<String, String>> {
 }
 
 pub mod golden;
+pub mod plan;

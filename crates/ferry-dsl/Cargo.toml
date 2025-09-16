@@ -25,6 +25,7 @@ datafusion-optimizer.workspace = true
 datafusion-physical-expr.workspace = true
 datafusion-sql.workspace = true
 ferry-core.workspace = true
+futures = "0.3"
 glob = "0.3"
 # YAML 1.2 event parser with positions; the maintained successor of
 # yaml-rust (serde_yaml is archived). See config/yaml.rs.
@@ -33,8 +34,11 @@ schemars = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
+# `$key`: UUIDv5 child keys (B5).
+uuid = { version = "1", default-features = false, features = ["std", "v5"] }
 
 [dev-dependencies]
+arrow-json = "60"
 proptest = "1"
 tempfile = "3"
 insta = "1"

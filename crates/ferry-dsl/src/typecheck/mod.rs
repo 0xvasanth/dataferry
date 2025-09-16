@@ -96,6 +96,14 @@ pub struct Predicate {
 pub struct CheckedTarget {
     pub table: String,
     pub parent: Option<String>,
+    /// `unnest: <path>`, compiled in the scope its rows come from: the
+    /// parent's (0003 §5.7), or the driver record's without `parent:`. Its
+    /// type is an array, or `json` for a variant that only holds arrays in
+    /// some records.
+    pub unnest: Option<Compiled>,
+    /// What the target's expressions see: its rows are evaluated on batches
+    /// laid out as [`Scope::input_schema`].
+    pub scope: Scope,
     pub filter: Vec<Predicate>,
     pub columns: Vec<CheckedColumn>,
 }
@@ -443,7 +451,7 @@ impl<'a> Checker<'a> {
             Some(parent) => Some(done.iter().find(|t| t.table == parent.as_str())?),
             None => None,
         };
-        let scope = self.target_scope(target, inputs, parent, done, path)?;
+        let (scope, unnest) = self.target_scope(target, inputs, parent, done, path)?;
         let columns = match target.columns.value() {
             Columns::All => inputs
                 .driver
@@ -460,6 +468,8 @@ impl<'a> Checker<'a> {
         let mut checked = CheckedTarget {
             table: table.as_str().to_owned(),
             parent: target.parent.as_ref().map(|p| p.as_str().to_owned()),
+            unnest,
+            scope,
             filter,
             columns,
         };
@@ -501,7 +511,8 @@ impl<'a> Checker<'a> {
         Some(checked)
     }
 
-    /// The scope a target's expressions see (0003 §5.4).
+    /// The scope a target's expressions see (0003 §5.4), and its `unnest:`
+    /// path compiled in the scope the rows come from.
     fn target_scope(
         &mut self,
         target: &Target,
@@ -509,7 +520,7 @@ impl<'a> Checker<'a> {
         parent: Option<&CheckedTarget>,
         done: &[CheckedTarget],
         path: &FieldPath,
-    ) -> Option<Scope> {
+    ) -> Option<(Scope, Option<Compiled>)> {
         let parent_fields = || {
             parent.map(|p| {
                 p.columns
@@ -523,12 +534,12 @@ impl<'a> Checker<'a> {
             None => scope,
         };
         let Some(unnest) = &target.unnest else {
-            return Some(with_parent(inputs.scope.clone()));
+            return Some((with_parent(inputs.scope.clone()), None));
         };
         if let Some((alias, entity)) = inputs.many.iter().find(|(a, _)| a == unnest.as_str()) {
             let scope = Scope::joined_rows(format!("a row of `{alias}`"), entity.fields().to_vec())
                 .tracking_missing(entity.tracks_missing());
-            return Some(with_parent(scope));
+            return Some((with_parent(scope), None));
         }
         // The path is resolved where the parent's rows come from: its
         // element if it is unnested itself, else the driver record.
@@ -542,6 +553,7 @@ impl<'a> Checker<'a> {
                 let parent_target = self.flow.to.get(&parent.table)?;
                 let parent_path = self.path.key("to").key(parent.table.as_str());
                 self.target_scope(parent_target, inputs, grand, done, &parent_path)?
+                    .0
             }
             None => inputs.scope.clone(),
         };
@@ -549,6 +561,10 @@ impl<'a> Checker<'a> {
         let compiled = self.compile(unnest, unnest.location(), &outer, &unnest_path)?;
         let element = match compiled.output_type() {
             Some(CanonicalType::List(item)) => item.ty.clone(),
+            // A variant (a Mongo path that isn't an array in every sampled
+            // document): each element is JSON, and a record whose value
+            // isn't an array is an error row at run time (0003 §5.7).
+            Some(CanonicalType::Json) => CanonicalType::Json,
             other => {
                 let shown = other.map_or("null".to_owned(), types::name);
                 self.type_error(
@@ -562,7 +578,7 @@ impl<'a> Checker<'a> {
         };
         let scope = Scope::element(format!("an element of `{}`", unnest.as_str()), element)
             .tracking_missing(inputs.driver.tracks_missing());
-        Some(with_parent(scope))
+        Some((with_parent(scope), Some(compiled)))
     }
 
     fn columns(
