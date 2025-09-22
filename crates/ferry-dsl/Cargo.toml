@@ -39,6 +39,12 @@ uuid = { version = "1", default-features = false, features = ["std", "v5"] }
 
 [dev-dependencies]
 arrow-json = "60"
+async-trait = "0.1"
+ferry-core = { workspace = true, features = ["testkit"] }
+ferry-runtime.workspace = true
+ferry-state.workspace = true
+ferry-registry.workspace = true
+tokio.workspace = true
 proptest = "1"
 tempfile = "3"
 insta = "1"

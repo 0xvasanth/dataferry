@@ -1725,6 +1725,7 @@ dependencies = [
  "arrow-json",
  "arrow-schema",
  "arrow-select",
+ "async-trait",
  "datafusion-common",
  "datafusion-expr",
  "datafusion-functions",
@@ -1733,6 +1734,9 @@ dependencies = [
  "datafusion-physical-expr",
  "datafusion-sql",
  "ferry-core",
+ "ferry-registry",
+ "ferry-runtime",
+ "ferry-state",
  "futures",
  "glob",
  "insta",
@@ -1744,6 +1748,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "tempfile",
+ "tokio",
  "uuid",
 ]
 
