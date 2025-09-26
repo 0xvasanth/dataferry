@@ -73,6 +73,9 @@ fn items_entity() -> Entity {
     Entity::new(
         "order_items",
         vec![
+            // The generated UUIDv5 child key (B5), as text: each copy gets
+            // its own, and arrow-json reads UUIDs only as text.
+            CanonicalField::new("id", CanonicalType::Utf8, false),
             CanonicalField::new("order_id", CanonicalType::Utf8, false),
             CanonicalField::new("line_no", CanonicalType::Int64, false),
             CanonicalField::new("sku", CanonicalType::Utf8, false),
@@ -85,8 +88,10 @@ fn items_entity() -> Entity {
 }
 
 /// `fixtures/golden/expected/<name>.json`, `COPIES` times, with `-<copy>`
-/// appended to the order id in `key`.
-fn golden(name: &str, entity: &Entity, key: &str) -> RecordBatch {
+/// appended to each of `keys` (the order id, and an item's own id). Every
+/// column of the file must be a field of `entity`, so a column added to the
+/// expected files can't go unchecked here.
+fn golden(name: &str, entity: &Entity, keys: &[&str]) -> RecordBatch {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../fixtures/golden/expected")
         .join(format!("{name}.json"));
@@ -96,25 +101,28 @@ fn golden(name: &str, entity: &Entity, key: &str) -> RecordBatch {
     for copy in 0..COPIES {
         for row in &rows {
             let mut row = row.clone();
-            let id = row[key].as_str().unwrap().to_owned();
-            row[key] = format!("{id}-{copy:03}").into();
+            for key in keys {
+                let id = row[*key].as_str().unwrap().to_owned();
+                row[*key] = format!("{id}-{copy:03}").into();
+            }
             lines.push(row.to_string());
         }
     }
     let text = lines.join("\n");
     let mut reader = arrow_json::ReaderBuilder::new(entity.arrow_schema())
         .with_batch_size(lines.len())
+        .with_strict_mode(true)
         .build(text.as_bytes())
         .unwrap();
     reader.next().unwrap().unwrap()
 }
 
 fn golden_orders() -> RecordBatch {
-    golden("orders", &orders_entity(), "id")
+    golden("orders", &orders_entity(), &["id"])
 }
 
 fn golden_items() -> RecordBatch {
-    golden("order_items", &items_entity(), "order_id")
+    golden("order_items", &items_entity(), &["order_id", "id"])
 }
 
 /// Rows as the JSON lines the sink stores, sorted.
