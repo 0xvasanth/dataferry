@@ -108,7 +108,7 @@ fn golden_flow_implements_every_rule_of_the_golden_dataset() {
     let flow = std::fs::read_to_string(repo("examples/golden/ferry/flows/orders.yaml")).unwrap();
     let lines: Vec<&str> = flow.lines().collect();
     let rules = table(&readme, "Rule");
-    assert_eq!(rules.len(), 12, "a rule was added or dropped");
+    assert_eq!(rules.len(), 13, "a rule was added or dropped");
     for rule in rules {
         let line: usize = rule["Line"].parse().unwrap();
         let text = &rule["Text on that line"];

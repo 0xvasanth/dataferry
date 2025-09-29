@@ -21,11 +21,12 @@ each rule below names the line that implements it, and a test in
 | `orders.placed_at = created_at` | 27 | `expr: created_at` |
 | `orders.total_cents = round(total * 100)` | 29 | `total_cents: int(round(total * 100))` |
 | `order_items`: one row per element of `items[]` | 34 | `unnest: items` |
-| `order_items.order_id = string(_id)` of the parent | 37 | `order_id: $parent.id` |
-| `order_items.line_no` = array index | 38 | `line_no: $index` |
-| `order_items.sku = sku` | 39 | `sku: sku` |
-| `order_items.qty = int(qty)` | 40 | `qty: int(qty)` |
-| `order_items.unit_cents = round(price * 100)` | 41 | `unit_cents: int(round(price * 100))` |
+| `order_items.id` = generated UUIDv5 child key | 37 | `id: $key` |
+| `order_items.order_id = string(_id)` of the parent | 38 | `order_id: $parent.id` |
+| `order_items.line_no` = array index | 39 | `line_no: $index` |
+| `order_items.sku = sku` | 40 | `sku: sku` |
+| `order_items.qty = int(qty)` | 41 | `qty: int(qty)` |
+| `order_items.unit_cents = round(price * 100)` | 42 | `unit_cents: int(round(price * 100))` |
 
 ## Semantics these files pin down (provisional, owned by Track B)
 
@@ -38,7 +39,7 @@ each rule below names the line that implements it, and a test in
 | A child fails | the whole source document is dead-lettered, no rows written | `…0006` |
 | Missing or empty array | no children, parent still written | `…0002`, `…0003` |
 | Null or missing nested parent | the derived column is null | `…0008`, `…000a` |
-| Generated child key | not asserted here; B5 adds `id` once UUIDv5 is settled. Rows are identified by `(order_id, line_no)` | all items |
+| Generated child key | `id: $key`: UUIDv5 over (`_id`, the unnest path `items`, `$index`) in ferry's namespace, encoded as `ferry_dsl::compile::key` documents. The same document always gets the same keys. The table key stays `(order_id, line_no)` | all items |
 
 Timestamps are UTC, microsecond precision.
 

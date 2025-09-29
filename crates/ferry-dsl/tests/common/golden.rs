@@ -2,15 +2,15 @@
 //! entity and an Arrow batch, the way the Mongo source presents them:
 //! absent fields are null and listed in `_ferry_missing`.
 //!
-//! `items[].qty` is inferred as int64. One document has `"three"` there,
-//! which the Mongo source makes an error row (the whole document is
-//! dead-lettered); here it is null, and tests leave that document out.
+//! `items[].qty` is an int everywhere but one `"three"`, so the Mongo source
+//! infers a variant: a `json` column holding each value as JSON text (`2`,
+//! `"three"`). `int(qty)` then fails on that one element, which rejects the
+//! whole document (it is dead-lettered).
 
 use std::sync::Arc;
 
 use arrow_array::builder::{
-    Decimal128Builder, Int64Builder, ListBuilder, StringBuilder, StructBuilder,
-    TimestampMicrosecondBuilder,
+    Decimal128Builder, ListBuilder, StringBuilder, StructBuilder, TimestampMicrosecondBuilder,
 };
 use arrow_array::{ArrayRef, RecordBatch};
 use arrow_schema::{DataType, Field};
@@ -43,7 +43,7 @@ fn customer_fields() -> Vec<CanonicalField> {
 fn item_fields() -> Vec<CanonicalField> {
     vec![
         CanonicalField::new("sku", CanonicalType::Utf8, true),
-        CanonicalField::new("qty", CanonicalType::Int64, true),
+        CanonicalField::new("qty", CanonicalType::Json, true),
         CanonicalField::new("price", money(), true),
     ]
 }
@@ -192,9 +192,9 @@ pub fn batch() -> RecordBatch {
                     s.field_builder::<StringBuilder>(0)
                         .unwrap()
                         .append_option(item.get("sku").and_then(Value::as_str));
-                    s.field_builder::<Int64Builder>(1)
+                    s.field_builder::<StringBuilder>(1)
                         .unwrap()
-                        .append_option(item.get("qty").and_then(Value::as_i64));
+                        .append_option(item.get("qty").map(Value::to_string));
                     s.field_builder::<Decimal128Builder>(2)
                         .unwrap()
                         .append_option(

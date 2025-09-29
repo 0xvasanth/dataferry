@@ -79,7 +79,7 @@ fn golden_config_hash_is_pinned() {
     // intended, update the literal and say so in the release notes.
     assert_eq!(
         golden_hash(),
-        "sha256:c35b655190ba0ba50039bfc48b2841c1ba13b7d64d1e0615a82cb92405524457"
+        "sha256:c4e1f41657f0c914abccab48976f2122ca2041b6769bd83a031f758b787109e4"
     );
 }
 
