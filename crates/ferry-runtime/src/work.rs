@@ -19,7 +19,7 @@ use tokio::time::{Instant, MissedTickBehavior};
 
 use crate::budget::{AheadSender, Budget, batch_size, read_ahead};
 use crate::flow::Flow;
-use crate::observe::{PartitionObserver, WriteObserver};
+use crate::observe::{PartitionObserver, ReadObserver, WriteObserver};
 use crate::settings::Settings;
 use crate::throttle::Throttle;
 
@@ -30,7 +30,7 @@ pub(crate) struct Shared {
     pub settings: Settings,
     pub budget: Budget,
     pub throttle: Throttle,
-    pub observer: Option<Arc<dyn WriteObserver>>,
+    pub observers: Vec<Arc<dyn WriteObserver>>,
 }
 
 /// A flow as it runs: its strategy, and what each stored partition reads.
@@ -97,13 +97,14 @@ pub(crate) async fn process(
         Some(Err(e)) => return fail(e).await,
         Some(Ok(txn)) => txn,
     };
-    let mut observer = shared
-        .observer
-        .as_ref()
-        .map(|o| o.begin(&shared.run, &flow.flow.name, &lease));
+    let mut observers: Vec<Box<dyn PartitionObserver>> = shared
+        .observers
+        .iter()
+        .map(|o| o.begin(&shared.run, &flow.flow.name, &lease))
+        .collect();
     let written = until_lost(
         &mut lost,
-        write_unit(&shared, &flow, unit, txn.as_mut(), observer.as_mut()),
+        write_unit(&shared, &flow, unit, txn.as_mut(), &mut observers),
     )
     .await;
     let rows = match written {
@@ -134,7 +135,7 @@ pub(crate) async fn process(
         }
     }
     // Also before the commit, so no partition commits without its record.
-    if let Some(observer) = observer {
+    for observer in observers {
         match until_lost(&mut lost, observer.finish(&rows)).await {
             Some(Ok(())) => {}
             None | Some(Err(FerryError::StaleLease { .. })) => {
@@ -237,11 +238,13 @@ async fn write_unit(
     flow: &FlowRun,
     unit: &Unit,
     txn: &mut dyn SinkTxn,
-    mut observer: Option<&mut Box<dyn PartitionObserver>>,
+    observers: &mut [Box<dyn PartitionObserver>],
 ) -> Result<PartitionRows> {
     let mut connections = shared.throttle.connections(unit.reads.len()).await;
     let read_ahead_bytes = shared.budget.read_ahead(unit.reads.len());
     let driver_rows = Arc::new(AtomicU64::new(0));
+    let mut read_observers: Vec<Box<dyn ReadObserver>> =
+        observers.iter_mut().filter_map(|o| o.reader()).collect();
     let mut readers = JoinSet::new();
     let mut streams = Vec::with_capacity(unit.reads.len());
     for (i, (input, partition)) in flow.flow.inputs.iter().zip(&unit.reads).enumerate() {
@@ -257,6 +260,11 @@ async fn write_unit(
             tx,
             throttle: shared.throttle.clone(),
             counted: (i == 0).then(|| Arc::clone(&driver_rows)),
+            observers: if i == 0 {
+                std::mem::take(&mut read_observers)
+            } else {
+                Vec::new()
+            },
             _connection: connection,
         }));
         streams.push((input.entity.name().to_owned(), rx.boxed()));
@@ -283,7 +291,7 @@ async fn write_unit(
                 ),
             });
         }
-        if let Some(observer) = observer.as_mut() {
+        for observer in observers.iter_mut() {
             observer.output(&output)?;
         }
         batcher.push(output.targets, txn).await?;
@@ -314,11 +322,13 @@ struct Reader {
     throttle: Throttle,
     /// Counts the rows read, for the driver.
     counted: Option<Arc<AtomicU64>>,
+    /// See the driver's rows as they are read.
+    observers: Vec<Box<dyn ReadObserver>>,
     /// The stream's share of `source_max_connections`, held until it ends.
     _connection: Option<OwnedSemaphorePermit>,
 }
 
-async fn read_input(reader: Reader) {
+async fn read_input(mut reader: Reader) {
     let mut stream = match reader.source.read(&reader.entity, &reader.partition).await {
         Ok(stream) => stream,
         Err(e) => return reader.tx.fail(e).await,
@@ -329,6 +339,13 @@ async fn read_input(reader: Reader) {
                 reader.throttle.rows(batch.num_rows()).await;
                 if let Some(counted) = &reader.counted {
                     counted.fetch_add(batch.num_rows() as u64, Ordering::Relaxed);
+                }
+                if let Err(e) = reader
+                    .observers
+                    .iter_mut()
+                    .try_for_each(|o| o.batch(&batch))
+                {
+                    return reader.tx.fail(e).await;
                 }
                 if !reader.tx.send(batch).await {
                     return;

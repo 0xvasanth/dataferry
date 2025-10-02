@@ -28,7 +28,7 @@ pub struct Runner {
     store: Arc<dyn StateStore>,
     flows: Vec<Flow>,
     settings: Settings,
-    observer: Option<Arc<dyn WriteObserver>>,
+    observers: Vec<Arc<dyn WriteObserver>>,
 }
 
 /// How a run stands when [`Runner::execute`] returns.
@@ -133,13 +133,16 @@ impl Runner {
             store,
             flows,
             settings,
-            observer: None,
+            observers: Vec::new(),
         })
     }
 
-    /// Shows every partition's writes to `observer` (the verifier, A8).
+    /// Shows every partition's reads and writes to `observer` (the
+    /// verifier, A8; source-side aggregates, B8). Adds to the observers set
+    /// before: each sees every partition, in the order they were added,
+    /// and each must finish before the commit.
     pub fn with_observer(mut self, observer: Arc<dyn WriteObserver>) -> Self {
-        self.observer = Some(observer);
+        self.observers.push(observer);
         self
     }
 
@@ -202,7 +205,7 @@ impl Runner {
                 self.settings.source_max_connections,
                 self.settings.source_rows_per_sec,
             ),
-            observer: self.observer.clone(),
+            observers: self.observers.clone(),
         });
         Coordinator::new(shared, flows).run().await
     }
@@ -224,7 +227,7 @@ impl Runner {
             .prepare(&flow.target, flow.mode)
             .await
             .map_err(in_flow)?;
-        if let Some(observer) = &self.observer {
+        for observer in &self.observers {
             observer.prepared(run, flow).await.map_err(in_flow)?;
         }
 
