@@ -11,7 +11,9 @@
 //! - a column with `type:` converts to it safely, or lossily with
 //!   `allow_lossy: true` ([`cast`] has the table), and never otherwise;
 //! - `unnest:` reaches an array, `nest:` a `many` join, join keys compare
-//!   like with like, and `key:` names columns of the target.
+//!   like with like, and `key:` names columns of the target;
+//! - every `expect:` assertion names tables and columns of the targets and
+//!   aggregates values it can aggregate ([`crate::expect`], B8).
 //!
 //! Errors carry the flow, target and column in their field path, the
 //! expression, the inferred and the expected type, and the original
@@ -37,6 +39,7 @@ use crate::config::{
     Config, ConfigError, ConfigErrors, ErrorKind, FieldPath, Flow, Location, SourceFile, Spanned,
     suggest,
 };
+use crate::expect::FlowExpect;
 use crate::expr::{Compiled, ExprError, Expression, Scope};
 use crate::types;
 use cast::Conversion;
@@ -83,6 +86,8 @@ pub struct CheckedFlow {
     pub filter: Vec<Predicate>,
     /// In write order: parents before children.
     pub targets: Vec<CheckedTarget>,
+    /// The flow's `expect:` assertions, compiled for the verifier.
+    pub expect: FlowExpect,
 }
 
 #[derive(Clone, Debug)]
@@ -180,6 +185,9 @@ struct Checker<'a> {
 struct Inputs<'a> {
     driver: &'a Entity,
     scope: Scope,
+    /// The driver record alone, as its source returns it: what
+    /// source-side aggregates see (0003 §5.9).
+    record: Scope,
     /// `many` aliases and their entities.
     many: Vec<(String, &'a Entity)>,
 }
@@ -261,10 +269,27 @@ impl<'a> Checker<'a> {
                 targets.push(checked);
             }
         }
+        // Assertions name the targets' columns: only check them once every
+        // target checked, so a broken target isn't reported twice.
+        let expect = if targets.len() == self.flow.to.len() {
+            let (expect, errors) = crate::expect::check(
+                &self.flow.expect,
+                &targets,
+                &inputs.record,
+                &inputs.scope,
+                &self.path.key("expect"),
+                self.sources,
+            );
+            self.errors.extend(errors);
+            expect
+        } else {
+            FlowExpect::default()
+        };
         Some(CheckedFlow {
             name: self.flow.name.as_str().to_owned(),
             filter,
             targets,
+            expect,
         })
     }
 
@@ -273,9 +298,11 @@ impl<'a> Checker<'a> {
         match self.flow.from.value() {
             From::Entity(reference) => {
                 let driver = self.entity(reference, self.flow.from.location(), &path)?;
+                let scope = Scope::entity(format!("entity `{reference}`"), driver);
                 Some(Inputs {
                     driver,
-                    scope: Scope::entity(format!("entity `{reference}`"), driver),
+                    record: scope.clone(),
+                    scope,
                     many: Vec::new(),
                 })
             }
@@ -294,6 +321,7 @@ impl<'a> Checker<'a> {
                 };
                 let mut scope = Scope::entity(format!("entity `{}`", *first.entity), driver)
                     .with_driver_alias(alias(first));
+                let record = scope.clone();
                 let mut many = Vec::new();
                 for (i, entry) in rest.iter().enumerate() {
                     let entry_path = path.item(i + 1, None);
@@ -324,6 +352,7 @@ impl<'a> Checker<'a> {
                 Some(Inputs {
                     driver,
                     scope,
+                    record,
                     many,
                 })
             }
@@ -729,6 +758,7 @@ impl<'a> Checker<'a> {
         let inner = Inputs {
             driver: entity,
             scope: scope.clone(),
+            record: scope.clone(),
             many: Vec::new(),
         };
         let columns = self.columns(&nest.columns, &scope, &inner, &path.key("columns"));

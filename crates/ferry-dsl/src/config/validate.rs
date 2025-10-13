@@ -46,9 +46,9 @@ pub(crate) fn check(config: &Config) -> Vec<ConfigError> {
 }
 
 /// Parses every expression of a flow (B2): syntax, reserved names, sigils
-/// and functions are checked here, without a schema. Names and types are
-/// checked against discovered entities later (B3). `expect:` assertions use
-/// aggregates and belong to B8.
+/// and functions are checked here, without a schema, and so is the shape of
+/// every `expect:` assertion (B8). Names and types are checked against
+/// discovered entities later (B3).
 fn expressions(flow: &Flow, sources: &[super::SourceFile], errors: &mut Vec<ConfigError>) {
     let path = flow_path(flow);
     let mut parser = Parser { sources, errors };
@@ -69,6 +69,13 @@ fn expressions(flow: &Flow, sources: &[super::SourceFile], errors: &mut Vec<Conf
         parser.filter(&target.filter, path.key("where"));
         if let Columns::Map(map) = target.columns.value() {
             parser.columns(map, path.key("columns"));
+        }
+    }
+    for (name, assertion) in flow.expect.iter() {
+        let at = assertion.location();
+        if let Err(e) = crate::expect::Assertion::parse_at(name, assertion, at) {
+            let path = path.key("expect").key(name.as_str());
+            parser.errors.push(e.to_config_error(&path, sources));
         }
     }
 }

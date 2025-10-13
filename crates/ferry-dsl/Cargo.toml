@@ -17,6 +17,7 @@ arrow-buffer = "60"
 arrow-cast = "60"
 arrow-schema = "60"
 arrow-select = "60"
+async-trait = "0.1"
 datafusion-common.workspace = true
 datafusion-expr.workspace = true
 datafusion-functions.workspace = true
@@ -25,6 +26,9 @@ datafusion-optimizer.workspace = true
 datafusion-physical-expr.workspace = true
 datafusion-sql.workspace = true
 ferry-core.workspace = true
+ferry-registry.workspace = true
+ferry-runtime.workspace = true
+ferry-verify.workspace = true
 glob = "0.3"
 # YAML 1.2 event parser with positions; the maintained successor of
 # yaml-rust (serde_yaml is archived). See config/yaml.rs.
@@ -35,9 +39,17 @@ serde_json = "1"
 sha2 = "0.10"
 
 [dev-dependencies]
+ferry-core = { workspace = true, features = ["testkit"] }
+ferry-connector-postgres.workspace = true
+ferry-state = { workspace = true, features = ["postgres"] }
+deadpool-postgres = "0.14"
+futures = "0.3"
+testcontainers-modules.workspace = true
+tokio-postgres = "0.7"
 proptest = "1"
 tempfile = "3"
 insta = "1"
 jsonschema = { version = "0.58", default-features = false }
 # The round-trip test reads serialized JSON back, and column order matters.
 serde_json = { version = "1", features = ["preserve_order"] }
+tokio.workspace = true

@@ -238,7 +238,7 @@ impl Expression {
 
 /// `[*]` isn't SQL. Replace its `*` with an identifier of the same length,
 /// outside string literals and quoted names, and remember where.
-fn lex(text: &str) -> (String, Vec<usize>) {
+pub(crate) fn lex(text: &str) -> (String, Vec<usize>) {
     let chars: Vec<char> = text.chars().collect();
     let mut out = String::with_capacity(text.len());
     let mut stars = Vec::new();
@@ -269,7 +269,7 @@ fn lex(text: &str) -> (String, Vec<usize>) {
     (out, stars)
 }
 
-fn line_starts(text: &str) -> Vec<usize> {
+pub(crate) fn line_starts(text: &str) -> Vec<usize> {
     std::iter::once(0)
         .chain(
             text.chars()
@@ -281,7 +281,7 @@ fn line_starts(text: &str) -> Vec<usize> {
 }
 
 /// sqlparser reports `... at Line: 1, Column: 7`; turn that into a span.
-fn syntax_error(
+pub(crate) fn syntax_error(
     error: ParserError,
     text_len: usize,
     line_starts: &[usize],
