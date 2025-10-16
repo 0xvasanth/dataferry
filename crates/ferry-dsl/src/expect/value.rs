@@ -178,7 +178,9 @@ impl Value {
                     return Ok(Value::int(0));
                 };
                 let (q, r) = (unscaled / unit, unscaled % unit);
-                let q = if r.abs() * 2 >= unit {
+                // `|r| * 2 >= unit` without overflowing at `unit = 10^38`.
+                let half_or_more = r.unsigned_abs() >= unit.unsigned_abs() - r.unsigned_abs();
+                let q = if half_or_more {
                     q + unscaled.signum()
                 } else {
                     q
@@ -267,8 +269,15 @@ pub fn values(array: &ArrayRef) -> Result<Vec<Value>, String> {
             .map(|i| if array.is_valid(i) { f(i) } else { Value::Null })
             .collect()
     };
+    // Not the safe cast: a value that doesn't fit must be an error, never
+    // a null that an aggregate would skip.
+    let options = arrow_cast::CastOptions {
+        safe: false,
+        ..Default::default()
+    };
     let cast = |to: &DataType| {
-        arrow_cast::cast(array, to).map_err(|e| format!("reading {}: {e}", array.data_type()))
+        arrow_cast::cast_with_options(array, to, &options)
+            .map_err(|e| format!("reading {}: {e}", array.data_type()))
     };
     Ok(match array.data_type() {
         dt if dt.is_integer() => {
@@ -481,6 +490,22 @@ mod tests {
             Value::Float { value: 2.5 }.round(0).unwrap(),
             Value::Float { value: 3.0 }
         );
+        // Dropping 38 digits: twice the remainder doesn't fit in an i128.
+        let nine = 9 * 10_i128.pow(37);
+        let tiny = Value::Number {
+            unscaled: nine,
+            scale: 38,
+        };
+        assert_eq!(tiny.round(0).unwrap(), n("1"));
+        assert_eq!(
+            Value::int(-nine).round(-38).unwrap(),
+            Value::int(-(10_i128.pow(38)))
+        );
+        let under_half = Value::Number {
+            unscaled: 4 * 10_i128.pow(37),
+            scale: 38,
+        };
+        assert_eq!(under_half.round(0).unwrap(), n("0"));
     }
 
     #[test]
@@ -499,6 +524,21 @@ mod tests {
         assert_eq!(values(&floats).unwrap(), [Value::Float { value: 0.5 }]);
         let text: ArrayRef = Arc::new(StringArray::from(vec!["b"]));
         assert_eq!(values(&text).unwrap(), [Value::Text { value: "b".into() }]);
+        // A Decimal256 beyond 38 digits is an error, not a null.
+        let huge = arrow_buffer::i256::from_i128(i128::MAX)
+            .wrapping_mul(arrow_buffer::i256::from_i128(10));
+        let huge: ArrayRef = Arc::new(
+            arrow_array::Decimal256Array::from(vec![huge])
+                .with_precision_and_scale(76, 0)
+                .unwrap(),
+        );
+        assert!(values(&huge).is_err());
+        let fits: ArrayRef = Arc::new(
+            arrow_array::Decimal256Array::from(vec![arrow_buffer::i256::from_i128(-1250)])
+                .with_precision_and_scale(50, 2)
+                .unwrap(),
+        );
+        assert_eq!(values(&fits).unwrap(), [n("-12.50")]);
         let bools: ArrayRef = Arc::new(arrow_array::BooleanArray::from(vec![true]));
         assert!(values(&bools).is_err());
     }
