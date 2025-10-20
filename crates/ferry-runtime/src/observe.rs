@@ -1,18 +1,22 @@
-//! A hook that sees what each partition writes, for the verifier (A8).
+//! A hook that sees what each partition reads and writes, for the
+//! verifier (A8) and `expect:` assertions (B8).
 //!
 //! The verifier checksums rows at write time and compares the sum with a
 //! read-back of the target. It needs every transform output a partition
 //! writes, and a point before the commit to record what it saw, so the
 //! record holds under every strategy, exactly like the rows the runner
-//! records in the state store.
+//! records in the state store. Source-side aggregates
+//! (`source.sum(total * 100)`) also need the driver rows as the source
+//! returned them, which a [`ReadObserver`] is shown.
 
+use arrow_array::RecordBatch;
 use async_trait::async_trait;
 use ferry_core::{Lease, Result, TransformOutput};
 use ferry_registry::state::{PartitionRows, RunId};
 
 use crate::flow::Flow;
 
-/// Watches the runner's writes. Set with
+/// Watches the runner's reads and writes. Set with
 /// [`Runner::with_observer`](crate::Runner::with_observer).
 #[async_trait]
 pub trait WriteObserver: Send + Sync {
@@ -30,6 +34,12 @@ pub trait WriteObserver: Send + Sync {
 /// [`finish`](PartitionObserver::finish) when the attempt is abandoned.
 #[async_trait]
 pub trait PartitionObserver: Send {
+    /// What sees this attempt's driver rows as they are read, if anything.
+    /// Asked once, before the partition's inputs are opened.
+    fn reader(&mut self) -> Option<Box<dyn ReadObserver>> {
+        None
+    }
+
     /// Each transform output, after it passed
     /// [`TransformOutput::validate`], in order, before its rows are
     /// written. An error fails the partition.
@@ -42,4 +52,15 @@ pub trait PartitionObserver: Send {
     /// without its record; `FerryError::StaleLease` gives the partition up
     /// like a lost lease.
     async fn finish(self: Box<Self>, rows: &PartitionRows) -> Result<()>;
+}
+
+/// Sees one attempt's driver rows at read time: every batch the driver's
+/// source returned, in order, before the transform plan sees it. So a batch
+/// is always shown before any [`TransformOutput`] that accounts for its
+/// records. Joined inputs of a merge are not shown. Runs on the task that
+/// reads the source, not the one that writes.
+pub trait ReadObserver: Send {
+    /// One driver batch. An error ends the driver's stream with it, which
+    /// fails the partition.
+    fn batch(&mut self, batch: &RecordBatch) -> Result<()>;
 }

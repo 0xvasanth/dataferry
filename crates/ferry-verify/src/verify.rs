@@ -258,7 +258,7 @@ impl Verifier {
         let counts = self.counts(&totals, &done, &mut problems);
         let tables = self.tables(&totals, &done, &mut problems).await;
         let constraints = self.constraints(&mut problems).await;
-        let assertions = self.assertions(&done, &mut problems).await;
+        let assertions = self.assertions(run, &done, &mut problems).await;
 
         let status = if !complete {
             Status::Incomplete
@@ -498,17 +498,21 @@ impl Verifier {
 
     async fn assertions(
         &self,
+        run: &RunId,
         done: &BTreeMap<&str, Vec<PartitionRecord>>,
         problems: &mut Vec<String>,
     ) -> Vec<AssertionCheck> {
         let mut checks = Vec::new();
         for (flow, assertion) in &self.assertions {
+            let partitions = done.get(flow.as_str()).map(Vec::as_slice).unwrap_or(&[]);
             let mut records = RecordCounts::default();
-            for r in done.get(flow.as_str()).into_iter().flatten() {
+            for r in partitions {
                 records.add(&r.records);
             }
             let ctx = AssertionContext {
+                run,
                 flow,
+                partitions,
                 target: self.target.as_ref(),
                 records,
             };

@@ -1735,10 +1735,13 @@ dependencies = [
  "datafusion-optimizer",
  "datafusion-physical-expr",
  "datafusion-sql",
+ "deadpool-postgres",
+ "ferry-connector-postgres",
  "ferry-core",
  "ferry-registry",
  "ferry-runtime",
  "ferry-state",
+ "ferry-verify",
  "futures",
  "glob",
  "insta",
@@ -1750,7 +1753,9 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "tempfile",
+ "testcontainers-modules",
  "tokio",
+ "tokio-postgres",
  "uuid",
 ]
 

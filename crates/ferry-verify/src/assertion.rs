@@ -7,11 +7,13 @@
 //! [`AssertionContext::target`], and source-side values accumulated at
 //! read time over the driver records the run wrote.
 //!
-//! Today the context exposes one source-side value,
+//! The context exposes one source-side value itself,
 //! [`AssertionContext::source_count`] (`source.count()`). Source
 //! aggregates over driver-scope expressions (`source.sum(total * 100)`)
-//! need an accumulator fed with driver rows at read time, which B8 adds
-//! through the runner's write observer.
+//! are accumulated at read time by B8's own observer, recorded per
+//! partition attempt like a [`PartitionRecord`]; an assertion sums the
+//! records of [`AssertionContext::partitions`], the attempts that
+//! committed.
 
 use std::cmp::Ordering;
 use std::fmt;
@@ -20,7 +22,9 @@ use async_trait::async_trait;
 use ferry_core::Result;
 use serde::Serialize;
 
-use crate::log::RecordCounts;
+use ferry_registry::state::RunId;
+
+use crate::log::{PartitionRecord, RecordCounts};
 use crate::target::{Aggregate, Scalar, Target};
 
 /// One compiled `expect:` assertion of one flow.
@@ -40,7 +44,9 @@ pub trait CompiledAssertion: Send + Sync {
 
 /// What an assertion can see.
 pub struct AssertionContext<'a> {
+    pub(crate) run: &'a RunId,
     pub(crate) flow: &'a str,
+    pub(crate) partitions: &'a [PartitionRecord],
     pub(crate) target: &'a dyn Target,
     pub(crate) records: RecordCounts,
 }
@@ -49,6 +55,19 @@ impl AssertionContext<'_> {
     /// The flow the assertion belongs to.
     pub fn flow(&self) -> &str {
         self.flow
+    }
+
+    /// The run being verified.
+    pub fn run(&self) -> &RunId {
+        self.run
+    }
+
+    /// The write-time record of each of the flow's done partitions: the
+    /// attempt that committed it, with its lease epoch. A done partition
+    /// with no record is a problem the verifier reports itself, and is
+    /// not in this list.
+    pub fn partitions(&self) -> &[PartitionRecord] {
+        self.partitions
     }
 
     /// A target-side aggregate, queried now.

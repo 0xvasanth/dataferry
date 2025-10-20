@@ -2,6 +2,7 @@
 
 pub mod compile;
 pub mod config;
+pub mod expect;
 pub mod expr;
 pub mod typecheck;
 pub mod types;

@@ -9,8 +9,9 @@
 //! other strategy the runner marks the partition done after the commit
 //! returns, and a crash in between re-runs a partition the strategy makes
 //! safe to re-run. The rows a partition read are recorded before the
-//! commit, under every strategy, and so is what a [`WriteObserver`] (the
-//! verifier's write-time checksums, A8) saw the partition write.
+//! commit, under every strategy, and so is what each [`WriteObserver`] (the
+//! verifier's write-time checksums, A8; source-side aggregates for
+//! `expect:`, B8) saw the partition read and write.
 //!
 //! While a partition is processed its lease is renewed every
 //! [`Settings::heartbeat`]. If the store says the lease was superseded, or
@@ -45,6 +46,6 @@ mod work;
 pub use budget::Budget;
 pub use error::RunError;
 pub use flow::{Flow, Input};
-pub use observe::{PartitionObserver, WriteObserver};
+pub use observe::{PartitionObserver, ReadObserver, WriteObserver};
 pub use runner::{PartitionFailure, RunReport, Runner};
 pub use settings::{DEFAULT_MEMORY_BUDGET, DEFAULT_PARTITION_ROWS, Settings};
