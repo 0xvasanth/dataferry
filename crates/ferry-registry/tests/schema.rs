@@ -54,6 +54,7 @@ impl Connector for PgLike {
                     IdempotencyStrategy::DeletePartitionThenInsert,
                 ])) as _
             }),
+            finalizer: None,
         })
     }
 
@@ -88,6 +89,7 @@ impl Connector for MongoLike {
         Ok(Endpoints {
             source: Some(Arc::new(MemSource::new())),
             sink: None,
+            finalizer: None,
         })
     }
 
@@ -141,6 +143,7 @@ impl Connector for Tuned {
         Ok(Endpoints {
             source: Some(Arc::new(MemSource::new())),
             sink: None,
+            finalizer: None,
         })
     }
 

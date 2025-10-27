@@ -82,6 +82,7 @@ impl PostgresConnector {
                 true => Some(Arc::new(sink()?) as _),
                 false => None,
             },
+            finalizer: None,
         })
     }
 }

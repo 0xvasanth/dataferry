@@ -13,8 +13,8 @@ use ferry_core::{
     TargetTable, WriteMode,
 };
 use ferry_registry::{
-    BuildContext, BuildError, Connector, ConnectorRegistry, Endpoints, RawConnection,
-    RegisterError, Roles, Secret,
+    BuildContext, BuildError, Connector, ConnectorRegistry, Endpoints, Finalized, Finalizer,
+    RawConnection, RegisterError, Roles, Secret,
 };
 use futures::TryStreamExt;
 use schemars::JsonSchema;
@@ -116,6 +116,7 @@ impl Connector for Archive {
         Ok(Endpoints {
             source: Some(Arc::new(MemSource::new())),
             sink: None,
+            finalizer: None,
         })
     }
 
@@ -141,11 +142,48 @@ impl Connector for Greedy {
         Ok(Endpoints {
             source: Some(Arc::new(MemSource::new())),
             sink: Some(Arc::new(MemSink::new(Vec::new()))),
+            finalizer: None,
         })
     }
 
     fn describe(&self, _: &ArchiveOptions) -> String {
         "greedy".into()
+    }
+}
+
+/// A source-only connector that also returns a finalizer, which can only
+/// restore what a sink's `prepare` changed.
+struct StrayFinalizer;
+
+struct NoOp;
+
+#[async_trait::async_trait]
+impl Finalizer for NoOp {
+    async fn finalize(&self, _: &TargetSchema) -> ferry_core::Result<Finalized> {
+        Ok(Finalized::default())
+    }
+}
+
+impl Connector for StrayFinalizer {
+    const TYPE: &'static str = "stray";
+    const ROLES: Roles = Roles::SOURCE;
+    type Options = ArchiveOptions;
+
+    fn build(
+        &self,
+        _: &BuildContext<'_>,
+        _: ArchiveOptions,
+        _: Roles,
+    ) -> Result<Endpoints, BuildError> {
+        Ok(Endpoints {
+            source: Some(Arc::new(MemSource::new())),
+            sink: None,
+            finalizer: Some(Arc::new(NoOp)),
+        })
+    }
+
+    fn describe(&self, _: &ArchiveOptions) -> String {
+        "stray".into()
     }
 }
 
@@ -268,6 +306,20 @@ fn a_connector_that_returns_unasked_endpoints_is_reported_as_a_bug() {
         .unwrap_err();
     assert!(
         err.to_string().contains("connector bug") && err.to_string().contains("asked for source"),
+        "{err}"
+    );
+}
+
+#[test]
+fn a_finalizer_without_a_sink_is_reported_as_a_bug() {
+    let mut registry = ConnectorRegistry::new();
+    registry.register(StrayFinalizer);
+    let err = registry
+        .build(&conn("s", "stray", json!({})), Roles::SOURCE)
+        .unwrap_err();
+    assert!(
+        err.to_string().contains("connector bug")
+            && err.to_string().contains("a finalizer without a sink"),
         "{err}"
     );
 }
@@ -431,6 +483,7 @@ fn replace_swaps_a_registered_type_on_purpose() {
             Ok(Endpoints {
                 source: Some(Arc::new(MemSource::new())),
                 sink: None,
+                finalizer: None,
             })
         }
         fn describe(&self, _: &ArchiveOptions) -> String {
@@ -570,6 +623,7 @@ impl Connector for FreeForm {
         Ok(Endpoints {
             source: Some(Arc::new(MemSource::new())),
             sink: None,
+            finalizer: None,
         })
     }
 
