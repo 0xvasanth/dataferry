@@ -6,6 +6,7 @@
 #![allow(dead_code)]
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -296,6 +297,7 @@ type LatencyHook = Arc<dyn Fn(&Event) -> Duration + Send + Sync>;
 /// `on_renew` can answer a renewal instead of the store. `reply_after`
 /// makes leases and renewals slow to come back: they are logged when the
 /// store took them, and returned as much later as it says for that event.
+/// `crash` makes it a dead process's store.
 #[derive(Clone)]
 pub struct SpyStore {
     inner: Arc<dyn StateStore>,
@@ -303,6 +305,18 @@ pub struct SpyStore {
     on_renew: Arc<Mutex<Option<RenewHook>>>,
     on_mark_done: Arc<Mutex<Option<Hook>>>,
     latency: Arc<Mutex<Option<LatencyHook>>>,
+    dead: Arc<AtomicBool>,
+    /// Calls inside the wrapped store right now.
+    in_store: Arc<AtomicUsize>,
+}
+
+/// Counts a call as inside the store until it is dropped.
+struct InStore(Arc<AtomicUsize>);
+
+impl Drop for InStore {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::SeqCst);
+    }
 }
 
 impl SpyStore {
@@ -313,7 +327,35 @@ impl SpyStore {
             on_renew: Arc::default(),
             on_mark_done: Arc::default(),
             latency: Arc::default(),
+            dead: Arc::default(),
+            in_store: Arc::default(),
         }
+    }
+
+    /// From now on no call reaches the store, as if the process that holds
+    /// it was killed; returns once the calls already inside it are done.
+    ///
+    /// Dropping a runner aborts its tasks, but a task in the middle of a
+    /// store call (a heartbeat's renewal, say) finishes it first, and could
+    /// still be writing when the test resumes the run with a new store.
+    pub async fn crash(&self) {
+        self.dead.store(true, Ordering::SeqCst);
+        while self.in_store.load(Ordering::SeqCst) > 0 {
+            tokio::time::sleep(Duration::from_millis(1)).await;
+        }
+    }
+
+    /// Runs `call` on the store, unless it crashed: then never.
+    async fn call<T>(&self, call: impl std::future::Future<Output = T>) -> T {
+        self.in_store.fetch_add(1, Ordering::SeqCst);
+        let guard = InStore(Arc::clone(&self.in_store));
+        if self.dead.load(Ordering::SeqCst) {
+            drop(guard);
+            return std::future::pending().await;
+        }
+        let out = call.await;
+        drop(guard);
+        out
     }
 
     pub fn reply_after(&self, latency: impl Fn(&Event) -> Duration + Send + Sync + 'static) {
@@ -344,19 +386,19 @@ impl SpyStore {
 #[async_trait]
 impl StateStore for SpyStore {
     async fn create_run(&self, run: NewRun) -> Result<RunId> {
-        self.inner.create_run(run).await
+        self.call(self.inner.create_run(run)).await
     }
     async fn load_run(&self, run: &RunId) -> Result<Option<RunRecord>> {
-        self.inner.load_run(run).await
+        self.call(self.inner.load_run(run)).await
     }
     async fn store_partitions(&self, run: &RunId, flow: &str, p: &[Partition]) -> Result<()> {
-        self.inner.store_partitions(run, flow, p).await
+        self.call(self.inner.store_partitions(run, flow, p)).await
     }
     async fn load_partitions(&self, run: &RunId, flow: &str) -> Result<Vec<Partition>> {
-        self.inner.load_partitions(run, flow).await
+        self.call(self.inner.load_partitions(run, flow)).await
     }
     async fn lease_next(&self, run: &RunId, flow: &str, ttl: Duration) -> Result<Option<Lease>> {
-        let lease = self.inner.lease_next(run, flow, ttl).await?;
+        let lease = self.call(self.inner.lease_next(run, flow, ttl)).await?;
         if let Some(lease) = &lease {
             self.log.push(Event::Leased(lease.clone()));
             self.reply(Event::Leased(lease.clone())).await;
@@ -368,7 +410,7 @@ impl StateStore for SpyStore {
         if let Some(answer) = hook.and_then(|hook| hook(lease)) {
             return answer;
         }
-        self.inner.renew(run, lease, ttl).await?;
+        self.call(self.inner.renew(run, lease, ttl)).await?;
         self.log.push(Event::Renewed(lease.clone()));
         self.reply(Event::Renewed(lease.clone())).await;
         Ok(())
@@ -378,34 +420,34 @@ impl StateStore for SpyStore {
         if let Some(hook) = hook {
             hook(lease).await;
         }
-        self.inner.mark_done(run, lease, summary).await?;
+        self.call(self.inner.mark_done(run, lease, summary)).await?;
         self.log.push(Event::MarkDone(lease.clone()));
         Ok(())
     }
     async fn mark_failed(&self, run: &RunId, lease: &Lease, error: &str) -> Result<()> {
-        self.inner.mark_failed(run, lease, error).await?;
+        self.call(self.inner.mark_failed(run, lease, error)).await?;
         self.log.push(Event::MarkFailed(lease.clone()));
         Ok(())
     }
     async fn record_rows(&self, run: &RunId, lease: &Lease, rows: &PartitionRows) -> Result<()> {
-        self.inner.record_rows(run, lease, rows).await?;
+        self.call(self.inner.record_rows(run, lease, rows)).await?;
         self.log.push(Event::RecordRows(lease.clone(), *rows));
         Ok(())
     }
     async fn is_done(&self, run: &RunId, partition: &PartitionId) -> Result<bool> {
-        self.inner.is_done(run, partition).await
+        self.call(self.inner.is_done(run, partition)).await
     }
     async fn counts(&self, run: &RunId) -> Result<PartitionCounts> {
-        self.inner.counts(run).await
+        self.call(self.inner.counts(run)).await
     }
     async fn flow_counts(&self, run: &RunId, flow: &str) -> Result<PartitionCounts> {
-        self.inner.flow_counts(run, flow).await
+        self.call(self.inner.flow_counts(run, flow)).await
     }
     async fn reset_failed(&self, run: &RunId) -> Result<u64> {
-        self.inner.reset_failed(run).await
+        self.call(self.inner.reset_failed(run)).await
     }
     async fn totals(&self, run: &RunId) -> Result<RunTotals> {
-        self.inner.totals(run).await
+        self.call(self.inner.totals(run)).await
     }
 }
 

@@ -265,7 +265,8 @@ async fn resume_reads_back_the_stored_partitions_after_a_crash() {
         () = stalled.notified() => {}
     }
     drop(runner);
-    assert_eq!(fx.store.counts(&run).await.unwrap().done, 3);
+    fx.store.crash().await;
+    assert_eq!(fx.reopened().counts(&run).await.unwrap().done, 3);
 
     fx.spy.on_commit(|_| async {}.boxed());
     // A bigger partition size on resume changes nothing: partitions were

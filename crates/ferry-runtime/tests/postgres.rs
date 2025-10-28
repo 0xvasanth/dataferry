@@ -735,6 +735,7 @@ async fn a_crash_between_the_commit_and_mark_done_re_runs_the_partition_without_
         () = crashed => {}
     }
     drop(runner);
+    spy.crash().await;
     // Rows of partitions that committed but were never recorded are in
     // the target already.
     let committed: i64 = {
