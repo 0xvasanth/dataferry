@@ -69,13 +69,57 @@ pub struct Orphans {
 impl fmt::Display for FinalizeProblem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "`{}`: `{}`: {}", self.table, self.object, self.message)?;
-        if let Some(orphans) = &self.orphans {
-            write!(f, " ({}", orphans.keys.join("; "))?;
-            if orphans.count > orphans.keys.len() as u64 {
-                write!(f, "; {} more", orphans.count - orphans.keys.len() as u64)?;
-            }
-            write!(f, ")")?;
+        let Some(orphans) = &self.orphans else {
+            return Ok(());
+        };
+        let mut parts = orphans.keys.clone();
+        let unlisted = orphans.count.saturating_sub(orphans.keys.len() as u64);
+        if unlisted > 0 {
+            parts.push(match parts.is_empty() {
+                true => format!("{unlisted} rows"),
+                false => format!("{unlisted} more"),
+            });
+        }
+        if !parts.is_empty() {
+            write!(f, " ({})", parts.join("; "))?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn problem(orphans: Option<Orphans>) -> String {
+        FinalizeProblem {
+            table: "order_items".into(),
+            object: "order_items_order_fk".into(),
+            message: "rows reference no parent".into(),
+            orphans,
+        }
+        .to_string()
+    }
+
+    #[test]
+    fn a_problem_lists_the_orphans_it_has_keys_for_and_counts_the_rest() {
+        let head = "`order_items`: `order_items_order_fk`: rows reference no parent";
+        assert_eq!(problem(None), head);
+        let orphans = |count, keys: &[&str]| {
+            Some(Orphans {
+                count,
+                keys: keys.iter().map(|k| k.to_string()).collect(),
+            })
+        };
+        assert_eq!(
+            problem(orphans(2, &["id=1", "id=2"])),
+            format!("{head} (id=1; id=2)")
+        );
+        assert_eq!(
+            problem(orphans(25, &["id=1", "id=2"])),
+            format!("{head} (id=1; id=2; 23 more)")
+        );
+        // A count without keys reads as a count, with no stray separator.
+        assert_eq!(problem(orphans(5, &[])), format!("{head} (5 rows)"));
     }
 }
