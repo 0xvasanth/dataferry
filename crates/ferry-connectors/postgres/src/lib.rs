@@ -5,6 +5,7 @@ mod columns;
 mod connector;
 mod ddl;
 mod decode;
+mod deferred;
 mod encode;
 mod json;
 mod pg_type;
@@ -14,5 +15,6 @@ mod source;
 mod tls;
 
 pub use connector::{PostgresConnector, PostgresOptions};
+pub use deferred::{ForeignKeys, LoadOptions};
 pub use sink::PostgresSink;
 pub use source::PostgresSource;

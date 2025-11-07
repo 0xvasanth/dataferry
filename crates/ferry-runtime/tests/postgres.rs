@@ -452,6 +452,7 @@ fn flows(sink: Arc<dyn Sink>) -> Vec<Flow> {
         sink: Arc::clone(&sink),
         target: TargetSchema::new(vec![table(&entity)]).unwrap(),
         mode: WriteMode::Insert,
+        finalizer: None,
         depends_on,
     };
     vec![

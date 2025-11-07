@@ -95,6 +95,7 @@ fn flow() -> Flow {
         sink: Arc::new(MemSink::new(Vec::new())),
         target: TargetSchema::new(vec![table, items_table()]).unwrap(),
         mode: WriteMode::Insert,
+        finalizer: None,
         depends_on: Vec::new(),
     }
 }

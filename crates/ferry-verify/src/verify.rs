@@ -7,9 +7,9 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use ferry_core::{ForeignKey, Result, TargetSchema, TargetTable};
-use ferry_registry::StateStore;
 use ferry_registry::state::{PartitionCounts, RunId};
-use ferry_runtime::Flow;
+use ferry_registry::{FinalizeProblem, StateStore};
+use ferry_runtime::{Flow, RunReport};
 use futures::StreamExt;
 use serde::Serialize;
 
@@ -30,6 +30,7 @@ pub struct Verifier {
     target: Arc<dyn Target>,
     flows: Vec<(String, TargetSchema)>,
     assertions: Vec<(String, Arc<dyn CompiledAssertion>)>,
+    finalized: Vec<(String, FinalizeProblem)>,
 }
 
 /// The overall outcome.
@@ -57,6 +58,9 @@ pub struct Verification {
     pub tables: Vec<TableCheck>,
     pub constraints: Vec<ConstraintCheck>,
     pub assertions: Vec<AssertionCheck>,
+    /// What the sinks' finalize couldn't restore (A6). Each one fails
+    /// verification.
+    pub finalize: Vec<FinalizeCheck>,
     /// Every failed check, as one line each.
     pub problems: Vec<String>,
     #[serde(skip)]
@@ -170,6 +174,23 @@ pub struct ConstraintCheck {
     pub passed: bool,
 }
 
+/// An index or constraint finalize couldn't restore as it was, such as a
+/// foreign key the loaded rows break.
+#[derive(Debug, Clone, Serialize)]
+pub struct FinalizeCheck {
+    pub flow: String,
+    pub table: String,
+    /// The index or constraint.
+    pub object: String,
+    pub message: String,
+    /// Rows that reference no parent, for a broken foreign key.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub orphans: Option<u64>,
+    /// The keys of some of them.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub orphan_keys: Vec<String>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct AssertionCheck {
     pub flow: String,
@@ -198,7 +219,20 @@ impl Verifier {
                 .map(|f| (f.name.clone(), f.target.clone()))
                 .collect(),
             assertions: Vec::new(),
+            finalized: Vec::new(),
         }
+    }
+
+    /// Fails verification on what the run's finalize couldn't restore
+    /// (A6): a foreign key the loaded rows break, an index that couldn't
+    /// be recreated. The verifier's own constraint checks cover the keys a
+    /// target schema declares; this covers every key the sink dropped.
+    pub fn with_finalized(mut self, report: &RunReport) -> Self {
+        self.finalized = report
+            .finalize_problems()
+            .map(|(flow, p)| (flow.to_owned(), p.clone()))
+            .collect();
+        self
     }
 
     /// Evaluates `assertion`, one of `flow`'s `expect:` entries.
@@ -259,6 +293,7 @@ impl Verifier {
         let tables = self.tables(&totals, &done, &mut problems).await;
         let constraints = self.constraints(&mut problems).await;
         let assertions = self.assertions(&done, &mut problems).await;
+        let finalize = self.finalize(&mut problems);
 
         let status = if !complete {
             Status::Incomplete
@@ -285,6 +320,7 @@ impl Verifier {
             tables,
             constraints,
             assertions,
+            finalize,
             problems,
             started,
             finished: SystemTime::now(),
@@ -494,6 +530,27 @@ impl Verifier {
             }
         }
         checks
+    }
+
+    fn finalize(&self, problems: &mut Vec<String>) -> Vec<FinalizeCheck> {
+        self.finalized
+            .iter()
+            .map(|(flow, p)| {
+                problems.push(format!("flow `{flow}`: finalize: {p}"));
+                FinalizeCheck {
+                    flow: flow.clone(),
+                    table: p.table.clone(),
+                    object: p.object.clone(),
+                    message: p.message.clone(),
+                    orphans: p.orphans.as_ref().map(|o| o.count),
+                    orphan_keys: p
+                        .orphans
+                        .as_ref()
+                        .map(|o| o.keys.clone())
+                        .unwrap_or_default(),
+                }
+            })
+            .collect()
     }
 
     async fn assertions(

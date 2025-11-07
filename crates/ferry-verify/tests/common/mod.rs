@@ -209,6 +209,7 @@ pub fn identity_flow(
         sink,
         target: TargetSchema::new(vec![table_of(entity, target)]).unwrap(),
         mode: WriteMode::Insert,
+        finalizer: None,
         depends_on: Vec::new(),
     }
 }
@@ -253,6 +254,7 @@ impl SplitPlan {
             sink,
             target: TargetSchema::new(vec![table_of(entity, "orders"), notes]).unwrap(),
             mode: WriteMode::Insert,
+            finalizer: None,
             depends_on: Vec::new(),
         }
     }

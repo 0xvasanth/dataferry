@@ -109,6 +109,7 @@ pub fn identity_flow(
         sink,
         target: TargetSchema::new(vec![table(target, order_fields(), "id")]).unwrap(),
         mode: WriteMode::Insert,
+        finalizer: None,
         depends_on: Vec::new(),
     }
 }

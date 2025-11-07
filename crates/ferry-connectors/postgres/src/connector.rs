@@ -20,6 +20,7 @@ use serde::Deserialize;
 use tokio_postgres::Client;
 use tokio_postgres::config::{Config, Host};
 
+use crate::deferred::{ForeignKeys, LoadOptions};
 use crate::pool;
 use crate::sink::PostgresSink;
 use crate::source::PostgresSource;
@@ -42,6 +43,17 @@ pub struct PostgresOptions {
     /// The schema read from as a source and written to as a sink.
     #[serde(default = "default_schema")]
     pub schema: String,
+    /// As a sink: drop the secondary indexes of target tables that already
+    /// exist (not unique, not backing a constraint) before a load, and
+    /// recreate them after it. Faster loads into indexed tables.
+    #[serde(default)]
+    pub drop_indexes: bool,
+    /// As a sink: `defer` (the default) drops the foreign keys of target
+    /// tables that already exist for the load, then recreates and validates
+    /// them, reporting rows that break one. `enforce` keeps them during the
+    /// load.
+    #[serde(default)]
+    pub foreign_keys: ForeignKeys,
 }
 
 fn default_schema() -> String {
@@ -74,15 +86,20 @@ impl PostgresConnector {
         sink: impl FnOnce() -> Result<PostgresSink, BuildError>,
     ) -> Result<Endpoints, BuildError> {
         let (config, tls) = parsed;
+        // One sink is both: finalize restores what its prepare dropped.
+        let sink = match wants.sink {
+            true => Some(Arc::new(sink()?.with_load(LoadOptions {
+                drop_indexes: options.drop_indexes,
+                foreign_keys: options.foreign_keys,
+            }))),
+            false => None,
+        };
         Ok(Endpoints {
             source: wants
                 .source
                 .then(|| Arc::new(PostgresSource::from_parts(config, tls, &options.schema)) as _),
-            sink: match wants.sink {
-                true => Some(Arc::new(sink()?) as _),
-                false => None,
-            },
-            finalizer: None,
+            finalizer: sink.clone().map(|s| s as _),
+            sink: sink.map(|s| s as _),
         })
     }
 }
@@ -187,6 +204,8 @@ mod tests {
             url: Secret::new(url),
             password: None,
             schema: "public".into(),
+            drop_indexes: false,
+            foreign_keys: ForeignKeys::Defer,
         }
     }
 

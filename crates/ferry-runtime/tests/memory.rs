@@ -194,6 +194,7 @@ async fn peak_heap(rows: i64, budget: u64) -> u64 {
         }])
         .unwrap(),
         mode: WriteMode::Insert,
+        finalizer: None,
         depends_on: Vec::new(),
     };
     let settings = Settings {

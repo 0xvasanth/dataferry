@@ -5,8 +5,8 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
 
 use ferry_core::{CoPartition, FerryError, Lease, Partition, PartitionHint, PartitionId, align};
-use ferry_registry::StateStore;
 use ferry_registry::state::{NewRun, PartitionCounts, RunId, RunTotals};
+use ferry_registry::{FinalizeProblem, Finalized, StateStore};
 use tokio::task::JoinSet;
 use tokio::time::Instant;
 
@@ -46,12 +46,24 @@ pub struct RunReport {
     /// Flows that didn't start because a flow they depend on has failed
     /// partitions.
     pub blocked: Vec<String>,
+    /// What each finalizer did, by flow: every flow with a finalizer whose
+    /// partitions are all done. A flow with failed or unfinished partitions
+    /// isn't finalized; a later resume or retry finalizes it.
+    pub finalized: BTreeMap<String, Finalized>,
 }
 
 impl RunReport {
     /// Every partition of every flow is done.
     pub fn is_complete(&self) -> bool {
         self.counts.pending == 0 && self.counts.leased == 0 && self.counts.failed == 0
+    }
+
+    /// Indexes and constraints finalize couldn't restore as they were, such
+    /// as a foreign key the loaded rows break, with the flow each is from.
+    pub fn finalize_problems(&self) -> impl Iterator<Item = (&str, &FinalizeProblem)> {
+        self.finalized
+            .iter()
+            .flat_map(|(flow, f)| f.problems.iter().map(move |p| (flow.as_str(), p)))
     }
 }
 
@@ -388,6 +400,7 @@ impl Coordinator {
         if let Some(fatal) = self.fatal {
             return Err(fatal);
         }
+        let finalized = self.finalize().await?;
         let store = &self.shared.store;
         let run = &self.shared.run;
         Ok(RunReport {
@@ -403,7 +416,35 @@ impl Coordinator {
                 .filter(|(_, s)| **s == State::Blocked)
                 .map(|(f, _)| f.flow.name.clone())
                 .collect(),
+            finalized,
         })
+    }
+
+    /// Finalizes every flow whose partitions are all done, after every
+    /// flow stopped, so a foreign key across flows is validated only once
+    /// both sides are loaded. A finalizer is idempotent: a flow finished by
+    /// an earlier execution is finalized again, which restores what a crash
+    /// between its `prepare` and its finalize left dropped.
+    async fn finalize(&self) -> Result<BTreeMap<String, Finalized>, RunError> {
+        let mut finalized = BTreeMap::new();
+        for (flow, state) in self.flows.iter().zip(&self.states) {
+            let flow = &flow.flow;
+            let Some(finalizer) = &flow.finalizer else {
+                continue;
+            };
+            if *state != State::Finished(true) {
+                continue;
+            }
+            let done = finalizer
+                .finalize(&flow.target)
+                .await
+                .map_err(|source| RunError::Flow {
+                    flow: flow.name.clone(),
+                    source,
+                })?;
+            finalized.insert(flow.name.clone(), done);
+        }
+        Ok(finalized)
     }
 
     /// Starts flows whose dependencies are all done, and blocks those with

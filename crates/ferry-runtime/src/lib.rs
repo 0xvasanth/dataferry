@@ -12,6 +12,10 @@
 //! commit, under every strategy, and so is what a [`WriteObserver`] (the
 //! verifier's write-time checksums, A8) saw the partition write.
 //!
+//! Once every partition of a flow is done, the runner calls its sink's
+//! [`Finalizer`], if it has one, to restore what `prepare` loosened for the
+//! load (A6), and reports what couldn't be restored.
+//!
 //! While a partition is processed its lease is renewed every
 //! [`Settings::heartbeat`]. If the store says the lease was superseded, or
 //! renewals keep failing until it would have expired, the transaction is
@@ -30,6 +34,7 @@
 //! [`Source::read`]: ferry_core::Source::read
 //! [`TransformPlan`]: ferry_core::TransformPlan
 //! [`SinkTxn::write`]: ferry_core::SinkTxn::write
+//! [`Finalizer`]: ferry_registry::Finalizer
 
 mod budget;
 mod error;

@@ -91,6 +91,7 @@ impl<'a> Report<'a> {
             "tables": v.tables,
             "constraints": v.constraints,
             "assertions": v.assertions,
+            "finalize": v.finalize,
             "dead_letter": dead_letter(v),
             "problems": v.problems,
         });
@@ -261,6 +262,28 @@ impl<'a> Report<'a> {
                     a.name,
                     a.expression,
                     pass(a.passed)
+                );
+            }
+        }
+
+        if !v.finalize.is_empty() {
+            let _ = writeln!(md, "\n## Finalize\n");
+            let _ = writeln!(
+                md,
+                "Indexes and constraints the load dropped or the target declares, that \
+                 couldn't be restored as they were.\n"
+            );
+            let _ = writeln!(md, "| Flow | Table | Object | Problem | Orphaned rows |");
+            let _ = writeln!(md, "|---|---|---|---|---|");
+            for f in &v.finalize {
+                let orphans = match f.orphans {
+                    Some(n) => format!("{n}: {}", f.orphan_keys.join("; ")),
+                    None => String::new(),
+                };
+                let _ = writeln!(
+                    md,
+                    "| {} | {} | {} | {} | {orphans} |",
+                    f.flow, f.table, f.object, f.message
                 );
             }
         }

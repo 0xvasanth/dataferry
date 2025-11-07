@@ -28,6 +28,14 @@
 //! source document leaves no stale row behind. Children of parents that are
 //! not in the batch are untouched.
 //!
+//! # Loading into tables that already exist
+//!
+//! `prepare` drops the foreign keys of target tables that already exist,
+//! and with `drop_indexes` their secondary indexes, recording each so
+//! [`Finalizer::finalize`] recreates it once the flow is loaded; see
+//! `crate::deferred` (A6). Finalize also creates the foreign keys the
+//! target schema declares, which tables are created without.
+//!
 //! # Exactly-once
 //!
 //! A sink built with a [`Ledger`] (through `StateCapable`) also offers
@@ -49,11 +57,12 @@ use ferry_core::{
     FerryError, IdempotencyStrategy, Lease, Partition, Result, Sink, SinkCaps, SinkTxn,
     TargetSchema, TargetTable, WriteMode, WriteSummary,
 };
-use ferry_registry::Ledger;
+use ferry_registry::{Finalized, Finalizer, Ledger};
 use futures::SinkExt;
 use tokio_postgres::Client;
 
 use crate::ddl::{self, column_list, qualified};
+use crate::deferred::{self, LoadOptions};
 use crate::encode::{self, Wire};
 use crate::pool;
 use crate::source::{connector_error, pg_error, quote};
@@ -68,6 +77,7 @@ pub struct PostgresSink {
     pool: Pool,
     schema: String,
     ledger: Option<Arc<dyn Ledger<Client>>>,
+    load: LoadOptions,
     prepared: Arc<Mutex<HashMap<String, Arc<Prepared>>>>,
 }
 
@@ -97,6 +107,14 @@ impl PostgresSink {
         Ok(Self::from_pool(pool::build(config, tls)?, schema, None))
     }
 
+    /// What `prepare` drops from target tables that already exist, for
+    /// finalize to put back. By default foreign keys are dropped and
+    /// indexes kept.
+    pub fn with_load(mut self, load: LoadOptions) -> Self {
+        self.load = load;
+        self
+    }
+
     pub(crate) fn from_pool(
         pool: Pool,
         schema: impl Into<String>,
@@ -106,6 +124,7 @@ impl PostgresSink {
             pool,
             schema: schema.into(),
             ledger,
+            load: LoadOptions::default(),
             prepared: Arc::default(),
         }
     }
@@ -194,13 +213,16 @@ impl Sink for PostgresSink {
         .map_err(pg_error)?;
 
         let mut prepared = Vec::new();
+        let mut existing = Vec::new();
         for t in target.tables() {
             let exists = !txn
                 .query(TABLE_EXISTS_SQL, &[&self.schema, &t.name])
                 .await
                 .map_err(pg_error)?
                 .is_empty();
-            if !exists {
+            if exists {
+                existing.push(t.name.as_str());
+            } else {
                 txn.batch_execute(&ddl::create_table(&self.schema, t))
                     .await
                     .map_err(pg_error)?;
@@ -261,6 +283,8 @@ impl Sink for PostgresSink {
             // Dropping the transaction rolls back any table created above.
             return Err(prepare_error(&self.schema, problems));
         }
+        // With the tables, so a crash leaves each object or its record.
+        deferred::drop_for_load(&txn, &self.schema, &existing, self.load).await?;
         txn.commit().await.map_err(pg_error)?;
 
         let mut map = self.prepared.lock().unwrap_or_else(|e| e.into_inner());
@@ -327,6 +351,14 @@ impl Sink for PostgresSink {
             strategies: self.strategies(),
             bulk_copy: true,
         })
+    }
+}
+
+#[async_trait]
+impl Finalizer for PostgresSink {
+    async fn finalize(&self, target: &TargetSchema) -> Result<Finalized> {
+        let mut client = pool::get(&self.pool).await?;
+        deferred::restore(&mut client, &self.schema, target).await
     }
 }
 

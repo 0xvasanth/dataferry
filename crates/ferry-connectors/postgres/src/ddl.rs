@@ -4,9 +4,10 @@
 //! Every canonical type has one Postgres type (see [`column_type`]); a
 //! table the sink creates uses exactly those. An existing table may also
 //! use a few equivalents that take the same binary values (`varchar` for
-//! `text`, `json` for `jsonb`). Foreign keys are not created: whether they
-//! are enforced during a load is decided elsewhere (A6). The sink only uses
-//! them to find the children of a parent table.
+//! `text`, `json` for `jsonb`). Foreign keys are not created with the
+//! tables: finalize adds them once the flow is loaded (A6, see
+//! `crate::deferred`). The sink also uses them to find the children of a
+//! parent table.
 
 use ferry_core::TargetTable;
 use ferry_core::types::{CanonicalField, CanonicalType};
