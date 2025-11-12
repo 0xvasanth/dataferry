@@ -1749,6 +1749,7 @@ name = "ferry-registry"
 version = "0.0.1"
 dependencies = [
  "arrow-array",
+ "arrow-schema",
  "async-trait",
  "ferry-core",
  "ferry-registry",
