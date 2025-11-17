@@ -288,13 +288,38 @@ impl<'a> Report<'a> {
             }
         }
 
+        let d = &v.dead_letters;
         let _ = writeln!(md, "\n## Dead letters\n");
         let _ = writeln!(
             md,
-            "{} rows dead-lettered. The dead-letter queue (A7) isn't built yet, so there is \
-             no per-reason summary.",
-            v.counts.dead_lettered
+            "{} records dead-lettered (from the state store); `{}` holds {} rows for this \
+             run: {}.",
+            v.counts.dead_lettered,
+            ferry_runtime::DLQ_TABLE,
+            d.rows,
+            pass(d.passed)
         );
+        if let Some(e) = &d.error {
+            let _ = writeln!(md, "\nCouldn't read them: {e}");
+        }
+        if !d.reasons.is_empty() {
+            let _ = writeln!(
+                md,
+                "\n| Flow | Target | Error | Records | Example `source_id` |"
+            );
+            let _ = writeln!(md, "|---|---|---|---|---|");
+            for r in &d.reasons {
+                let _ = writeln!(
+                    md,
+                    "| {} | {} | {} | {} | `{}` |",
+                    r.flow,
+                    r.target.as_deref().unwrap_or(""),
+                    r.error,
+                    r.count,
+                    r.example
+                );
+            }
+        }
         md
     }
 
@@ -318,10 +343,14 @@ fn pass(passed: bool) -> &'static str {
 }
 
 fn dead_letter(v: &Verification) -> serde_json::Value {
+    let d = &v.dead_letters;
     json!({
-        "status": "not_built",
+        "table": ferry_runtime::DLQ_TABLE,
         "dead_lettered": v.counts.dead_lettered,
-        "note": "The dead-letter queue (A7) isn't built yet: no per-reason summary.",
+        "rows": d.rows,
+        "reasons": d.reasons,
+        "error": d.error,
+        "passed": d.passed,
     })
 }
 

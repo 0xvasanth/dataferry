@@ -220,7 +220,10 @@ async fn a_split_run_verifies_counts_checksums_constraints_and_assertions() {
     assert_eq!(json["run"]["connections"][1]["type"], "postgres");
     assert_eq!(json["counts"]["flows"][0]["records"]["filtered"], 10);
     assert_eq!(json["tables"][0]["at_write"]["rows"], 40);
-    assert_eq!(json["dead_letter"]["status"], "not_built");
+    // on_error: fail, so nothing was dead-lettered and the table agrees.
+    assert_eq!(json["dead_letter"]["dead_lettered"], 0);
+    assert_eq!(json["dead_letter"]["rows"], 0);
+    assert_eq!(json["dead_letter"]["passed"], true);
     assert!(json["timings"]["run"]["seconds"].as_f64().unwrap() > 0.0);
     assert!(
         json["proves"]

@@ -4,17 +4,22 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
 
-use ferry_core::{CoPartition, FerryError, Lease, Partition, PartitionHint, PartitionId, align};
+use std::sync::atomic::AtomicU64;
+
+use ferry_core::{
+    CoPartition, FerryError, Lease, Partition, PartitionHint, PartitionId, TargetSchema, align,
+};
 use ferry_registry::state::{NewRun, PartitionCounts, RunId, RunTotals};
 use ferry_registry::{FinalizeProblem, Finalized, StateStore};
 use tokio::task::JoinSet;
 use tokio::time::Instant;
 
 use crate::budget::Budget;
+use crate::dlq::{DLQ_TABLE, dlq_table};
 use crate::error::RunError;
 use crate::flow::{Flow, namespaced, unit_reads, unnamespaced};
 use crate::observe::WriteObserver;
-use crate::settings::Settings;
+use crate::settings::{OnError, Settings};
 use crate::throttle::Throttle;
 use crate::work::{FlowRun, Outcome, Shared, Unit, process};
 
@@ -114,6 +119,11 @@ impl Runner {
                     input.entity.name()
                 )));
             }
+            if flow.target.table(DLQ_TABLE).is_some() {
+                return Err(invalid(format!(
+                    "`{DLQ_TABLE}` is the dead-letter table and can't be a target"
+                )));
+            }
             if let Some(t) = flow
                 .plan
                 .write_order()
@@ -205,6 +215,17 @@ impl Runner {
         for flow in &self.flows {
             flows.push(Arc::new(self.prepare(run, flow).await?));
         }
+        // What earlier executions dead-lettered counts against max_errors.
+        let dead_lettered = match self.settings.max_errors {
+            Some(_) => {
+                self.store
+                    .totals(run)
+                    .await
+                    .map_err(RunError::Store)?
+                    .dead_lettered
+            }
+            None => 0,
+        };
         let shared = Arc::new(Shared {
             store: Arc::clone(&self.store),
             run: run.clone(),
@@ -215,6 +236,8 @@ impl Runner {
                 self.settings.source_rows_per_sec,
             ),
             observer: self.observer.clone(),
+            dead_lettered: AtomicU64::new(dead_lettered),
+            errors: tokio::sync::Mutex::new(()),
         });
         Coordinator::new(shared, flows).run().await
     }
@@ -232,8 +255,18 @@ impl Runner {
                 mode: flow.mode,
                 strategies: format!("{:?}", caps.strategies),
             })?;
+        // Dead letters go to the flow's own sink, in the partition's
+        // transaction, so the sink prepares their table with the targets.
+        let target = match self.settings.on_error {
+            OnError::Fail => flow.target.clone(),
+            OnError::DeadLetter => {
+                let mut tables = flow.target.tables().to_vec();
+                tables.push(dlq_table());
+                TargetSchema::new(tables).map_err(in_flow)?
+            }
+        };
         flow.sink
-            .prepare(&flow.target, flow.mode)
+            .prepare(&target, flow.mode)
             .await
             .map_err(in_flow)?;
         if let Some(observer) = &self.observer {

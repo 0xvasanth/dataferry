@@ -17,7 +17,7 @@ use crate::assertion::{AssertionContext, AssertionOutcome, CompiledAssertion};
 use crate::checksum::{Checksum, ChecksumSpec};
 use crate::log::{PartitionRecord, RecordCounts, WriteLog};
 use crate::observer::table_specs;
-use crate::target::Target;
+use crate::target::{DeadLetters, Target};
 use crate::verifier_error;
 
 /// Verifies runs of a set of flows against one target.
@@ -61,6 +61,7 @@ pub struct Verification {
     /// What the sinks' finalize couldn't restore (A6). Each one fails
     /// verification.
     pub finalize: Vec<FinalizeCheck>,
+    pub dead_letters: DeadLetterCheck,
     /// Every failed check, as one line each.
     pub problems: Vec<String>,
     #[serde(skip)]
@@ -191,6 +192,18 @@ pub struct FinalizeCheck {
     pub orphan_keys: Vec<String>,
 }
 
+/// The run's dead letters as the dead-letter table holds them, by reason.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct DeadLetterCheck {
+    /// Rows for the run in the table.
+    pub rows: u64,
+    pub reasons: Vec<DeadLetters>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    /// The table holds exactly the state store's count.
+    pub passed: bool,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct AssertionCheck {
     pub flow: String,
@@ -294,6 +307,7 @@ impl Verifier {
         let constraints = self.constraints(&mut problems).await;
         let assertions = self.assertions(&done, &mut problems).await;
         let finalize = self.finalize(&mut problems);
+        let dead_letters = self.dead_letters(run, &totals, &mut problems).await;
 
         let status = if !complete {
             Status::Incomplete
@@ -321,6 +335,7 @@ impl Verifier {
             constraints,
             assertions,
             finalize,
+            dead_letters,
             problems,
             started,
             finished: SystemTime::now(),
@@ -551,6 +566,36 @@ impl Verifier {
                 }
             })
             .collect()
+    }
+
+    /// Every record the state store counts as dead-lettered has its row in
+    /// the dead-letter table, and no other row is there for the run.
+    async fn dead_letters(
+        &self,
+        run: &RunId,
+        totals: &ferry_registry::state::RunTotals,
+        problems: &mut Vec<String>,
+    ) -> DeadLetterCheck {
+        let mut check = DeadLetterCheck::default();
+        match self.target.dead_letters(&run.0).await {
+            Ok(reasons) => {
+                check.rows = reasons.iter().map(|r| r.count).sum();
+                check.reasons = reasons;
+                check.passed = check.rows == totals.dead_lettered;
+                if !check.passed {
+                    problems.push(format!(
+                        "the state store recorded {} records dead-lettered, but the dead-letter \
+                         table holds {} rows for the run",
+                        totals.dead_lettered, check.rows
+                    ));
+                }
+            }
+            Err(e) => {
+                problems.push(format!("couldn't read the dead letters: {e}"));
+                check.error = Some(e.to_string());
+            }
+        }
+        check
     }
 
     async fn assertions(

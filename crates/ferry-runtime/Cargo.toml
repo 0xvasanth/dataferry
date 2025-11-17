@@ -19,10 +19,14 @@ testkit = ["dep:fastrand", "tokio/process"]
 ferry-core.workspace = true
 ferry-registry.workspace = true
 ferry-state.workspace = true
-arrow-array = "60"
+# chrono-tz: raw records with named time zones ("UTC") render as JSON.
+arrow-array = { version = "60", features = ["chrono-tz"] }
+arrow-json = "60"
+arrow-schema = "60"
 arrow-select = "60"
 async-trait = "0.1"
 futures = "0.3"
+serde_json = "1"
 thiserror = "2"
 tokio = { version = "1", features = ["rt", "sync", "time", "macros"] }
 fastrand = { version = "2", optional = true }
@@ -31,11 +35,8 @@ fastrand = { version = "2", optional = true }
 ferry-runtime = { path = ".", features = ["testkit"] }
 ferry-core = { workspace = true, features = ["testkit"] }
 ferry-state = { workspace = true, features = ["postgres"] }
-arrow-json = "60"
-arrow-schema = "60"
 deadpool-postgres = "0.14"
 peak_alloc = "0.3"
-serde_json = "1"
 tempfile = "3"
 tokio = { workspace = true, features = ["process", "test-util"] }
 tokio-postgres = "0.7"

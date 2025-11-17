@@ -12,6 +12,13 @@
 //! commit, under every strategy, and so is what a [`WriteObserver`] (the
 //! verifier's write-time checksums, A8) saw the partition write.
 //!
+//! A record the plan rejects (or a source can't read as its entity) fails
+//! its partition under `on_error: fail`. Under `on_error: dead_letter` it
+//! is written to [`DLQ_TABLE`] in the partition's own transaction, so a
+//! re-run replaces its dead letters instead of adding to them, and none of
+//! its rows land in any target (A7). `max_errors` is counted over the done
+//! partitions in the state store.
+//!
 //! Once every partition of a flow is done, the runner calls its sink's
 //! [`Finalizer`], if it has one, to restore what `prepare` loosened for the
 //! load (A6), and reports what couldn't be restored.
@@ -37,6 +44,7 @@
 //! [`Finalizer`]: ferry_registry::Finalizer
 
 mod budget;
+mod dlq;
 mod error;
 mod flow;
 mod observe;
@@ -48,8 +56,9 @@ mod throttle;
 mod work;
 
 pub use budget::Budget;
+pub use dlq::{DLQ_TABLE, dlq_table};
 pub use error::RunError;
 pub use flow::{Flow, Input};
 pub use observe::{PartitionObserver, WriteObserver};
 pub use runner::{PartitionFailure, RunReport, Runner};
-pub use settings::{DEFAULT_MEMORY_BUDGET, DEFAULT_PARTITION_ROWS, Settings};
+pub use settings::{DEFAULT_MEMORY_BUDGET, DEFAULT_PARTITION_ROWS, OnError, Settings};

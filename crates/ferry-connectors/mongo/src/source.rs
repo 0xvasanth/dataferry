@@ -17,7 +17,7 @@ use mongodb::results::CollectionType;
 use mongodb::{Client, Collection, Cursor};
 use tokio::sync::OnceCell;
 
-use crate::convert::to_batch;
+use crate::convert::to_batches;
 use crate::infer::{Shape, TextKind, TextKinds, text_kinds};
 use crate::tls;
 
@@ -27,8 +27,11 @@ use crate::tls;
 /// of them when the collection is no bigger than the sample). Fields of
 /// conflicting types become JSON variants, and missing fields are told apart
 /// from nulls through `_ferry_missing`. A document read later that doesn't
-/// fit the inferred schema fails the read with its `_id`, rather than being
-/// cast or dropped.
+/// fit the inferred schema is never cast or dropped: it is read as a row of
+/// a rejected batch ([`ferry_registry::rejected`]) naming its `_id` and the
+/// path, with the document as relaxed Extended JSON, which the runner
+/// dead-letters or fails on per `on_error`. A document whose `_id` doesn't
+/// fit fails the read.
 ///
 /// Collections whose `_id`s are all ObjectIds, strings or integers are split
 /// into `_id` ranges; others are read as one partition. Strings compare by
@@ -490,11 +493,12 @@ impl Source for MongoSource {
                 if docs.is_empty() {
                     return Ok(None);
                 }
-                let batch = to_batch(&entity, schema, &docs, &kinds)
+                let batches = to_batches(&entity, schema, &docs, &kinds)
                     .map_err(|e| connector_error(format!("{}: {e}", entity.name())))?;
-                Ok(Some((batch, st)))
+                Ok(Some((stream::iter(batches.into_iter().map(Ok)), st)))
             }
         })
+        .try_flatten()
         .boxed())
     }
 

@@ -25,6 +25,15 @@ pub struct Settings {
     /// Rows read per second, across every flow (`source_rows_per_sec`).
     /// `None` is unlimited.
     pub source_rows_per_sec: Option<u64>,
+    /// What a record the plan or the source rejects does to its partition
+    /// (`on_error`, 0003 §4). Default [`OnError::Fail`].
+    pub on_error: OnError,
+    /// Under `on_error: dead_letter`, how many records the run may
+    /// dead-letter (`max_errors`). The partition that dead-letters one more
+    /// fails, which stops the run. Counted over the run's done partitions in
+    /// the state store, so a re-run partition counts once. `None` is
+    /// unlimited.
+    pub max_errors: Option<u64>,
     /// How long a lease lasts without a heartbeat.
     pub lease_ttl: Duration,
     /// How often a worker renews its lease. Must be well under `lease_ttl`.
@@ -32,6 +41,19 @@ pub struct Settings {
     /// How often to look again when a flow's last partitions are leased by
     /// another worker (a crashed run's leases, until they expire).
     pub poll: Duration,
+}
+
+/// `on_error` (0003 §4). There is no `skip`: a record is never dropped
+/// without a trace.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum OnError {
+    /// The first rejected record fails its partition, which stops the run.
+    #[default]
+    Fail,
+    /// Rejected records go to `_ferry_dlq` on the flow's sink, in the
+    /// partition's transaction, and the run carries on until more than
+    /// `max_errors` are rejected.
+    DeadLetter,
 }
 
 pub const DEFAULT_MEMORY_BUDGET: u64 = 1 << 30;
@@ -45,6 +67,8 @@ impl Default for Settings {
             partition_rows: DEFAULT_PARTITION_ROWS,
             source_max_connections: None,
             source_rows_per_sec: None,
+            on_error: OnError::Fail,
+            max_errors: None,
             lease_ttl: Duration::from_secs(60),
             heartbeat: Duration::from_secs(20),
             poll: Duration::from_secs(1),
