@@ -416,6 +416,7 @@ fn runtime_flow(name: &str) -> Flow {
         .unwrap(),
         mode: WriteMode::Insert,
         depends_on: Vec::new(),
+        finalizer: None,
     }
 }
 

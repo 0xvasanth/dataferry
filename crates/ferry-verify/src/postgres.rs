@@ -13,7 +13,7 @@ use ferry_core::{
 };
 
 use crate::checksum::MICROS;
-use crate::target::{Aggregate, Scalar, Target};
+use crate::target::{Aggregate, DeadLetters, Scalar, Target};
 
 /// One schema of a Postgres database, as a sink wrote it.
 pub struct PgTarget {
@@ -182,6 +182,40 @@ impl Target for PgTarget {
             self.table(&fk.references_table)
         ))
         .await
+    }
+
+    async fn dead_letters(&self, run: &str) -> Result<Vec<DeadLetters>> {
+        let client = self.pool.get().await.map_err(|e| pg_error(e.to_string()))?;
+        let table = self.table(ferry_runtime::DLQ_TABLE);
+        let exists: Option<String> = client
+            .query_one("SELECT to_regclass($1)::text", &[&table])
+            .await
+            .map_err(|e| pg_error(db_message(&e)))?
+            .get(0);
+        if exists.is_none() {
+            return Ok(Vec::new());
+        }
+        let rows = client
+            .query(
+                &format!(
+                    "SELECT flow, target, error, count(*), min(source_id) FROM {table} \
+                     WHERE run = $1 GROUP BY flow, target, error \
+                     ORDER BY count(*) DESC, flow, target, error"
+                ),
+                &[&run],
+            )
+            .await
+            .map_err(|e| pg_error(db_message(&e)))?;
+        Ok(rows
+            .iter()
+            .map(|r| DeadLetters {
+                flow: r.get(0),
+                target: r.get(1),
+                error: r.get(2),
+                count: r.get::<_, i64>(3) as u64,
+                example: r.get(4),
+            })
+            .collect())
     }
 
     async fn aggregate(

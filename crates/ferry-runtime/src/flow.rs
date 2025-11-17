@@ -7,6 +7,7 @@ use ferry_core::{
     CoPartition, Entity, Partition, PartitionId, PartitionScope, Result, Sink, Source,
     TargetSchema, TransformPlan, WriteMode,
 };
+use ferry_registry::Finalizer;
 
 /// One flow, ready to run: the planner (B7) builds these from the config.
 #[derive(Clone)]
@@ -21,6 +22,9 @@ pub struct Flow {
     pub sink: Arc<dyn Sink>,
     /// The target tables, for [`Sink::prepare`].
     pub target: TargetSchema,
+    /// The sink's finalizer, if it has one (A6): run once every partition
+    /// of the flow is done, to restore what `prepare` loosened for the load.
+    pub finalizer: Option<Arc<dyn Finalizer>>,
     pub mode: WriteMode,
     /// Flows that must be done, every partition, before this one starts
     /// (0003 §7).

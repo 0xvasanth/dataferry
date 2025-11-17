@@ -90,6 +90,7 @@ impl Connector for Leaky {
             _ => Ok(Endpoints {
                 source: Some(Arc::new(MemSource::new())),
                 sink: None,
+                finalizer: None,
             }),
         }
     }

@@ -27,10 +27,12 @@ tokio-postgres = "0.7"
 twox-hash = { version = "2.1", default-features = false, features = ["xxhash3_128"] }
 
 [dev-dependencies]
+ferry-connector-mongo.workspace = true
 ferry-core = { workspace = true, features = ["testkit"] }
 ferry-state = { workspace = true, features = ["postgres"] }
 serde_json = "1"
 arrow-select = "60"
+mongodb = "3"
 tempfile = "3"
 tokio.workspace = true
 testcontainers-modules.workspace = true

@@ -15,6 +15,7 @@ use ferry_core::{
     CoPartition, Entity, FerryError, KeyValue, Partition, PartitionHint, PartitionId,
     PartitionScope, Source, align,
 };
+use ferry_registry::rejected::{is_rejected, rejected_rows};
 use futures::StreamExt;
 use mongodb::bson::spec::BinarySubtype;
 use mongodb::bson::{Binary, Bson, DateTime, Decimal128, Document, doc, oid::ObjectId};
@@ -312,44 +313,57 @@ async fn a_field_that_is_sometimes_a_string_lands_in_a_variant() {
 }
 
 #[tokio::test]
-async fn a_document_that_no_longer_fits_fails_the_read_naming_it() {
+async fn a_document_that_no_longer_fits_is_read_as_a_rejected_row_naming_it() {
     let db = mongo().await;
     db.insert(
         "readings",
         (0..10_i32).map(|i| doc! { "_id": i, "n": i }).collect(),
     )
     .await;
-    let source = db.source();
+    let source = db.source().with_batch_rows(4);
     let e = entity(&source, "readings").await;
     assert_eq!(e.field("n").unwrap().ty, CanonicalType::Int32);
 
-    // Written after discovery: neither may be cast or dropped.
-    for (doc, expected) in [
-        (doc! { "_id": 100_i32, "n": "late" }, "`n` holds String"),
-        (
+    // Written after discovery: none may be cast or dropped, and none may
+    // fail the partition the nine others share.
+    db.insert(
+        "readings",
+        vec![
+            doc! { "_id": 100_i32, "n": "late" },
             doc! { "_id": 101_i32, "n": 1_i32, "extra": true },
-            "field `extra` is not in the schema",
-        ),
-        (doc! { "_id": 102_i32, "n": 1.5 }, "`n` holds Double"),
-    ] {
-        let id = doc.get("_id").unwrap().clone();
-        db.insert("readings", vec![doc]).await;
-        let err = futures::TryStreamExt::try_collect::<Vec<_>>(
-            source.read(&e, &whole("readings")).await.unwrap(),
-        )
-        .await
-        .unwrap_err()
-        .to_string();
-        assert!(
-            err.contains(&format!("_id {id}")) && err.contains(expected),
-            "{err}"
-        );
-        db.client
-            .database("shop")
-            .collection::<Document>("readings")
-            .delete_one(doc! { "_id": id })
+            doc! { "_id": 102_i32, "n": 1.5 },
+        ],
+    )
+    .await;
+    let batches: Vec<RecordBatch> =
+        futures::TryStreamExt::try_collect(source.read(&e, &whole("readings")).await.unwrap())
             .await
             .unwrap();
+    let (rejected, data): (Vec<_>, Vec<_>) = batches.iter().partition(|b| is_rejected(b));
+    assert_eq!(data.iter().map(|b| b.num_rows()).sum::<usize>(), 10);
+    assert!(data.iter().all(|b| b.schema() == e.arrow_schema()));
+    let rows: Vec<_> = rejected
+        .iter()
+        .flat_map(|b| rejected_rows(&e, b).unwrap())
+        .collect();
+    let ids: Vec<_> = rows.iter().map(|r| r.id.0.clone()).collect();
+    assert_eq!(
+        ids,
+        [100, 101, 102].map(|i| vec![KeyValue::Int(i)]).to_vec()
+    );
+    for (row, (id, expected, raw)) in rows.iter().zip([
+        (100, "`n` holds String", r#""n":"late""#),
+        (101, "field `extra` is not in the schema", r#""extra":true"#),
+        (102, "`n` holds Double", r#""n":1.5"#),
+    ]) {
+        assert!(
+            row.error.contains(&format!("_id {id}")) && row.error.contains(expected),
+            "{}",
+            row.error
+        );
+        let record = row.record.as_deref().unwrap();
+        assert!(record.contains(raw), "{record}");
+        serde_json::from_str::<serde_json::Value>(record).unwrap();
     }
 }
 

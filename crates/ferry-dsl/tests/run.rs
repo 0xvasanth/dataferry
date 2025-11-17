@@ -110,6 +110,7 @@ fn runtime_flow(compiled: &CompiledFlow, rows: RecordBatch, sink: &MemSink) -> F
         target: compiled.target.clone(),
         mode: compiled.mode,
         depends_on: Vec::new(),
+        finalizer: None,
     }
 }
 

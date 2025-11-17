@@ -1764,6 +1764,7 @@ name = "ferry-registry"
 version = "0.0.1"
 dependencies = [
  "arrow-array",
+ "arrow-schema",
  "async-trait",
  "ferry-core",
  "ferry-registry",
@@ -1838,12 +1839,14 @@ dependencies = [
  "arrow-select",
  "async-trait",
  "deadpool-postgres",
+ "ferry-connector-mongo",
  "ferry-connector-postgres",
  "ferry-core",
  "ferry-registry",
  "ferry-runtime",
  "ferry-state",
  "futures",
+ "mongodb",
  "serde",
  "serde_json",
  "tempfile",

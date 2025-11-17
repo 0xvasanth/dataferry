@@ -89,6 +89,7 @@ fn endpoints(ctx: &BuildContext<'_>, wants: Roles) -> Endpoints {
     Endpoints {
         source: wants.source.then(|| endpoint.clone() as Arc<dyn Source>),
         sink: wants.sink.then_some(endpoint as Arc<dyn Sink>),
+        finalizer: None,
     }
 }
 

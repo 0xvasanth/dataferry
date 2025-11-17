@@ -342,6 +342,7 @@ async fn the_reader_sees_every_driver_batch_before_the_outputs_that_account_for_
         target: split_target(),
         mode: WriteMode::Insert,
         depends_on: Vec::new(),
+        finalizer: None,
     };
     let reads = Reads::default();
     let runner = Runner::new(

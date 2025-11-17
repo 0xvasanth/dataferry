@@ -3,9 +3,11 @@
 //! Every document is first checked against the entity's schema, which also
 //! lists the paths it omits for [`MISSING_PATHS_COLUMN`]. A document that
 //! doesn't fit (a field that wasn't in the sample, a value of a type the
-//! column can't hold without a cast) is an error naming its `_id` and the
-//! path: it is never cast, truncated or dropped. Then each column is built
-//! from the checked documents in one pass.
+//! column can't hold without a cast) is never cast, truncated or dropped:
+//! [`to_batches`] puts it in a rejected batch ([`ferry_registry::rejected`])
+//! with an error naming its `_id` and the path, and the document, for the
+//! runner to dead-letter. Then each column is built from the checked
+//! documents in one pass.
 //!
 //! [`MISSING_PATHS_COLUMN`]: ferry_core::missing::MISSING_PATHS_COLUMN
 
@@ -30,17 +32,102 @@ use crate::infer::{TextKind, TextKinds};
 /// Builds one batch from `docs`, which must each fit `entity`. `kinds`
 /// says which UTF-8 columns hold ObjectIds; a column it doesn't mention
 /// takes either.
+#[cfg(test)]
 pub(crate) fn to_batch(
     entity: &Entity,
     schema: SchemaRef,
     docs: &[Document],
     kinds: &TextKinds,
 ) -> Result<RecordBatch, String> {
-    let mut missing = MissingPathsBuilder::new();
+    let docs: Vec<&Document> = docs.iter().collect();
+    let paths = docs
+        .iter()
+        .map(|doc| {
+            check_document(doc, entity.fields(), kinds)
+                .map_err(|e| format!("document {}: {e}", describe_id(doc)))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    batch_of(entity, schema, &docs, &paths)
+}
+
+/// The batches for `docs`, under the same `kinds`: the entity's rows for
+/// the documents that fit it, then a rejected batch for those that don't. Either is left out when
+/// it would be empty. A document whose key doesn't fit fails the whole
+/// read: dead-lettering it under an id of another type could give two
+/// records one id.
+pub(crate) fn to_batches(
+    entity: &Entity,
+    schema: SchemaRef,
+    docs: &[Document],
+    kinds: &TextKinds,
+) -> Result<Vec<RecordBatch>, String> {
+    let keys: Vec<CanonicalField> = entity
+        .primary_key()
+        .iter()
+        .filter_map(|k| entity.field(k).cloned())
+        .collect();
+    let (mut fit, mut paths, mut misfits) = (Vec::new(), Vec::new(), Vec::new());
     for doc in docs {
-        let paths = check_document(doc, entity.fields(), kinds)
-            .map_err(|e| format!("document {}: {e}", describe_id(doc)))?;
-        missing.append_row(&paths);
+        match check_document(doc, entity.fields(), kinds) {
+            Ok(p) => {
+                fit.push(doc);
+                paths.push(p);
+            }
+            Err(e) => {
+                let key: Document = keys
+                    .iter()
+                    .filter_map(|k| doc.get(&k.name).map(|v| (k.name.clone(), v.clone())))
+                    .collect();
+                check_document(&key, &keys, kinds)
+                    .map_err(|e| format!("document {}: {e}", describe_id(doc)))?;
+                misfits.push((doc, format!("document {}: {e}", describe_id(doc))));
+            }
+        }
+    }
+    let mut batches = Vec::new();
+    if !fit.is_empty() {
+        batches.push(batch_of(entity, schema, &fit, &paths)?);
+    }
+    if !misfits.is_empty() {
+        let key_columns = keys
+            .iter()
+            .map(|k| {
+                let values: Vec<Option<&Bson>> = misfits
+                    .iter()
+                    .map(|(d, _)| present(d.get(&k.name)))
+                    .collect();
+                build(k, &values).map_err(|e| format!("{}: {e}", k.name))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let records = misfits
+            .iter()
+            .map(|(d, _)| {
+                Some(
+                    Bson::Document((*d).clone())
+                        .into_relaxed_extjson()
+                        .to_string(),
+                )
+            })
+            .collect();
+        let errors = misfits.into_iter().map(|(_, e)| e).collect();
+        batches.push(
+            ferry_registry::rejected::rejected_batch(entity, key_columns, errors, records)
+                .map_err(|e| e.to_string())?,
+        );
+    }
+    Ok(batches)
+}
+
+/// One batch of `docs`, which fit `entity` and omit `paths`.
+fn batch_of(
+    entity: &Entity,
+    schema: SchemaRef,
+    docs: &[&Document],
+    paths: &[Vec<String>],
+) -> Result<RecordBatch, String> {
+    let mut missing = MissingPathsBuilder::new();
+    for p in paths {
+        missing.append_row(p);
     }
     let mut columns = entity
         .fields()

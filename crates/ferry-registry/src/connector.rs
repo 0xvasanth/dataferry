@@ -9,6 +9,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 
+use crate::finalize::Finalizer;
 use crate::secret::Redactor;
 
 /// A connection type: turns the type-specific fields of a `connections.yaml`
@@ -111,6 +112,10 @@ impl fmt::Display for Roles {
 pub struct Endpoints {
     pub source: Option<Arc<dyn Source>>,
     pub sink: Option<Arc<dyn Sink>>,
+    /// Restores what the sink's `prepare` loosened for the load (A6). Only
+    /// with a sink, and only if `prepare` changes anything a load has to
+    /// put back.
+    pub finalizer: Option<Arc<dyn Finalizer>>,
 }
 
 impl Endpoints {
@@ -127,6 +132,7 @@ impl fmt::Debug for Endpoints {
         f.debug_struct("Endpoints")
             .field("source", &self.source.is_some())
             .field("sink", &self.sink.is_some())
+            .field("finalizer", &self.finalizer.is_some())
             .finish()
     }
 }

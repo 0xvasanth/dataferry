@@ -323,6 +323,15 @@ impl ConnectorRegistry {
                 ),
             }));
         }
+        if built.endpoints.finalizer.is_some() && built.endpoints.sink.is_none() {
+            return Err(BuildError::Other(FerryError::Connector {
+                connector: type_name.to_owned(),
+                message: format!(
+                    "connector bug: connection `{}` returned a finalizer without a sink",
+                    conn.name
+                ),
+            }));
+        }
         for secret in std::mem::take(&mut built.secrets) {
             if !secret.is_empty() && !secrets.contains(&secret) {
                 secrets.push(secret);

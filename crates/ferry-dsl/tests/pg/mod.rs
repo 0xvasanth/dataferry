@@ -215,6 +215,7 @@ pub fn runtime_flow(db: &Db, checked: &CheckedFlow, entity: &Entity, sink: Arc<d
         target: TargetSchema::new(vec![table]).unwrap(),
         mode: WriteMode::Insert,
         depends_on: Vec::new(),
+        finalizer: None,
     }
 }
 

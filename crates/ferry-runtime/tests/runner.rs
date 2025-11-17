@@ -13,8 +13,8 @@ use ferry_core::testkit::{MemSink, MemSinkFaults, MemSource};
 use ferry_core::{
     FerryError, IdempotencyStrategy, IdentityPlan, Lease, PartitionId, TargetSchema, WriteMode,
 };
-use ferry_registry::StateStore;
 use ferry_registry::state::{PartitionCounts, RunId};
+use ferry_registry::{FinalizeProblem, Finalized, Finalizer, Orphans, StateStore};
 use ferry_runtime::{Flow, Input, RunError, Runner};
 use ferry_state::{FileStateStore, ResumeError};
 use futures::FutureExt;
@@ -265,7 +265,8 @@ async fn resume_reads_back_the_stored_partitions_after_a_crash() {
         () = stalled.notified() => {}
     }
     drop(runner);
-    assert_eq!(fx.store.counts(&run).await.unwrap().done, 3);
+    fx.store.crash().await;
+    assert_eq!(fx.reopened().counts(&run).await.unwrap().done, 3);
 
     fx.spy.on_commit(|_| async {}.boxed());
     // A bigger partition size on resume changes nothing: partitions were
@@ -581,6 +582,7 @@ async fn writes_parents_before_children_in_batches_sized_by_the_budget() {
         sink,
         target: split_target(),
         mode: WriteMode::Insert,
+        finalizer: None,
         depends_on: Vec::new(),
     };
 
@@ -690,6 +692,7 @@ async fn a_merge_reads_each_driver_partition_with_its_co_partitioned_children() 
         sink: Arc::new(fx.spy.clone()),
         target: split_target(),
         mode: WriteMode::Insert,
+        finalizer: None,
         depends_on: Vec::new(),
     };
     let runner = Runner::new(fx.store(), vec![flow], settings()).unwrap();
@@ -935,4 +938,114 @@ async fn a_failure_blocks_every_flow_down_the_dependency_chain() {
         .unwrap();
     assert!(report.is_complete(), "{report:?}");
     assert_eq!(ids(&fx.sink, "c"), (0..10).collect::<Vec<_>>());
+}
+
+/// Records which tables it was asked to finalize, and answers with
+/// `problems`, or fails if `fail` is set.
+#[derive(Default)]
+struct SpyFinalizer {
+    calls: std::sync::Mutex<Vec<Vec<String>>>,
+    problems: Vec<FinalizeProblem>,
+    fail: bool,
+}
+
+#[async_trait::async_trait]
+impl Finalizer for SpyFinalizer {
+    async fn finalize(&self, target: &TargetSchema) -> ferry_core::Result<Finalized> {
+        self.calls
+            .lock()
+            .unwrap()
+            .push(target.tables().iter().map(|t| t.name.clone()).collect());
+        if self.fail {
+            return Err(FerryError::Connector {
+                connector: "spy".into(),
+                message: "the sink is gone".into(),
+            });
+        }
+        Ok(Finalized {
+            restored: vec!["orders.orders_name_idx".into()],
+            problems: self.problems.clone(),
+        })
+    }
+}
+
+#[tokio::test]
+async fn a_flow_is_finalized_only_once_every_partition_is_done_and_again_on_resume() {
+    let fx = Fixture::new();
+    let orphan = FinalizeProblem {
+        table: "orders".into(),
+        object: "orders_customer_fkey".into(),
+        message: "1 rows reference no parent row".into(),
+        orphans: Some(Orphans {
+            count: 1,
+            keys: vec!["id=7".into()],
+        }),
+    };
+    let finalizer = Arc::new(SpyFinalizer {
+        problems: vec![orphan.clone()],
+        ..Default::default()
+    });
+    let flow = || {
+        let mut flow = fx.orders_flow(1000);
+        flow.finalizer = Some(finalizer.clone());
+        flow
+    };
+    let mut settings = settings();
+    settings.workers = 1;
+    fx.sink.inject(MemSinkFaults {
+        fail_write_number: Some(2),
+        ..Default::default()
+    });
+
+    // A failed partition: indexes and keys stay off, the flow isn't done.
+    let runner = Runner::new(fx.store(), vec![flow()], settings.clone()).unwrap();
+    let report = runner.start(new_run()).await.unwrap();
+    assert_eq!(report.counts.failed, 1);
+    assert!(report.finalized.is_empty());
+    let report = runner.resume(&report.run, HASH, ENGINE).await.unwrap();
+    assert_eq!(report.counts.failed, 1);
+    assert!(report.finalized.is_empty());
+    assert!(finalizer.calls.lock().unwrap().is_empty());
+
+    // Once every partition is done, the flow's targets are finalized and
+    // what finalize couldn't restore is in the report.
+    let report = runner
+        .retry_failed(&report.run, HASH, ENGINE)
+        .await
+        .unwrap();
+    assert!(report.is_complete());
+    assert_eq!(*finalizer.calls.lock().unwrap(), vec![vec!["orders"]]);
+    assert_eq!(
+        report.finalized["orders"].restored,
+        vec!["orders.orders_name_idx"]
+    );
+    assert_eq!(
+        report.finalize_problems().collect::<Vec<_>>(),
+        vec![("orders", &orphan)]
+    );
+
+    // A process that died between finalize's start and its end left the
+    // flow done but not finalized: every later execution finalizes again.
+    let runner = Runner::new(fx.reopened(), vec![flow()], settings).unwrap();
+    let report = runner.resume(&report.run, HASH, ENGINE).await.unwrap();
+    assert!(report.finalized.contains_key("orders"));
+    assert_eq!(finalizer.calls.lock().unwrap().len(), 2);
+}
+
+#[tokio::test]
+async fn a_finalizer_that_fails_fails_the_run_after_every_partition_committed() {
+    let fx = Fixture::new();
+    let mut flow = fx.orders_flow(200);
+    flow.finalizer = Some(Arc::new(SpyFinalizer {
+        fail: true,
+        ..Default::default()
+    }));
+    let runner = Runner::new(fx.store(), vec![flow], settings()).unwrap();
+    let err = runner.start(new_run()).await.unwrap_err();
+    assert!(
+        matches!(&err, RunError::Flow { flow, .. } if flow == "orders")
+            && err.to_string().contains("the sink is gone"),
+        "{err}"
+    );
+    assert_eq!(ids(&fx.sink, "orders"), (0..200).collect::<Vec<_>>());
 }

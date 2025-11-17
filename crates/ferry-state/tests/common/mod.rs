@@ -117,6 +117,7 @@ impl TestPg {
                     fault: Arc::clone(&self.fault),
                 }) as _
             }),
+            finalizer: None,
         }
     }
 }

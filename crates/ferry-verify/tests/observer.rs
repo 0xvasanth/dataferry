@@ -17,8 +17,8 @@ use ferry_core::{
 use ferry_registry::state::{PartitionRows, RunId};
 use ferry_runtime::{Flow, Input, WriteObserver};
 use ferry_verify::{
-    Aggregate, Checksum, ChecksumObserver, ChecksumSpec, MemoryWriteLog, RecordCounts, Scalar,
-    Target, WriteLog,
+    Aggregate, Checksum, ChecksumObserver, ChecksumSpec, DeadLetters, MemoryWriteLog, RecordCounts,
+    Scalar, Target, WriteLog,
 };
 
 /// A target whose `orders.placed_at` keeps milliseconds. Nothing else is
@@ -46,6 +46,9 @@ impl Target for Millis {
         unreachable!()
     }
     async fn orphans(&self, _: &str, _: &ForeignKey) -> Result<u64> {
+        unreachable!()
+    }
+    async fn dead_letters(&self, _: &str) -> Result<Vec<DeadLetters>> {
         unreachable!()
     }
     async fn aggregate(&self, _: &str, _: Aggregate, _: Option<&str>) -> Result<Scalar> {
@@ -95,6 +98,7 @@ fn flow() -> Flow {
         sink: Arc::new(MemSink::new(Vec::new())),
         target: TargetSchema::new(vec![table, items_table()]).unwrap(),
         mode: WriteMode::Insert,
+        finalizer: None,
         depends_on: Vec::new(),
     }
 }

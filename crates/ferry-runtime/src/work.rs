@@ -2,15 +2,17 @@
 
 use std::collections::HashMap;
 use std::future::Future;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 
 use arrow_array::RecordBatch;
 use ferry_core::{
-    Entity, FerryError, IdempotencyStrategy, Lease, Partition, PartitionId, PartitionInputs,
-    Result, SinkTxn, Source, TargetBatch, WriteSummary,
+    BatchStream, Entity, FerryError, IdempotencyStrategy, Lease, Partition, PartitionId,
+    PartitionInputs, RejectedRecord, Result, SinkTxn, Source, SourceRecordId, TargetBatch,
+    TransformOutput, WriteSummary,
 };
 use ferry_registry::StateStore;
+use ferry_registry::rejected::{is_rejected, rejected_rows};
 use ferry_registry::state::{PartitionRows, RunId};
 use futures::StreamExt;
 use tokio::sync::{OwnedSemaphorePermit, watch};
@@ -18,9 +20,10 @@ use tokio::task::JoinSet;
 use tokio::time::{Instant, MissedTickBehavior};
 
 use crate::budget::{AheadSender, Budget, batch_size, read_ahead};
+use crate::dlq::{DeadLetters, Tap};
 use crate::flow::Flow;
 use crate::observe::{PartitionObserver, ReadObserver, WriteObserver};
-use crate::settings::Settings;
+use crate::settings::{OnError, Settings};
 use crate::throttle::Throttle;
 
 /// What every worker of one run shares.
@@ -31,6 +34,14 @@ pub(crate) struct Shared {
     pub budget: Budget,
     pub throttle: Throttle,
     pub observers: Vec<Arc<dyn WriteObserver>>,
+    /// Records dead-lettered by the run's done partitions: the state
+    /// store's count when this execution started, plus each partition this
+    /// execution got done.
+    pub dead_lettered: AtomicU64,
+    /// Held from checking `max_errors` to adding a partition's dead letters
+    /// to `dead_lettered`, so two partitions can't both fit the budget
+    /// that only one of them fits.
+    pub errors: tokio::sync::Mutex<()>,
 }
 
 /// A flow as it runs: its strategy, and what each stored partition reads.
@@ -148,6 +159,19 @@ pub(crate) async fn process(
             }
         }
     }
+    // The last check of `max_errors`, against every partition done by now;
+    // the guard keeps others from getting done until this one is counted.
+    let _budget = match shared.settings.max_errors {
+        Some(max) if rows.dead_lettered > 0 => {
+            let guard = shared.errors.lock().await;
+            if let Err(e) = within_budget(&shared, max, rows.dead_lettered) {
+                let _ = txn.abort().await;
+                return fail(e).await;
+            }
+            Some(guard)
+        }
+        _ => None,
+    };
     // Under `TxnWithState` the sink's commit writes the done-record through
     // the ledger, and refuses if the lease was superseded (0004 §8). The
     // heartbeat keeps running until the commit returns.
@@ -156,10 +180,32 @@ pub(crate) async fn process(
         Err(FerryError::StaleLease { .. }) => return Ok(Outcome::LeaseLost),
         Err(e) => return fail(e).await,
     };
-    if flow.strategy != IdempotencyStrategy::TxnWithState {
-        return mark_done(&shared, &lease, &summary).await;
+    let outcome = match flow.strategy {
+        IdempotencyStrategy::TxnWithState => Outcome::Done,
+        _ => mark_done(&shared, &lease, &summary).await?,
+    };
+    if matches!(outcome, Outcome::Done) {
+        shared
+            .dead_lettered
+            .fetch_add(rows.dead_lettered, Ordering::SeqCst);
     }
-    Ok(Outcome::Done)
+    Ok(outcome)
+}
+
+/// Fails if `more` dead letters on top of the done partitions' would be
+/// more than `max_errors`.
+fn within_budget(shared: &Shared, max: u64, more: u64) -> Result<()> {
+    let total = shared.dead_lettered.load(Ordering::SeqCst) + more;
+    if total <= max {
+        return Ok(());
+    }
+    Err(FerryError::Connector {
+        connector: "runner".into(),
+        message: format!(
+            "max_errors exceeded: this partition would bring the run to {total} dead-lettered \
+             records, more than max_errors ({max}); it was rolled back and the run stops"
+        ),
+    })
 }
 
 async fn mark_done(shared: &Shared, lease: &Lease, summary: &WriteSummary) -> Result<Outcome> {
@@ -245,6 +291,8 @@ async fn write_unit(
     let driver_rows = Arc::new(AtomicU64::new(0));
     let mut read_observers: Vec<Box<dyn ReadObserver>> =
         observers.iter_mut().filter_map(|o| o.reader()).collect();
+    let dead_letter = shared.settings.on_error == OnError::DeadLetter;
+    let tap = Arc::new(Mutex::new(Tap::default()));
     let mut readers = JoinSet::new();
     let mut streams = Vec::with_capacity(unit.reads.len());
     for (i, (input, partition)) in flow.flow.inputs.iter().zip(&unit.reads).enumerate() {
@@ -267,36 +315,38 @@ async fn write_unit(
             },
             _connection: connection,
         }));
-        streams.push((input.entity.name().to_owned(), rx.boxed()));
+        let screened = screen(
+            rx.boxed(),
+            input.entity.clone(),
+            (i == 0).then(|| Arc::clone(&tap)),
+            dead_letter,
+        );
+        streams.push((input.entity.name().to_owned(), screened));
     }
 
     let write_order = flow.flow.plan.write_order();
     let mut outputs = flow.flow.plan.execute(PartitionInputs::new(streams))?;
     let mut batcher = Batcher::new(write_order, shared.budget.batch_bytes());
+    let mut rejections = Rejections {
+        shared,
+        letters: DeadLetters::new(&flow.flow.name, &shared.run.0, &unit.partition.id.0),
+        tap: &tap,
+        count: 0,
+    };
     while let Some(output) = outputs.next().await {
         let output = output?;
         output.validate(write_order)?;
-        if let Some((id, rejected)) = output.rejected_records().next() {
-            // `on_error: fail` (0003 §4). Dead-lettering is A7's.
-            return Err(FerryError::InvalidTransformOutput {
-                reason: format!(
-                    "record {:?} was rejected{}: {}",
-                    id.0,
-                    rejected
-                        .target
-                        .as_ref()
-                        .map(|t| format!(" for `{t}`"))
-                        .unwrap_or_default(),
-                    rejected.error
-                ),
-            });
-        }
+        rejections.reject(&output)?;
         for observer in observers.iter_mut() {
             observer.output(&output)?;
         }
         batcher.push(output.targets, txn).await?;
+        rejections.unreadable(observers)?;
+        rejections.letters.flush(txn, false).await?;
     }
+    rejections.unreadable(observers)?;
     batcher.flush(txn).await?;
+    rejections.letters.flush(txn, true).await?;
     drop(outputs);
     // A reader that panicked ended its stream early, which looks like the
     // end of the partition: fail it rather than commit what was read.
@@ -310,8 +360,168 @@ async fn write_unit(
     }
     Ok(PartitionRows {
         read: driver_rows.load(Ordering::Relaxed),
-        dead_lettered: 0,
+        dead_lettered: rejections.count,
     })
+}
+
+/// What a partition rejected so far, and its dead letters.
+struct Rejections<'a> {
+    shared: &'a Shared,
+    letters: DeadLetters,
+    tap: &'a Mutex<Tap>,
+    count: u64,
+}
+
+impl Rejections<'_> {
+    /// Dead-letters the records `output` rejected, or fails on the first
+    /// under `on_error: fail`. Then lets go of the driver rows the output
+    /// accounts for.
+    fn reject(&mut self, output: &TransformOutput) -> Result<()> {
+        let mut tap = self.tap.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some((id, rejected)) = output.rejected_records().next()
+            && self.shared.settings.on_error == OnError::Fail
+        {
+            return Err(FerryError::InvalidTransformOutput {
+                reason: format!(
+                    "record {:?} was rejected{}: {}",
+                    id.0,
+                    rejected
+                        .target
+                        .as_ref()
+                        .map(|t| format!(" for `{t}`"))
+                        .unwrap_or_default(),
+                    rejected.error
+                ),
+            });
+        }
+        for (id, rejected) in output.rejected_records() {
+            match tap.record(id) {
+                Ok(record) => self.letters.push(
+                    id,
+                    rejected.target.as_deref(),
+                    &rejected.error,
+                    Some(record),
+                ),
+                // Dead-lettered all the same, saying why the record is missing.
+                Err(why) => self.letters.push(
+                    id,
+                    rejected.target.as_deref(),
+                    &format!("{} (no raw record: {why})", rejected.error),
+                    None,
+                ),
+            }
+        }
+        tap.account(&output.records);
+        drop(tap);
+        self.count(output.rejected.len() as u64)
+    }
+
+    /// Dead-letters the records the driver's source couldn't read as its
+    /// entity, shown to the observer as an output that rejects them all.
+    fn unreadable(&mut self, observers: &mut [Box<dyn PartitionObserver>]) -> Result<()> {
+        let rows = self
+            .tap
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take_rejected();
+        if rows.is_empty() {
+            return Ok(());
+        }
+        let output = TransformOutput {
+            rejected: (0..rows.len() as u32)
+                .map(|index| RejectedRecord {
+                    index,
+                    target: None,
+                    error: rows[index as usize].error.clone(),
+                })
+                .collect(),
+            records: rows.iter().map(|r| r.id.clone()).collect(),
+            targets: Vec::new(),
+        };
+        for row in rows {
+            self.letters.push(&row.id, None, &row.error, row.record);
+        }
+        for observer in observers.iter_mut() {
+            observer.output(&output)?;
+        }
+        self.count(output.rejected.len() as u64)
+    }
+
+    /// Fails as soon as the run's dead letters would pass `max_errors`.
+    fn count(&mut self, rejected: u64) -> Result<()> {
+        self.count += rejected;
+        match self.shared.settings.max_errors {
+            Some(max) if rejected > 0 => within_budget(self.shared, max, self.count),
+            _ => Ok(()),
+        }
+    }
+}
+
+/// The batches of one input on their way to the plan. A rejected batch
+/// (records the source couldn't read as `entity`) never reaches it: the
+/// driver's go to the tap under `on_error: dead_letter` and fail the
+/// partition otherwise, another input's always fail it, since only driver
+/// records can be dead-lettered. Under `on_error: dead_letter` the driver's
+/// data batches are also kept in the tap, for the raw records.
+fn screen(
+    input: BatchStream,
+    entity: Entity,
+    driver: Option<Arc<Mutex<Tap>>>,
+    dead_letter: bool,
+) -> BatchStream {
+    input
+        .filter_map(move |batch| {
+            let screened = match batch {
+                Ok(batch) if is_rejected(&batch) => {
+                    rejected_rows(&entity, &batch).and_then(|rows| {
+                        // An empty one rejects nothing.
+                        let Some(first) = rows.first() else {
+                            return Ok(None);
+                        };
+                        match &driver {
+                            Some(tap) if dead_letter => {
+                                tap.lock().unwrap_or_else(|e| e.into_inner()).reject(rows);
+                                Ok(None)
+                            }
+                            _ => Err(unreadable(
+                                &entity,
+                                driver.is_some(),
+                                &first.id,
+                                &first.error,
+                            )),
+                        }
+                    })
+                }
+                Ok(batch) => match &driver {
+                    Some(tap) if dead_letter => entity.record_ids(&batch).map(|ids| {
+                        tap.lock()
+                            .unwrap_or_else(|e| e.into_inner())
+                            .buffer(batch.clone(), ids);
+                        Some(batch)
+                    }),
+                    _ => Ok(Some(batch)),
+                },
+                Err(e) => Err(e),
+            };
+            std::future::ready(screened.transpose())
+        })
+        .boxed()
+}
+
+fn unreadable(entity: &Entity, driver: bool, id: &SourceRecordId, error: &str) -> FerryError {
+    let why = if driver {
+        ""
+    } else {
+        " (only the driver's records can be dead-lettered)"
+    };
+    FerryError::Connector {
+        connector: "runner".into(),
+        message: format!(
+            "record {:?} of `{}` doesn't fit the entity{why}: {error}",
+            id.0,
+            entity.name()
+        ),
+    }
 }
 
 struct Reader {

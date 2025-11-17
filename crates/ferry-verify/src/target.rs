@@ -35,6 +35,10 @@ pub trait Target: Send + Sync {
     /// an orphan (SQL's `MATCH SIMPLE`).
     async fn orphans(&self, table: &str, foreign_key: &ForeignKey) -> Result<u64>;
 
+    /// The dead letters `run` left in the dead-letter table (A7), grouped
+    /// by flow, target and error. Empty if the table doesn't exist.
+    async fn dead_letters(&self, run: &str) -> Result<Vec<DeadLetters>>;
+
     /// `aggregate` over `table.column`, or over the table's rows for
     /// `count` without a column.
     async fn aggregate(
@@ -43,6 +47,18 @@ pub trait Target: Send + Sync {
         aggregate: Aggregate,
         column: Option<&str>,
     ) -> Result<Scalar>;
+}
+
+/// Records dead-lettered for one reason: the same flow, target and error.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DeadLetters {
+    pub flow: String,
+    /// The target whose row failed, if the failure was one target's.
+    pub target: Option<String>,
+    pub error: String,
+    pub count: u64,
+    /// The smallest `source_id` among them, to look one up by.
+    pub example: String,
 }
 
 /// The target-side aggregates `expect:` assertions use (0003 §5.9).
