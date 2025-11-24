@@ -195,6 +195,14 @@ impl Sink for PostgresSink {
     async fn prepare(&self, target: &TargetSchema, mode: WriteMode) -> Result<()> {
         let mut problems = Vec::new();
         for t in target.tables() {
+            if t.name == crate::deferred::DROPPED {
+                problems.push(format!(
+                    "`{}`: this name is ferry's record of dropped indexes and keys \
+                     and can't be a target",
+                    t.name
+                ));
+                continue;
+            }
             if let Some(p) = self.key_problem(t, mode) {
                 problems.push(format!("`{}`: {p}", t.name));
             }
