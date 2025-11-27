@@ -121,7 +121,9 @@ async fn run(rows: RecordBatch) -> (RunReport, MemSink) {
     let dir = tempfile::tempdir().unwrap();
     let store = Arc::new(FileStateStore::new(dir.path()));
     let settings = Settings {
-        workers: 2,
+        // One per partition: all three are leased before any can fail, so
+        // the first failure (which stops leasing) can't leave one pending.
+        workers: 3,
         // The golden flow's `runtime: partition_rows` (B7 will pass it).
         partition_rows: 4,
         lease_ttl: Duration::from_secs(30),
