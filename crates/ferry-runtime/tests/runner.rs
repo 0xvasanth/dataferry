@@ -31,7 +31,7 @@ impl Fixture {
     fn new() -> Self {
         let dir = tempfile::tempdir().unwrap();
         let log = Log::default();
-        let store = SpyStore::new(Arc::new(FileStateStore::new(dir.path())), log.clone());
+        let store = SpyStore::file(Arc::new(FileStateStore::new(dir.path())), log.clone());
         let sink = mem_sink();
         let spy = SpySink::new(Arc::new(sink.clone()), log.clone());
         Self {
@@ -50,7 +50,7 @@ impl Fixture {
     /// A store handle as a restarted process gets it: same directory,
     /// nothing cached.
     fn reopened(&self) -> Arc<dyn StateStore> {
-        Arc::new(SpyStore::new(
+        Arc::new(SpyStore::file(
             Arc::new(FileStateStore::new(self.dir.path())),
             self.log.clone(),
         ))
