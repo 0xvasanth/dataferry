@@ -135,7 +135,7 @@ async fn a_partition_re_run_after_its_commit_keeps_one_dead_letter_and_counts_it
     // before it is recorded done: it runs again on resume. One dead letter
     // fits max_errors only if the re-run doesn't count it twice.
     let settings = dead_letter_settings(Some(1));
-    let spy = SpyStore::new(Arc::new(FileStateStore::new(dir.path())), log.clone());
+    let spy = SpyStore::file(Arc::new(FileStateStore::new(dir.path())), log.clone());
     let calls = Arc::new(AtomicUsize::new(0));
     let seen = Arc::clone(&calls);
     spy.on_mark_done(move |lease| {

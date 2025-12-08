@@ -87,7 +87,7 @@ fn position(events: &[Event], f: impl Fn(&Event) -> bool) -> Option<usize> {
 async fn sees_every_output_and_finishes_after_recording_rows_and_before_the_commit() {
     let dir = tempfile::tempdir().unwrap();
     let log = Log::default();
-    let store = SpyStore::new(Arc::new(FileStateStore::new(dir.path())), log.clone());
+    let store = SpyStore::file(Arc::new(FileStateStore::new(dir.path())), log.clone());
     let sink = mem_sink();
     let spy = SpySink::new(Arc::new(sink.clone()), log.clone());
     let recorder = Recorder {
@@ -147,7 +147,7 @@ async fn sees_every_output_and_finishes_after_recording_rows_and_before_the_comm
 async fn a_failed_finish_aborts_the_partition_and_its_retry_finishes_at_a_higher_epoch() {
     let dir = tempfile::tempdir().unwrap();
     let log = Log::default();
-    let store = SpyStore::new(Arc::new(FileStateStore::new(dir.path())), log.clone());
+    let store = SpyStore::file(Arc::new(FileStateStore::new(dir.path())), log.clone());
     let sink: MemSink = mem_sink();
     let spy = SpySink::new(Arc::new(sink.clone()), log.clone());
     let recorder = Recorder {
@@ -448,7 +448,7 @@ async fn a_failing_reader_fails_the_partition_and_its_retry_reads_again() {
 async fn every_observer_sees_every_partition_and_finishes_before_the_commit() {
     let dir = tempfile::tempdir().unwrap();
     let log = Log::default();
-    let store = SpyStore::new(Arc::new(FileStateStore::new(dir.path())), log.clone());
+    let store = SpyStore::file(Arc::new(FileStateStore::new(dir.path())), log.clone());
     let spy = SpySink::new(Arc::new(mem_sink()), log.clone());
     let first = Recorder {
         log: log.clone(),

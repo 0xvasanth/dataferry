@@ -760,7 +760,14 @@ async fn chaos_kill_9_through_the_postgres_sink_and_state_backend() {
 /// The run's flows on `backend`, with a spy on the store.
 fn spied(backend: Backend, url: &str, dir: &Path) -> (Runner, SpyStore) {
     let (store, sink) = backend.open(url, dir);
-    let spy = SpyStore::new(store, Log::default());
+    let spy = match backend {
+        // Its own handle on the file store, so a crash waits for its writes.
+        Backend::File => SpyStore::file(
+            Arc::new(FileStateStore::new(dir.join("state"))),
+            Log::default(),
+        ),
+        Backend::Postgres | Backend::PostgresSink => SpyStore::new(store, Log::default()),
+    };
     let runner = Runner::new(Arc::new(spy.clone()), flows(backend, sink), settings()).unwrap();
     (runner, spy)
 }

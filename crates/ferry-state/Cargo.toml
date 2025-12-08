@@ -13,8 +13,9 @@ workspace = true
 [features]
 # The state store kept in the state connection's Postgres database
 # (`PgStateBackend`, 0004 §8).
-postgres = ["dep:deadpool-postgres", "dep:tokio", "dep:tokio-postgres"]
-# The state store contract suite (`check_state_store`).
+postgres = ["dep:deadpool-postgres", "dep:tokio-postgres"]
+# The state store contract suite (`check_state_store`), and the file
+# store's test hooks (a slow write, waiting for dropped calls).
 testkit = []
 
 [dependencies]
@@ -26,7 +27,8 @@ serde_json = "1"
 thiserror = "2"
 uuid = { version = "1", features = ["v4"] }
 deadpool-postgres = { version = "0.14", optional = true }
-tokio = { version = "1", features = ["sync"], optional = true }
+# The file store runs its blocking I/O on tokio's blocking pool.
+tokio = { version = "1", features = ["rt", "sync"] }
 tokio-postgres = { version = "0.7", features = ["with-serde_json-1"], optional = true }
 
 [dev-dependencies]

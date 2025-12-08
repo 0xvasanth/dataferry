@@ -163,6 +163,158 @@ async fn a_failed_write_leaves_the_last_good_state() {
     assert_eq!(restarted.counts(&run).await.unwrap().pending, 1);
 }
 
+/// How long a write the tests slow down takes.
+const SLOW_WRITE: Duration = Duration::from_millis(600);
+
+#[tokio::test(flavor = "current_thread")]
+async fn a_slow_write_does_not_stall_the_async_thread() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = FileStateStore::new(dir.path());
+    let run = store.create_run(new_run()).await.unwrap();
+    store
+        .store_partitions(&run, "orders", &partitions(1))
+        .await
+        .unwrap();
+    let runtime_thread = std::thread::current().id();
+    let (tx, rx) = std::sync::mpsc::channel();
+    store.before_rename(move || {
+        tx.send(std::thread::current().id()).unwrap();
+        std::thread::sleep(SLOW_WRITE);
+    });
+
+    // A timer on the same (only) thread, like a heartbeat, scheduled while
+    // the write is in flight.
+    let started = tokio::time::Instant::now();
+    let timer = tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        started.elapsed()
+    });
+    let lease = store
+        .lease_next(&run, "orders", Duration::from_secs(600))
+        .await
+        .unwrap();
+    let wrote = started.elapsed();
+
+    assert!(lease.is_some());
+    assert!(
+        wrote >= SLOW_WRITE,
+        "the hook ran inside the write: {wrote:?}"
+    );
+    assert!(timer.is_finished(), "the timer waited for the write");
+    let fired = timer.await.unwrap();
+    assert!(
+        fired < SLOW_WRITE / 3,
+        "the timer fired {fired:?} in, while the write took {wrote:?}"
+    );
+    assert_ne!(
+        rx.recv().unwrap(),
+        runtime_thread,
+        "the write ran on the runtime's thread"
+    );
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn a_slow_write_does_not_stall_other_calls_waiting_on_the_store() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = Arc::new(FileStateStore::new(dir.path()));
+    let run = store.create_run(new_run()).await.unwrap();
+    store
+        .store_partitions(&run, "orders", &partitions(2))
+        .await
+        .unwrap();
+    let first = store
+        .lease_next(&run, "orders", Duration::from_secs(600))
+        .await
+        .unwrap()
+        .unwrap();
+    store.before_rename(|| std::thread::sleep(SLOW_WRITE));
+
+    // A renewal queues behind a slow lease: the timer still fires while
+    // both are in flight, and both writes land.
+    let started = tokio::time::Instant::now();
+    let timer = tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        started.elapsed()
+    });
+    let (leased, renewed) = tokio::join!(
+        store.lease_next(&run, "orders", Duration::from_secs(600)),
+        store.renew(&run, &first, Duration::from_secs(600)),
+    );
+    let fired = timer.await.unwrap();
+
+    assert!(leased.unwrap().is_some());
+    renewed.unwrap();
+    assert!(
+        started.elapsed() >= SLOW_WRITE * 2,
+        "the writes ran one at a time"
+    );
+    assert!(fired < SLOW_WRITE / 3, "the timer fired {fired:?} in");
+    assert_eq!(store.counts(&run).await.unwrap().leased, 2);
+}
+
+#[tokio::test]
+async fn a_call_dropped_mid_write_still_finishes_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = FileStateStore::new(dir.path());
+    let run = store.create_run(new_run()).await.unwrap();
+    store
+        .store_partitions(&run, "orders", &partitions(1))
+        .await
+        .unwrap();
+    store.before_rename(|| std::thread::sleep(SLOW_WRITE));
+
+    // The caller gives up on the lease while its write is in flight.
+    let gave_up = tokio::time::timeout(
+        Duration::from_millis(50),
+        store.lease_next(&run, "orders", Duration::from_secs(600)),
+    )
+    .await;
+    assert!(gave_up.is_err());
+
+    // `settled` waits for the write nobody waits for any more: the file
+    // has the lease once it returns.
+    let started = std::time::Instant::now();
+    store.settled().await;
+    assert!(
+        started.elapsed() >= SLOW_WRITE / 2,
+        "settled before the write"
+    );
+    let restarted = FileStateStore::new(dir.path());
+    assert_eq!(restarted.counts(&run).await.unwrap().leased, 1);
+    // And the cache took it with the file.
+    store.before_rename(|| {});
+    assert_eq!(store.counts(&run).await.unwrap().leased, 1);
+}
+
+#[tokio::test]
+async fn a_dropped_call_and_the_next_one_see_the_same_state() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = FileStateStore::new(dir.path());
+    let run = store.create_run(new_run()).await.unwrap();
+    store
+        .store_partitions(&run, "orders", &partitions(1))
+        .await
+        .unwrap();
+    store.before_rename(|| std::thread::sleep(SLOW_WRITE));
+    let gave_up = tokio::time::timeout(
+        Duration::from_millis(50),
+        store.lease_next(&run, "orders", Duration::from_secs(600)),
+    )
+    .await;
+    assert!(gave_up.is_err());
+
+    // The next call waits for the dropped one rather than seeing the state
+    // from before it: the partition is leased, so there is none to lease.
+    store.before_rename(|| {});
+    assert_eq!(
+        store
+            .lease_next(&run, "orders", Duration::from_secs(600))
+            .await
+            .unwrap(),
+        None
+    );
+}
+
 /// A store that skips fencing: `mark_done` accepts any lease the partition
 /// ever had. The suite has to catch it.
 struct Unfenced(FileStateStore);

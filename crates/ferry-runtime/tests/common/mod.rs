@@ -25,6 +25,7 @@ use ferry_core::{
 use ferry_registry::StateStore;
 use ferry_registry::state::{NewRun, PartitionCounts, PartitionRows, RunId, RunRecord, RunTotals};
 use ferry_runtime::{Flow, Input, Settings};
+use ferry_state::FileStateStore;
 use futures::future::BoxFuture;
 use futures::{StreamExt, stream};
 use tokio::time::Instant;
@@ -309,6 +310,9 @@ pub struct SpyStore {
     dead: Arc<AtomicBool>,
     /// Calls inside the wrapped store right now.
     in_store: Arc<AtomicUsize>,
+    /// The wrapped store, if it is a file store: its calls outlive their
+    /// futures, so `crash` waits for them there too.
+    file: Option<Arc<FileStateStore>>,
 }
 
 /// Counts a call as inside the store until it is dropped.
@@ -330,6 +334,14 @@ impl SpyStore {
             latency: Arc::default(),
             dead: Arc::default(),
             in_store: Arc::default(),
+            file: None,
+        }
+    }
+
+    pub fn file(store: Arc<FileStateStore>, log: Log) -> Self {
+        Self {
+            file: Some(Arc::clone(&store)),
+            ..Self::new(store, log)
         }
     }
 
@@ -338,11 +350,15 @@ impl SpyStore {
     ///
     /// Dropping a runner aborts its tasks, but a task in the middle of a
     /// store call (a heartbeat's renewal, say) finishes it first, and could
-    /// still be writing when the test resumes the run with a new store.
+    /// still be writing when the test resumes the run with a new store. A
+    /// file store's call even finishes after its future is dropped.
     pub async fn crash(&self) {
         self.dead.store(true, Ordering::SeqCst);
         while self.in_store.load(Ordering::SeqCst) > 0 {
             tokio::time::sleep(Duration::from_millis(1)).await;
+        }
+        if let Some(file) = &self.file {
+            file.settled().await;
         }
     }
 
