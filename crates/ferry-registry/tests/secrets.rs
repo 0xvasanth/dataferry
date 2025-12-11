@@ -91,6 +91,7 @@ impl Connector for Leaky {
                 source: Some(Arc::new(MemSource::new())),
                 sink: None,
                 finalizer: None,
+                ddl: None,
             }),
         }
     }

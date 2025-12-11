@@ -58,6 +58,7 @@ fn endpoints(wants: Roles) -> Endpoints {
             .sink
             .then(|| Arc::new(MemSink::new(vec![IdempotencyStrategy::UpsertByKey])) as _),
         finalizer: None,
+        ddl: None,
     }
 }
 

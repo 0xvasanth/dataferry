@@ -55,6 +55,7 @@ impl Connector for PgLike {
                 ])) as _
             }),
             finalizer: None,
+            ddl: None,
         })
     }
 
@@ -90,6 +91,7 @@ impl Connector for MongoLike {
             source: Some(Arc::new(MemSource::new())),
             sink: None,
             finalizer: None,
+            ddl: None,
         })
     }
 
@@ -144,6 +146,7 @@ impl Connector for Tuned {
             source: Some(Arc::new(MemSource::new())),
             sink: None,
             finalizer: None,
+            ddl: None,
         })
     }
 

@@ -86,7 +86,8 @@ impl PostgresConnector {
         sink: impl FnOnce() -> Result<PostgresSink, BuildError>,
     ) -> Result<Endpoints, BuildError> {
         let (config, tls) = parsed;
-        // One sink is both: finalize restores what its prepare dropped.
+        // One sink is all three: finalize restores what its prepare
+        // dropped, and it renders what its prepare would create.
         let sink = match wants.sink {
             true => Some(Arc::new(sink()?.with_load(LoadOptions {
                 drop_indexes: options.drop_indexes,
@@ -99,6 +100,7 @@ impl PostgresConnector {
                 .source
                 .then(|| Arc::new(PostgresSource::from_parts(config, tls, &options.schema)) as _),
             finalizer: sink.clone().map(|s| s as _),
+            ddl: sink.clone().map(|s| s as _),
             sink: sink.map(|s| s as _),
         })
     }
