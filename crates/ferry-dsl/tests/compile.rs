@@ -110,9 +110,10 @@ fn a_document_with_one_bad_item_is_rejected_whole() {
     let (_, target, error) = &rejected[0];
     assert_eq!(target.as_deref(), Some("order_items"));
     // Which column, which element, and why, for the dead-letter row (A7).
-    assert!(error.starts_with("order_items.qty = `int(qty)`"), "{error}");
-    assert!(error.contains("(at items[1])"), "{error}");
-    assert!(error.contains(r#""three"` is not an integer"#), "{error}");
+    assert_eq!(
+        error,
+        r#"order_items.qty = `int(qty)`: int(): `"three"` is not an integer (at items[1])"#
+    );
 }
 
 #[test]

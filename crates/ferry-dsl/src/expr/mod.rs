@@ -327,6 +327,7 @@ fn clean(error: datafusion_common::DataFusionError) -> String {
         "Schema error: ",
         "This feature is not implemented: ",
         "Internal error: ",
+        "Execution error: ",
     ] {
         text = text.strip_prefix(prefix).unwrap_or(text);
     }
