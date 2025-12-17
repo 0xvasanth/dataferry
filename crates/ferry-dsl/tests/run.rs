@@ -122,7 +122,8 @@ async fn run(rows: RecordBatch) -> (RunReport, MemSink) {
     let store = Arc::new(FileStateStore::new(dir.path()));
     let settings = Settings {
         workers: 2,
-        // The golden flow's `runtime: partition_rows` (B7 will pass it).
+        // The golden flow's `runtime: partition_rows`; B7 passes it per flow
+        // (`PlannedFlow::runtime_flow`), here it is the run-wide setting.
         partition_rows: 4,
         lease_ttl: Duration::from_secs(30),
         heartbeat: Duration::from_secs(5),
