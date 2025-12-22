@@ -19,8 +19,11 @@ postgres = ["dep:ferry-connector-postgres", "dep:ferry-state"]
 mongo = ["dep:ferry-connector-mongo"]
 
 [dependencies]
+ferry-core.workspace = true
 ferry-dsl.workspace = true
 ferry-registry.workspace = true
+# `plan` shows the dead-letter table the runner prepares.
+ferry-runtime.workspace = true
 ferry-connector-postgres = { workspace = true, optional = true }
 ferry-connector-mongo = { workspace = true, optional = true }
 ferry-state = { workspace = true, optional = true, features = ["postgres"] }
@@ -35,7 +38,13 @@ assert_cmd = "2"
 ferry-connector-mongo.workspace = true
 ferry-connector-postgres.workspace = true
 ferry-state = { workspace = true, features = ["postgres"] }
+insta = "1"
+# The plan tests: real Mongo and Postgres on testcontainers.
+mongodb = "3"
 tempfile = "3"
+testcontainers-modules.workspace = true
+tokio.workspace = true
+tokio-postgres = "0.7"
 
 [[bin]]
 name = "ferry"

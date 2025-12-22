@@ -17,7 +17,8 @@ pub enum Exit {
     /// Load, schema, options, missing `${ENV}`, wrong role, or a state
     /// connection that isn't state-capable.
     ConfigInvalid,
-    /// Type errors, no idempotency strategy, unknown entity (B7).
+    /// Type errors, no idempotency strategy, a dependency cycle, unknown
+    /// entity (B7).
     PlanRefused,
     /// Could not connect or authenticate.
     Connect,

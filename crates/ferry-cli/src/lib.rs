@@ -31,6 +31,7 @@ mod builtins;
 mod cli;
 mod diagnostic;
 mod exit;
+mod plan;
 mod schema;
 mod validate;
 
@@ -249,10 +250,35 @@ mod commands {
         match &cli.command {
             Command::Validate => validate(ferry, cli, printer),
             Command::Schema { out } => schema(ferry, cli, out.as_deref(), printer),
-            Command::Plan => not_implemented(ferry, cli, printer, "plan", "B7"),
+            Command::Plan => plan(ferry, cli, printer),
             Command::Run => not_implemented(ferry, cli, printer, "run", "S2"),
             Command::Resume { .. } => not_implemented(ferry, cli, printer, "resume", "A5"),
             Command::Retry { .. } => not_implemented(ferry, cli, printer, "retry", "A5"),
+        }
+    }
+
+    fn block_on<F: std::future::Future>(future: F) -> F::Output {
+        tokio::runtime::Handle::current().block_on(future)
+    }
+
+    fn plan(ferry: &Ferry, cli: &Cli, printer: &mut Printer<'_>) -> Exit {
+        let planned = block_on(plan::plan(
+            &ferry.registry,
+            &cli.config,
+            &|name| std::env::var(name).ok(),
+            &mut printer.redaction,
+        ));
+        match planned {
+            Ok((planned, warnings)) => {
+                let shown: Vec<_> = warnings.into_iter().filter(|_| !cli.quiet).collect();
+                let _ = printer.diagnostics(&shown, &cli.config);
+                let _ = printer.output(&plan::render(&planned));
+                Exit::Success
+            }
+            Err(refused) => {
+                let _ = printer.diagnostics(&refused.diagnostics, &cli.config);
+                refused.exit
+            }
         }
     }
 

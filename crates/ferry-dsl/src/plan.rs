@@ -24,6 +24,9 @@
 //! are the only edges. Each cycle in `depends_on:` alone is a load error;
 //! a cycle that only appears once the reads are added is the planner's,
 //! and its error walks the cycle naming why each flow waits for the next.
+//! A read edge needs the table to be discovered, so it exists at plan time:
+//! a flow reading a table another flow has yet to create fails the type
+//! check as an unknown entity, and `depends_on:` orders it instead.
 //! [`Plan::flows`] lists the flows in an order that respects every edge,
 //! ties broken by name, so it doesn't depend on which file a flow is in.
 

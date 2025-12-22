@@ -11,7 +11,9 @@ use std::path::Path;
 use ferry_dsl::config::model::{FILE_BACKEND, From, OrderedMap, RawKind, RawValue};
 use ferry_dsl::config::{self, Config, Connection, Location, ResolvedConnection, ResolvedState};
 use ferry_registry::secret::SECRET_KEYWORD;
-use ferry_registry::{BuildError, Built, ConnectorRegistry, DynConnector, RawConnection, Roles};
+use ferry_registry::{
+    BuildError, Built, ConnectorRegistry, DynConnector, Endpoints, RawConnection, Roles,
+};
 use schemars::SchemaGenerator;
 use serde_json::Value;
 
@@ -46,6 +48,12 @@ pub(crate) struct Summary {
     pub flows: usize,
     /// `(name, type, roles, description)`, in load order.
     pub connections: Vec<(String, String, Roles, String)>,
+    /// The config, for `plan`.
+    pub config: Config,
+    /// What each connection built, by name: built once, with the roles its
+    /// flows use, so `plan` reaches the databases through the same
+    /// endpoints `validate` checked.
+    pub endpoints: BTreeMap<String, Endpoints>,
 }
 
 /// Checks that `dir` is a `ferry/` directory before the loader looks
@@ -119,13 +127,15 @@ pub(crate) fn validate(
         redaction,
     };
     let mut connections = Vec::new();
+    let mut endpoints = BTreeMap::new();
     for (raw, resolved_conn) in config.connections.iter().zip(&resolved.connections) {
         let used = uses
             .get(resolved_conn.name.as_str())
             .map_or(&[][..], Vec::as_slice);
-        if let Some(entry) =
+        if let Some((entry, built)) =
             checker.connection(&config, raw, resolved_conn, used, resolved.state.as_ref())
         {
+            endpoints.insert(entry.0.clone(), built);
             connections.push(entry);
         }
     }
@@ -140,6 +150,8 @@ pub(crate) fn validate(
             name: config.name.as_str().to_owned(),
             flows: config.flows.len(),
             connections,
+            config,
+            endpoints,
         }),
     }
 }
@@ -191,7 +203,8 @@ struct Checker<'a> {
 }
 
 impl Checker<'_> {
-    /// Checks and builds one connection. `None` if it couldn't be built.
+    /// Checks and builds one connection: its summary line and its
+    /// endpoints. `None` if it couldn't be built.
     fn connection(
         &mut self,
         config: &Config,
@@ -199,7 +212,7 @@ impl Checker<'_> {
         conn: &ResolvedConnection,
         uses: &[Use<'_>],
         state: Option<&ResolvedState>,
-    ) -> Option<(String, String, Roles, String)> {
+    ) -> Option<((String, String, Roles, String), Endpoints)> {
         let entry = format!("connections[{}]", conn.name);
         let Some(connector) = self.registry.connector(&conn.r#type) else {
             self.diagnostics.push(
@@ -273,7 +286,10 @@ impl Checker<'_> {
                     self.redaction.add(secret);
                 }
                 self.literal_secrets(raw, &built, &entry);
-                Some((conn.name.clone(), type_name, wants, built.description))
+                Some((
+                    (conn.name.clone(), type_name, wants, built.description),
+                    built.endpoints,
+                ))
             }
             Err(error) => {
                 self.build_error(raw, conn, &entry, error);

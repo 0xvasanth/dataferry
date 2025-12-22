@@ -72,9 +72,6 @@ fn name_and_version_show_up_in_help_and_errors() {
     let (code, out, _) = run_with(ferry(), &["--version"]);
     assert_eq!(code, ExitCode::from(Exit::Success));
     assert_eq!(out, "acme-ferry 9.9.9\n");
-    let (code, _, err) = run_with(ferry(), &["plan"]);
-    assert_eq!(code, ExitCode::from(Exit::Internal));
-    assert!(err.starts_with("error[F0003]: `acme-ferry plan` is not implemented yet (B7)"));
     let (code, _, err) = run_with(ferry(), &["resume"]);
     assert_eq!(code, ExitCode::from(Exit::Usage));
     assert!(err.contains("Usage: acme-ferry resume <RUN_ID>"), "{err}");

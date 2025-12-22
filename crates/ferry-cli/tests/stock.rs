@@ -1,6 +1,7 @@
 //! The stock `ferry` binary as a real process: the config path, usage
-//! errors, the stub subcommands, the built-in `postgres` and `mongo`
-//! connectors it registers, and a connection type it doesn't have.
+//! errors, the stub subcommands, `plan` checking the config first, the
+//! built-in `postgres` and `mongo` connectors it registers, and a
+//! connection type it doesn't have.
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -330,8 +331,7 @@ fn help_and_version_go_to_stdout_and_succeed() {
 fn stub_subcommands_exit_1_naming_their_owner() {
     let cwd = tempfile::tempdir().unwrap();
     for (args, message) in [
-        (&["plan"][..], "`ferry plan` is not implemented yet (B7)"),
-        (&["run"], "`ferry run` is not implemented yet (S2)"),
+        (&["run"][..], "`ferry run` is not implemented yet (S2)"),
         (
             &["resume", "r-1"],
             "`ferry resume` is not implemented yet (A5)",
@@ -354,6 +354,20 @@ fn stub_subcommands_exit_1_naming_their_owner() {
         let d: serde_json::Value = serde_json::from_str(json.stderr.trim()).unwrap();
         assert_eq!(d["code"], "F0003");
     }
+}
+
+#[test]
+fn plan_checks_the_config_before_connecting() {
+    let cwd = tempfile::tempdir().unwrap();
+    let out = run(ferry(cwd.path()).arg("plan"));
+    assert_eq!(out.code, 3, "{}", out.stderr);
+    assert!(
+        out.stderr
+            .starts_with("error[F0001]: no config directory at `"),
+        "{}",
+        out.stderr
+    );
+    assert_eq!(out.stdout, "");
 }
 
 #[test]

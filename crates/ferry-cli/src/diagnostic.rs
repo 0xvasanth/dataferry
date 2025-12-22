@@ -34,6 +34,13 @@ pub(crate) mod code {
     pub const LOAD_INVALID: &str = "F0107";
     pub const LOAD_ENV: &str = "F0108";
     pub const LOAD_DEPENDS_ON: &str = "F0109";
+    /// An expression doesn't parse or names nothing in scope (B2).
+    pub const EXPR: &str = "F0110";
+    /// An expression's type doesn't fit (B3), found by `plan`.
+    pub const TYPE: &str = "F0111";
+    /// The planner refused the config (B7): a cycle between flows, no
+    /// idempotency strategy, a per-flow setting the runner can't apply.
+    pub const PLAN: &str = "F0112";
     /// A loader error kind this binary doesn't know yet.
     pub const LOAD_OTHER: &str = "F0100";
 
@@ -47,6 +54,14 @@ pub(crate) mod code {
 
     /// A secret field holds a literal value instead of `${ENV}`.
     pub const SECRET_LITERAL: &str = "W0301";
+
+    /// Something the plan points out that doesn't stop a run.
+    pub const PLAN_WARNING: &str = "W0401";
+
+    // F05xx: reaching the databases.
+    /// A source couldn't be discovered or a sink asked for its
+    /// capabilities.
+    pub const CONNECT: &str = "F0501";
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -127,6 +142,9 @@ impl From<ConfigError> for Diagnostic {
             ErrorKind::Invalid => code::LOAD_INVALID,
             ErrorKind::Env => code::LOAD_ENV,
             ErrorKind::DependsOn => code::LOAD_DEPENDS_ON,
+            ErrorKind::Expr => code::EXPR,
+            ErrorKind::Type => code::TYPE,
+            ErrorKind::Plan => code::PLAN,
             _ => code::LOAD_OTHER,
         };
         Self {

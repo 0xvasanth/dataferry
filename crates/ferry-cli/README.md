@@ -33,7 +33,7 @@ registers only what is left.
 | --- | --- | --- |
 | `ferry validate` | Loads the `ferry/` directory, substitutes `${ENV}`, and builds every connection through the registry with the roles its flows use. Checks connection options, that `from:` connections are sources and `sink:` connections are sinks, and that `runtime.state.connection` is a state-capable connection of the `backend:` type. Reports every error. | No |
 | `ferry schema [--out <dir>]` | The JSON Schema of each config file for this binary, with one `connections` branch per registered type. Prints one JSON object keyed by file name, or writes `<dir>/<file>.schema.json`. | No |
-| `ferry plan` | Not implemented yet (B7). | |
+| `ferry plan` | `validate`, then discovers every source the flows read and asks each sink for its capabilities, then type-checks and compiles every flow (`expect:` included). Prints the flows in run order (a flow waits for its `depends_on:` and for any flow writing a table it reads), each flow's idempotency strategy (and, when it isn't `TxnWithState`, why), partitioning, targets and the DDL its sink would run. Runs no DDL and writes nothing. | Read-only |
 | `ferry run` | Not implemented yet (S2). | |
 | `ferry resume <run-id>` | Not implemented yet (A5). | |
 | `ferry retry --failed <run-id>` | Not implemented yet (A5). | |
@@ -54,15 +54,15 @@ against the code.
 | 1 | Internal error, not implemented, or a miswired binary (a connector type registered twice). | Report a bug. |
 | 2 | Usage error: bad flags, `resume`/`retry` without a run id. | Fix the command. |
 | 3 | Config invalid: load, schema, options, missing `${ENV}`, wrong role, state connection not state-capable. | Fix the config. |
-| 4 | Plan refused: type errors, no idempotency strategy, unknown entity. | Fix the config or the data. |
+| 4 | Plan refused: type errors, no idempotency strategy, dependency cycle, unknown entity. | Fix the config or the data. |
 | 5 | Could not connect or authenticate. | Retrying may help. |
 | 6 | Run finished with failed partitions or exceeded `max_errors`. | `ferry retry --failed <run-id>`. |
 | 7 | Verification failed (`expect:`). Data was written. | Inspect the report. |
 | 8 | Resume refused: config hash or engine version changed. | Revert the config, or start a new run. |
 | 130 | Interrupted (Ctrl-C). | `ferry resume <run-id>`. |
 
-Codes 4 to 8 and 130 belong to `plan`, `run`, `resume` and `retry`, which
-their owning tickets wire.
+Codes 5 to 8 and 130 belong to `run`, `resume` and `retry`, which their
+owning tickets wire; `plan` exits 4 or 5.
 
 ## Diagnostics
 
@@ -90,6 +90,9 @@ connection field, is replaced with `***` in everything printed.
 | F0003 | The command is not implemented yet |
 | F0004 | Output could not be written |
 | F0100–F0109 | Loader errors (ferry-dsl): I/O, YAML, layout, include, model, duplicate, invalid reference, `${ENV}`, `depends_on` |
+| F0110 | An expression doesn't parse or names nothing in scope (`plan`) |
+| F0111 | An expression's type doesn't fit where it is used (`plan`) |
+| F0112 | The planner refused the config: a cycle between flows, no idempotency strategy for a flow's mode, a per-flow setting the runner can't apply |
 | F0301 | Bad connection options (unknown field, wrong type, bad value) |
 | F0302 | Unknown connection type |
 | F0303 | A flow uses a connection in a role its connector doesn't provide |
@@ -97,3 +100,5 @@ connection field, is replaced with `***` in everything printed.
 | F0305 | The state backend can't hold the state store |
 | F0306 | A connector couldn't build a connection |
 | W0301 | A secret field holds a literal value instead of `${ENV}` |
+| W0401 | Something the plan points out that doesn't stop a run |
+| F0501 | A source couldn't be discovered, or a sink's capabilities read |
