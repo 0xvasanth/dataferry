@@ -19,7 +19,9 @@ pub(crate) mod code {
     pub const CONFIG_DIR: &str = "F0001";
     /// The binary registered its connectors wrongly (a bug in the binary).
     pub const MISWIRED: &str = "F0002";
-    /// The command exists but its owning ticket hasn't landed.
+    /// The command exists but its owning ticket hasn't landed. No command
+    /// uses it any more; it stays reserved so it never means anything else.
+    #[allow(dead_code)]
     pub const NOT_IMPLEMENTED: &str = "F0003";
     /// Output (e.g. `ferry schema --out`) could not be written.
     pub const OUTPUT: &str = "F0004";
@@ -60,8 +62,25 @@ pub(crate) mod code {
 
     // F05xx: reaching the databases.
     /// A source couldn't be discovered or a sink asked for its
-    /// capabilities.
+    /// capabilities, or the state store couldn't be reached.
     pub const CONNECT: &str = "F0501";
+
+    // F06xx: running.
+    /// The runner couldn't run the flows at all.
+    pub const RUN: &str = "F0601";
+    /// A partition failed, or a flow was blocked by one that did.
+    pub const PARTITION_FAILED: &str = "F0602";
+    /// Ctrl-C.
+    pub const INTERRUPTED: &str = "F0603";
+
+    /// Verification found a problem, or couldn't run (A8).
+    pub const VERIFY_FAILED: &str = "F0701";
+    /// A sink this binary can't read back: its flows are not verified.
+    pub const UNVERIFIED: &str = "W0701";
+
+    /// `resume`/`retry`: no such run, or it is pinned to another config or
+    /// engine version (A4).
+    pub const RESUME_REFUSED: &str = "F0801";
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

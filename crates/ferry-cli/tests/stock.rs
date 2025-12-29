@@ -1,7 +1,7 @@
 //! The stock `ferry` binary as a real process: the config path, usage
-//! errors, the stub subcommands, `plan` checking the config first, the
-//! built-in `postgres` and `mongo` connectors it registers, and a
-//! connection type it doesn't have.
+//! errors, every command checking the config first, the built-in
+//! `postgres` and `mongo` connectors it registers, and a connection type
+//! it doesn't have.
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -328,46 +328,27 @@ fn help_and_version_go_to_stdout_and_succeed() {
 }
 
 #[test]
-fn stub_subcommands_exit_1_naming_their_owner() {
+fn plan_run_resume_and_retry_check_the_config_before_connecting() {
     let cwd = tempfile::tempdir().unwrap();
-    for (args, message) in [
-        (&["run"][..], "`ferry run` is not implemented yet (S2)"),
-        (
-            &["resume", "r-1"],
-            "`ferry resume` is not implemented yet (A5)",
-        ),
-        (
-            &["retry", "--failed", "r-1"],
-            "`ferry retry` is not implemented yet (A5)",
-        ),
+    for args in [
+        &["plan"][..],
+        &["run"],
+        &["resume", "r-1"],
+        &["retry", "--failed", "r-1"],
     ] {
         let out = run(ferry(cwd.path()).args(args));
-        assert_eq!(out.code, 1, "{args:?}: {}", out.stderr);
+        assert_eq!(out.code, 3, "{args:?}: {}", out.stderr);
         assert!(
             out.stderr
-                .starts_with(&format!("error[F0003]: {message}\n")),
+                .starts_with("error[F0001]: no config directory at `"),
             "{args:?}: {}",
             out.stderr
         );
-        let json = run(ferry(cwd.path()).args(args).args(["--format", "json"]));
-        assert_eq!(json.code, 1);
-        let d: serde_json::Value = serde_json::from_str(json.stderr.trim()).unwrap();
-        assert_eq!(d["code"], "F0003");
+        assert_eq!(
+            out.stdout, "",
+            "{args:?}: no run id before the config loads"
+        );
     }
-}
-
-#[test]
-fn plan_checks_the_config_before_connecting() {
-    let cwd = tempfile::tempdir().unwrap();
-    let out = run(ferry(cwd.path()).arg("plan"));
-    assert_eq!(out.code, 3, "{}", out.stderr);
-    assert!(
-        out.stderr
-            .starts_with("error[F0001]: no config directory at `"),
-        "{}",
-        out.stderr
-    );
-    assert_eq!(out.stdout, "");
 }
 
 #[test]

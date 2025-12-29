@@ -30,6 +30,11 @@ pub(crate) struct Cli {
     #[arg(short, long, global = true)]
     pub quiet: bool,
 
+    /// Where `run` keeps write-time records, reports and file-backed
+    /// state. Default: `.ferry` next to the config directory.
+    #[arg(long, global = true, env = "FERRY_WORK_DIR", value_name = "DIR")]
+    pub work_dir: Option<PathBuf>,
+
     #[command(subcommand)]
     pub command: Command,
 }

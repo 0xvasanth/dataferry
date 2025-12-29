@@ -32,7 +32,9 @@ mod cli;
 mod diagnostic;
 mod exit;
 mod plan;
+mod run;
 mod schema;
+mod targets;
 mod validate;
 
 use std::ffi::OsString;
@@ -52,6 +54,8 @@ pub use crate::exit::Exit;
 /// A `ferry` command line: a connector registry, a name and a version.
 pub struct Ferry {
     registry: ConnectorRegistry,
+    /// How `run` verifies each sink type it can read back (A8).
+    targets: targets::Targets,
     name: &'static str,
     version: &'static str,
     /// Registration mistakes, reported when the binary starts.
@@ -69,6 +73,7 @@ impl Ferry {
     pub fn new() -> Self {
         Self {
             registry: ConnectorRegistry::new(),
+            targets: targets::Targets::default(),
             name: "ferry",
             version: env!("CARGO_PKG_VERSION"),
             miswired: Vec::new(),
@@ -251,9 +256,19 @@ mod commands {
             Command::Validate => validate(ferry, cli, printer),
             Command::Schema { out } => schema(ferry, cli, out.as_deref(), printer),
             Command::Plan => plan(ferry, cli, printer),
-            Command::Run => not_implemented(ferry, cli, printer, "run", "S2"),
-            Command::Resume { .. } => not_implemented(ferry, cli, printer, "resume", "A5"),
-            Command::Retry { .. } => not_implemented(ferry, cli, printer, "retry", "A5"),
+            Command::Run => block_on(run::run(ferry, cli, printer, run::Start::New)),
+            Command::Resume { run_id } => block_on(run::run(
+                ferry,
+                cli,
+                printer,
+                run::Start::Resume(run_id.clone()),
+            )),
+            Command::Retry { failed } => block_on(run::run(
+                ferry,
+                cli,
+                printer,
+                run::Start::Retry(failed.clone()),
+            )),
         }
     }
 
@@ -393,28 +408,6 @@ mod commands {
                 Exit::Internal
             }
         }
-    }
-
-    fn not_implemented(
-        ferry: &Ferry,
-        cli: &Cli,
-        printer: &mut Printer<'_>,
-        command: &str,
-        owner: &str,
-    ) -> Exit {
-        let d = Diagnostic::error(
-            code::NOT_IMPLEMENTED,
-            format!(
-                "`{} {command}` is not implemented yet ({owner})",
-                ferry.name
-            ),
-        )
-        .help(format!(
-            "`{} validate` checks the config without connecting",
-            ferry.name
-        ));
-        let _ = printer.diagnostics(&[d], &cli.config);
-        Exit::Internal
     }
 
     fn plural(n: usize) -> &'static str {

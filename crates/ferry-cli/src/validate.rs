@@ -7,12 +7,13 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::path::Path;
+use std::sync::Arc;
 
 use ferry_dsl::config::model::{FILE_BACKEND, From, OrderedMap, RawKind, RawValue};
 use ferry_dsl::config::{self, Config, Connection, Location, ResolvedConnection, ResolvedState};
 use ferry_registry::secret::SECRET_KEYWORD;
 use ferry_registry::{
-    BuildError, Built, ConnectorRegistry, DynConnector, Endpoints, RawConnection, Roles,
+    BuildError, Built, ConnectorRegistry, DynConnector, Endpoints, RawConnection, Roles, StateStore,
 };
 use schemars::SchemaGenerator;
 use serde_json::Value;
@@ -47,13 +48,20 @@ pub(crate) struct Summary {
     pub name: String,
     pub flows: usize,
     /// `(name, type, roles, description)`, in load order.
-    pub connections: Vec<(String, String, Roles, String)>,
-    /// The config, for `plan`.
+    pub connections: Vec<ConnectionLine>,
+    /// The config, for `plan` and `run`.
     pub config: Config,
+    /// `runtime.state`, substituted.
+    pub state: Option<ResolvedState>,
     /// What each connection built, by name: built once, with the roles its
-    /// flows use, so `plan` reaches the databases through the same
-    /// endpoints `validate` checked.
+    /// flows use, so `plan` and `run` connect through the same endpoints
+    /// `validate` checked.
     pub endpoints: BTreeMap<String, Endpoints>,
+    /// The state store, when `runtime.state.connection` names a connection.
+    pub state_store: Option<Arc<dyn StateStore>>,
+    /// Each connection's entry after `${ENV}` substitution, by name. Holds
+    /// secrets: never printed.
+    pub raw: BTreeMap<String, RawConnection>,
 }
 
 /// Checks that `dir` is a `ferry/` directory before the loader looks
@@ -128,14 +136,18 @@ pub(crate) fn validate(
     };
     let mut connections = Vec::new();
     let mut endpoints = BTreeMap::new();
+    let mut state_store = None;
+    let mut raws = BTreeMap::new();
     for (raw, resolved_conn) in config.connections.iter().zip(&resolved.connections) {
+        raws.insert(resolved_conn.name.clone(), raw_connection(resolved_conn));
         let used = uses
             .get(resolved_conn.name.as_str())
             .map_or(&[][..], Vec::as_slice);
-        if let Some((entry, built)) =
+        if let Some((entry, built, store)) =
             checker.connection(&config, raw, resolved_conn, used, resolved.state.as_ref())
         {
             endpoints.insert(entry.0.clone(), built);
+            state_store = state_store.or(store);
             connections.push(entry);
         }
     }
@@ -150,11 +162,29 @@ pub(crate) fn validate(
             name: config.name.as_str().to_owned(),
             flows: config.flows.len(),
             connections,
+            state: resolved.state.clone(),
             config,
             endpoints,
+            state_store,
+            raw: raws,
         }),
     }
 }
+
+fn raw_connection(conn: &ResolvedConnection) -> RawConnection {
+    RawConnection {
+        name: conn.name.clone(),
+        r#type: conn.r#type.clone(),
+        fields: conn.fields.as_object().cloned().unwrap_or_default(),
+    }
+}
+
+/// `(name, type, roles, description)`.
+pub(crate) type ConnectionLine = (String, String, Roles, String);
+
+/// A connection's summary line, its endpoints, and the state store if it
+/// holds it.
+type BuiltConnection = (ConnectionLine, Endpoints, Option<Arc<dyn StateStore>>);
 
 /// One place a flow uses a connection.
 struct Use<'a> {
@@ -203,8 +233,8 @@ struct Checker<'a> {
 }
 
 impl Checker<'_> {
-    /// Checks and builds one connection: its summary line and its
-    /// endpoints. `None` if it couldn't be built.
+    /// Checks and builds one connection: its summary line, its endpoints,
+    /// and the state store if it holds it. `None` if it couldn't be built.
     fn connection(
         &mut self,
         config: &Config,
@@ -212,7 +242,7 @@ impl Checker<'_> {
         conn: &ResolvedConnection,
         uses: &[Use<'_>],
         state: Option<&ResolvedState>,
-    ) -> Option<((String, String, Roles, String), Endpoints)> {
+    ) -> Option<BuiltConnection> {
         let entry = format!("connections[{}]", conn.name);
         let Some(connector) = self.registry.connector(&conn.r#type) else {
             self.diagnostics.push(
@@ -268,20 +298,16 @@ impl Checker<'_> {
             _ => false,
         };
 
-        let raw_conn = RawConnection {
-            name: conn.name.clone(),
-            r#type: conn.r#type.clone(),
-            fields: conn.fields.as_object().cloned().unwrap_or_default(),
-        };
+        let raw_conn = raw_connection(conn);
         let built = match state_ok {
             true => self
                 .registry
                 .build_with_state(&raw_conn, wants)
-                .map(|(built, _store)| built),
-            false => self.registry.build(&raw_conn, wants),
+                .map(|(built, store)| (built, Some(store))),
+            false => self.registry.build(&raw_conn, wants).map(|b| (b, None)),
         };
         match built {
-            Ok(built) => {
+            Ok((built, store)) => {
                 for secret in &built.secrets {
                     self.redaction.add(secret);
                 }
@@ -289,6 +315,7 @@ impl Checker<'_> {
                 Some((
                     (conn.name.clone(), type_name, wants, built.description),
                     built.endpoints,
+                    store,
                 ))
             }
             Err(error) => {

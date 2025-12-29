@@ -1641,6 +1641,7 @@ dependencies = [
  "ferry-registry",
  "ferry-runtime",
  "ferry-state",
+ "ferry-verify",
  "insta",
  "mongodb",
  "schemars 1.2.3",

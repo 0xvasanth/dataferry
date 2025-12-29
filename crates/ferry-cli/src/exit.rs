@@ -12,7 +12,8 @@ pub enum Exit {
     Success,
     /// Internal error or not implemented: a bug, or a miswired binary.
     Internal,
-    /// Bad flags, or `resume`/`retry` without a run id.
+    /// Bad flags, or `resume`/`retry` without a run id or with one the
+    /// state store doesn't have.
     Usage,
     /// Load, schema, options, missing `${ENV}`, wrong role, or a state
     /// connection that isn't state-capable.
@@ -28,8 +29,7 @@ pub enum Exit {
     VerifyFailed,
     /// Resume refused: the config hash or engine version changed (A4).
     ResumeRefused,
-    /// Interrupted (Ctrl-C). Wired by the runner (S2/A5), which is the first
-    /// command that runs long enough to be interrupted.
+    /// Interrupted (Ctrl-C) during `run`, `resume` or `retry`.
     Interrupted,
 }
 
