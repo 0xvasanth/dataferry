@@ -46,6 +46,9 @@ arrow-json = "60"
 async-trait = "0.1"
 ferry-core = { workspace = true, features = ["testkit"] }
 ferry-connector-postgres.workspace = true
+# The golden dead letters end to end: the Mongo source on a real Mongo.
+ferry-connector-mongo.workspace = true
+mongodb = "3"
 ferry-state = { workspace = true, features = ["postgres"] }
 deadpool-postgres = "0.14"
 testcontainers-modules.workspace = true
