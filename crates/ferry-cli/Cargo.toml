@@ -15,19 +15,24 @@ default = ["postgres", "mongo"]
 # The built-in connectors (0004 §5). `postgres` brings ferry-state's
 # Postgres state backend with it, so a run can keep its state in a
 # postgres connection.
-postgres = ["dep:ferry-connector-postgres", "dep:ferry-state"]
+postgres = ["dep:ferry-connector-postgres", "ferry-state/postgres"]
 mongo = ["dep:ferry-connector-mongo"]
 
 [dependencies]
+ferry-core.workspace = true
 ferry-dsl.workspace = true
 ferry-registry.workspace = true
+# `run`: the runner (A5), the file state backend (A4), the verifier (A8).
+ferry-runtime.workspace = true
+ferry-state.workspace = true
+ferry-verify.workspace = true
 ferry-connector-postgres = { workspace = true, optional = true }
 ferry-connector-mongo = { workspace = true, optional = true }
-ferry-state = { workspace = true, optional = true, features = ["postgres"] }
 clap = { version = "4", features = ["derive", "env"] }
 schemars = "1"
 serde_json = "1"
-tokio = { version = "1", features = ["rt-multi-thread"] }
+# `signal`: Ctrl-C stops a run with exit 130.
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal"] }
 
 [dev-dependencies]
 assert_cmd = "2"
@@ -35,7 +40,13 @@ assert_cmd = "2"
 ferry-connector-mongo.workspace = true
 ferry-connector-postgres.workspace = true
 ferry-state = { workspace = true, features = ["postgres"] }
+insta = "1"
+# The plan and run tests: real Mongo and Postgres on testcontainers.
+mongodb = "3"
 tempfile = "3"
+testcontainers-modules.workspace = true
+tokio.workspace = true
+tokio-postgres = "0.7"
 
 [[bin]]
 name = "ferry"

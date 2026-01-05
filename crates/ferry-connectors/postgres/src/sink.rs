@@ -57,7 +57,7 @@ use ferry_core::{
     FerryError, IdempotencyStrategy, Lease, Partition, Result, Sink, SinkCaps, SinkTxn,
     TargetSchema, TargetTable, WriteMode, WriteSummary,
 };
-use ferry_registry::{Finalized, Finalizer, Ledger};
+use ferry_registry::{Finalized, Finalizer, Ledger, RenderDdl};
 use futures::SinkExt;
 use tokio_postgres::Client;
 
@@ -367,6 +367,30 @@ impl Finalizer for PostgresSink {
     async fn finalize(&self, target: &TargetSchema) -> Result<Finalized> {
         let mut client = pool::get(&self.pool).await?;
         deferred::restore(&mut client, &self.schema, target).await
+    }
+}
+
+impl RenderDdl for PostgresSink {
+    /// `CREATE SCHEMA IF NOT EXISTS`, each table's `CREATE TABLE` as
+    /// `prepare` runs it when the table is missing, then the foreign keys
+    /// finalize adds once the flow is loaded.
+    fn render_ddl(&self, target: &TargetSchema, _: WriteMode) -> Vec<String> {
+        let mut ddl = vec![format!(
+            "CREATE SCHEMA IF NOT EXISTS {}",
+            quote(&self.schema)
+        )];
+        ddl.extend(
+            target
+                .tables()
+                .iter()
+                .map(|t| ddl::create_table(&self.schema, t)),
+        );
+        for t in target.tables() {
+            for fk in &t.foreign_keys {
+                ddl.extend(deferred::declared_ddl(&self.schema, t, fk));
+            }
+        }
+        ddl
     }
 }
 

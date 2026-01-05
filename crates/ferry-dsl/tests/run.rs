@@ -124,7 +124,8 @@ async fn run(rows: RecordBatch) -> (RunReport, MemSink) {
         // One per partition: all three are leased before any can fail, so
         // the first failure (which stops leasing) can't leave one pending.
         workers: 3,
-        // The golden flow's `runtime: partition_rows` (B7 will pass it).
+        // The golden flow's `runtime: partition_rows`; B7 passes it per flow
+        // (`PlannedFlow::runtime_flow`), here it is the run-wide setting.
         partition_rows: 4,
         lease_ttl: Duration::from_secs(30),
         heartbeat: Duration::from_secs(5),

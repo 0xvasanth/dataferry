@@ -221,7 +221,14 @@ impl ScalarUDFImpl for FerryCast {
         let array = arg.to_array(args.number_rows)?;
         convert::convert(&array, self.target)
             .map(ColumnarValue::Array)
-            .map_err(|e| DataFusionError::Execution(format!("{}(): {e}", self.target.function())))
+            .map_err(|e| {
+                // The conversion's own message, without arrow's "Cast error: ".
+                let message = match e {
+                    arrow_schema::ArrowError::CastError(message) => message,
+                    other => other.to_string(),
+                };
+                DataFusionError::Execution(format!("{}(): {message}", self.target.function()))
+            })
     }
 }
 

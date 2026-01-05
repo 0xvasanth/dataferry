@@ -15,11 +15,12 @@ use arrow_array::{
 };
 use arrow_buffer::i256;
 use arrow_schema::{DataType, Field, Fields, Schema};
-use common::{Run, db, int64, lease, orders, partition, sink_fixture, utf8};
+use common::{Run, db, int64, lease, order_schema, orders, partition, sink_fixture, utf8};
 use ferry_connector_postgres::{PostgresSink, PostgresSource};
 use ferry_core::testkit::check_sink;
 use ferry_core::types::{CanonicalField, CanonicalType, DecimalSpec};
 use ferry_core::{IdempotencyStrategy, Sink, Source, TargetSchema, TargetTable, WriteMode};
+use ferry_registry::{ConnectorRegistry, Roles};
 use futures::TryStreamExt;
 
 /// The generic suite on a plain sink. It re-runs a committed partition
@@ -75,6 +76,95 @@ async fn only_a_sink_bound_to_a_ledger_offers_txn_with_state() {
         .err()
         .expect("refused");
     assert!(err.to_string().contains("TxnWithState"), "{err}");
+}
+
+/// Each target table's columns, keys and foreign keys in `schema`, as the
+/// catalog has them, with the schema's name taken out so two schemas
+/// compare. Ferry's own bookkeeping (`_ferry_dropped`) isn't a target.
+async fn catalog(db: &common::Db, schema: &str) -> Vec<String> {
+    let mut out = db
+        .strings(&format!(
+            "SELECT c.relname || '.' || a.attname || ' ' || format_type(a.atttypid, a.atttypmod) \
+                    || CASE WHEN a.attnotnull THEN ' not null' ELSE '' END \
+             FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid \
+             JOIN pg_namespace n ON n.oid = c.relnamespace \
+             WHERE n.nspname = '{schema}' AND c.relkind = 'r' AND a.attnum > 0 \
+               AND left(c.relname, 7) <> '_ferry_' \
+             ORDER BY c.relname, a.attnum"
+        ))
+        .await;
+    out.extend(
+        db.strings(&format!(
+            "SELECT c.relname || ' ' || k.conname || ' ' || \
+                    replace(pg_get_constraintdef(k.oid), '{schema}.', '') || \
+                    CASE WHEN k.convalidated THEN '' ELSE ' NOT VALID' END \
+             FROM pg_constraint k JOIN pg_class c ON c.oid = k.conrelid \
+             JOIN pg_namespace n ON n.oid = c.relnamespace \
+             WHERE n.nspname = '{schema}' AND left(c.relname, 7) <> '_ferry_' \
+             ORDER BY c.relname, k.conname"
+        ))
+        .await,
+    );
+    out
+}
+
+#[tokio::test]
+async fn the_rendered_ddl_creates_what_prepare_and_finalize_create() {
+    let db = db().await;
+    let mut registry = ConnectorRegistry::new();
+    registry.register(ferry_connector_postgres::PostgresConnector);
+    let built = |schema: &str| registry.build(&db.connection(schema), Roles::SINK).unwrap();
+    let target = order_schema();
+
+    // `ferry plan`'s DDL, run by hand on one schema...
+    let rendered = built("rendered").endpoints.ddl.unwrap();
+    let ddl = rendered.render_ddl(&target, WriteMode::Insert);
+    assert_eq!(ddl[0], r#"CREATE SCHEMA IF NOT EXISTS "rendered""#);
+    assert!(
+        ddl[1].starts_with(r#"CREATE TABLE "rendered"."orders" ("#),
+        "{ddl:#?}"
+    );
+    assert!(
+        ddl.iter()
+            .any(|s| s.ends_with(r#"VALIDATE CONSTRAINT "order_items_order_id_fkey""#)),
+        "{ddl:#?}"
+    );
+    assert_eq!(
+        catalog(&db, "rendered").await,
+        Vec::<String>::new(),
+        "rendering runs nothing"
+    );
+    for statement in &ddl {
+        db.client
+            .batch_execute(statement)
+            .await
+            .unwrap_or_else(|e| panic!("{statement}: {e}"));
+    }
+
+    // ...is what the sink's own prepare and finalize leave on another.
+    let endpoints = built("prepared").endpoints;
+    endpoints
+        .sink
+        .unwrap()
+        .prepare(&target, WriteMode::Insert)
+        .await
+        .unwrap();
+    let finalized = endpoints
+        .finalizer
+        .unwrap()
+        .finalize(&target)
+        .await
+        .unwrap();
+    assert!(finalized.is_clean(), "{finalized:?}");
+
+    let prepared = catalog(&db, "prepared").await;
+    assert!(
+        prepared
+            .iter()
+            .any(|c| c.starts_with("order_items order_items_order_id_fkey FOREIGN KEY")),
+        "{prepared:#?}"
+    );
+    assert_eq!(catalog(&db, "rendered").await, prepared);
 }
 
 #[tokio::test]

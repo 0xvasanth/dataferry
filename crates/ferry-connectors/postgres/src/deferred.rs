@@ -396,6 +396,29 @@ async fn add_foreign_key(client: &mut Client, schema: &str, r: &Dropped) -> Resu
     txn.commit().await.map_err(pg_error)
 }
 
+/// What finalize runs for a foreign key `table` declares, on a table that
+/// has none yet: added `NOT VALID`, then validated. For `ferry plan`.
+pub(crate) fn declared_ddl(schema: &str, table: &TargetTable, fk: &ForeignKey) -> [String; 2] {
+    let regclass = qualified(schema, &table.name);
+    let name = quote(&declared_name(table, fk));
+    [
+        format!(
+            "ALTER TABLE {regclass} ADD CONSTRAINT {name} {} NOT VALID",
+            declared_definition(schema, fk)
+        ),
+        format!("ALTER TABLE {regclass} VALIDATE CONSTRAINT {name}"),
+    ]
+}
+
+fn declared_definition(schema: &str, fk: &ForeignKey) -> String {
+    format!(
+        "FOREIGN KEY ({}) REFERENCES {}({})",
+        column_list(&fk.columns),
+        qualified(schema, &fk.references_table),
+        column_list(&fk.references_columns)
+    )
+}
+
 /// The name a declared foreign key gets: Postgres's own default,
 /// `<table>_<columns>_fkey`, cut to the 63 bytes of an identifier.
 fn declared_name(table: &TargetTable, fk: &ForeignKey) -> String {
@@ -436,11 +459,7 @@ async fn declare_foreign_key(
         table: table.name.clone(),
         kind: "foreign_key".into(),
         name: declared_name(table, fk),
-        definition: format!(
-            "FOREIGN KEY ({}) REFERENCES {parent}({})",
-            column_list(&fk.columns),
-            column_list(&fk.references_columns)
-        ),
+        definition: declared_definition(schema, fk),
         validated: true,
     };
     let dropped = dropped_table(schema);

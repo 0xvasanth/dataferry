@@ -54,6 +54,7 @@ impl Connector for MongoConnector {
             source: wants.source.then(|| Arc::new(source) as _),
             sink: None,
             finalizer: None,
+            ddl: None,
         })
     }
 

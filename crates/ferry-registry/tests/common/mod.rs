@@ -415,6 +415,7 @@ impl FakeSql {
             source: wants.source.then(|| Arc::new(MemSource::new()) as _),
             sink: wants.sink.then(|| Arc::new(FakeSink { pool, ledger }) as _),
             finalizer: None,
+            ddl: None,
         }
     }
 }

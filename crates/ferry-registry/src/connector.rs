@@ -9,6 +9,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 
+use crate::ddl::RenderDdl;
 use crate::finalize::Finalizer;
 use crate::secret::Redactor;
 
@@ -116,6 +117,10 @@ pub struct Endpoints {
     /// with a sink, and only if `prepare` changes anything a load has to
     /// put back.
     pub finalizer: Option<Arc<dyn Finalizer>>,
+    /// Renders the DDL the sink's `prepare` would run, for `ferry plan`.
+    /// Only with a sink. Without one, the plan shows the target schema in
+    /// its canonical form instead.
+    pub ddl: Option<Arc<dyn RenderDdl>>,
 }
 
 impl Endpoints {
@@ -133,6 +138,7 @@ impl fmt::Debug for Endpoints {
             .field("source", &self.source.is_some())
             .field("sink", &self.sink.is_some())
             .field("finalizer", &self.finalizer.is_some())
+            .field("ddl", &self.ddl.is_some())
             .finish()
     }
 }

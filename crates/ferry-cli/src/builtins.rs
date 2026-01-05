@@ -6,13 +6,18 @@
 use crate::Ferry;
 
 /// `postgres` (source and sink, and the home of the `postgres` state
-/// backend) and `mongo` (source), as their features allow.
+/// backend) and `mongo` (source), as their features allow. A `postgres`
+/// sink is verified after a run by reading it back.
 pub(crate) fn register(ferry: Ferry) -> Ferry {
     #[cfg(feature = "postgres")]
-    let ferry = ferry.register_state_capable(
-        ferry_connector_postgres::PostgresConnector,
-        ferry_state::PgStateBackend,
-    );
+    let ferry = {
+        let mut ferry = ferry.register_state_capable(
+            ferry_connector_postgres::PostgresConnector,
+            ferry_state::PgStateBackend,
+        );
+        ferry.targets.add("postgres", crate::targets::postgres);
+        ferry
+    };
     #[cfg(feature = "mongo")]
     let ferry = ferry.register(ferry_connector_mongo::MongoConnector);
     ferry

@@ -19,7 +19,9 @@ pub(crate) mod code {
     pub const CONFIG_DIR: &str = "F0001";
     /// The binary registered its connectors wrongly (a bug in the binary).
     pub const MISWIRED: &str = "F0002";
-    /// The command exists but its owning ticket hasn't landed.
+    /// The command exists but its owning ticket hasn't landed. No command
+    /// uses it any more; it stays reserved so it never means anything else.
+    #[allow(dead_code)]
     pub const NOT_IMPLEMENTED: &str = "F0003";
     /// Output (e.g. `ferry schema --out`) could not be written.
     pub const OUTPUT: &str = "F0004";
@@ -34,6 +36,13 @@ pub(crate) mod code {
     pub const LOAD_INVALID: &str = "F0107";
     pub const LOAD_ENV: &str = "F0108";
     pub const LOAD_DEPENDS_ON: &str = "F0109";
+    /// An expression doesn't parse or names nothing in scope (B2).
+    pub const EXPR: &str = "F0110";
+    /// An expression's type doesn't fit (B3), found by `plan`.
+    pub const TYPE: &str = "F0111";
+    /// The planner refused the config (B7): a cycle between flows, no
+    /// idempotency strategy, a per-flow setting the runner can't apply.
+    pub const PLAN: &str = "F0112";
     /// A loader error kind this binary doesn't know yet.
     pub const LOAD_OTHER: &str = "F0100";
 
@@ -47,6 +56,31 @@ pub(crate) mod code {
 
     /// A secret field holds a literal value instead of `${ENV}`.
     pub const SECRET_LITERAL: &str = "W0301";
+
+    /// Something the plan points out that doesn't stop a run.
+    pub const PLAN_WARNING: &str = "W0401";
+
+    // F05xx: reaching the databases.
+    /// A source couldn't be discovered or a sink asked for its
+    /// capabilities, or the state store couldn't be reached.
+    pub const CONNECT: &str = "F0501";
+
+    // F06xx: running.
+    /// The runner couldn't run the flows at all.
+    pub const RUN: &str = "F0601";
+    /// A partition failed, or a flow was blocked by one that did.
+    pub const PARTITION_FAILED: &str = "F0602";
+    /// Ctrl-C.
+    pub const INTERRUPTED: &str = "F0603";
+
+    /// Verification found a problem, or couldn't run (A8).
+    pub const VERIFY_FAILED: &str = "F0701";
+    /// A sink this binary can't read back: its flows are not verified.
+    pub const UNVERIFIED: &str = "W0701";
+
+    /// `resume`/`retry`: no such run, or it is pinned to another config or
+    /// engine version (A4).
+    pub const RESUME_REFUSED: &str = "F0801";
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -127,6 +161,9 @@ impl From<ConfigError> for Diagnostic {
             ErrorKind::Invalid => code::LOAD_INVALID,
             ErrorKind::Env => code::LOAD_ENV,
             ErrorKind::DependsOn => code::LOAD_DEPENDS_ON,
+            ErrorKind::Expr => code::EXPR,
+            ErrorKind::Type => code::TYPE,
+            ErrorKind::Plan => code::PLAN,
             _ => code::LOAD_OTHER,
         };
         Self {

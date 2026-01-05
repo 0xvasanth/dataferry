@@ -323,11 +323,17 @@ impl ConnectorRegistry {
                 ),
             }));
         }
-        if built.endpoints.finalizer.is_some() && built.endpoints.sink.is_none() {
+        let sinkless = [
+            ("a finalizer", built.endpoints.finalizer.is_some()),
+            ("a DDL renderer", built.endpoints.ddl.is_some()),
+        ];
+        if let (Some((what, _)), None) =
+            (sinkless.iter().find(|(_, set)| *set), &built.endpoints.sink)
+        {
             return Err(BuildError::Other(FerryError::Connector {
                 connector: type_name.to_owned(),
                 message: format!(
-                    "connector bug: connection `{}` returned a finalizer without a sink",
+                    "connector bug: connection `{}` returned {what} without a sink",
                     conn.name
                 ),
             }));

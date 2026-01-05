@@ -118,6 +118,7 @@ impl TestPg {
                 }) as _
             }),
             finalizer: None,
+            ddl: None,
         }
     }
 }

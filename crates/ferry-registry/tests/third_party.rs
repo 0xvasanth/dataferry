@@ -14,7 +14,7 @@ use ferry_core::{
 };
 use ferry_registry::{
     BuildContext, BuildError, Connector, ConnectorRegistry, Endpoints, Finalized, Finalizer,
-    RawConnection, RegisterError, Roles, Secret,
+    RawConnection, RegisterError, RenderDdl, Roles, Secret,
 };
 use futures::TryStreamExt;
 use schemars::JsonSchema;
@@ -117,6 +117,7 @@ impl Connector for Archive {
             source: Some(Arc::new(MemSource::new())),
             sink: None,
             finalizer: None,
+            ddl: None,
         })
     }
 
@@ -143,6 +144,7 @@ impl Connector for Greedy {
             source: Some(Arc::new(MemSource::new())),
             sink: Some(Arc::new(MemSink::new(Vec::new()))),
             finalizer: None,
+            ddl: None,
         })
     }
 
@@ -154,6 +156,40 @@ impl Connector for Greedy {
 /// A source-only connector that also returns a finalizer, which can only
 /// restore what a sink's `prepare` changed.
 struct StrayFinalizer;
+
+/// A source-only connector that also says how it would render DDL.
+struct StrayDdl;
+
+struct Nothing;
+
+impl RenderDdl for Nothing {
+    fn render_ddl(&self, _: &TargetSchema, _: WriteMode) -> Vec<String> {
+        Vec::new()
+    }
+}
+
+impl Connector for StrayDdl {
+    const TYPE: &'static str = "stray_ddl";
+    const ROLES: Roles = Roles::SOURCE;
+    type Options = ArchiveOptions;
+
+    fn build(
+        &self,
+        _: &BuildContext<'_>,
+        _: ArchiveOptions,
+        _: Roles,
+    ) -> Result<Endpoints, BuildError> {
+        Ok(Endpoints {
+            source: Some(Arc::new(MemSource::new())),
+            ddl: Some(Arc::new(Nothing)),
+            ..Endpoints::default()
+        })
+    }
+
+    fn describe(&self, _: &ArchiveOptions) -> String {
+        "stray".into()
+    }
+}
 
 struct NoOp;
 
@@ -179,6 +215,7 @@ impl Connector for StrayFinalizer {
             source: Some(Arc::new(MemSource::new())),
             sink: None,
             finalizer: Some(Arc::new(NoOp)),
+            ddl: None,
         })
     }
 
@@ -320,6 +357,20 @@ fn a_finalizer_without_a_sink_is_reported_as_a_bug() {
     assert!(
         err.to_string().contains("connector bug")
             && err.to_string().contains("a finalizer without a sink"),
+        "{err}"
+    );
+}
+
+#[test]
+fn a_ddl_renderer_without_a_sink_is_reported_as_a_bug() {
+    let mut registry = ConnectorRegistry::new();
+    registry.register(StrayDdl);
+    let err = registry
+        .build(&conn("s", "stray_ddl", json!({})), Roles::SOURCE)
+        .unwrap_err();
+    assert!(
+        err.to_string().contains("connector bug")
+            && err.to_string().contains("a DDL renderer without a sink"),
         "{err}"
     );
 }
@@ -484,6 +535,7 @@ fn replace_swaps_a_registered_type_on_purpose() {
                 source: Some(Arc::new(MemSource::new())),
                 sink: None,
                 finalizer: None,
+                ddl: None,
             })
         }
         fn describe(&self, _: &ArchiveOptions) -> String {
@@ -624,6 +676,7 @@ impl Connector for FreeForm {
             source: Some(Arc::new(MemSource::new())),
             sink: None,
             finalizer: None,
+            ddl: None,
         })
     }
 

@@ -35,6 +35,10 @@ pub enum ErrorKind {
     Expr,
     /// An expression's type doesn't fit where it is used (B3).
     Type,
+    /// The planner refused the config (B7): a cycle between flows, a sink
+    /// with no idempotency strategy for a flow's mode, or a setting the
+    /// runner can't honour.
+    Plan,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

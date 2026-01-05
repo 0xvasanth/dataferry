@@ -31,7 +31,10 @@ mod builtins;
 mod cli;
 mod diagnostic;
 mod exit;
+mod plan;
+mod run;
 mod schema;
+mod targets;
 mod validate;
 
 use std::ffi::OsString;
@@ -51,6 +54,8 @@ pub use crate::exit::Exit;
 /// A `ferry` command line: a connector registry, a name and a version.
 pub struct Ferry {
     registry: ConnectorRegistry,
+    /// How `run` verifies each sink type it can read back (A8).
+    targets: targets::Targets,
     name: &'static str,
     version: &'static str,
     /// Registration mistakes, reported when the binary starts.
@@ -68,6 +73,7 @@ impl Ferry {
     pub fn new() -> Self {
         Self {
             registry: ConnectorRegistry::new(),
+            targets: targets::Targets::default(),
             name: "ferry",
             version: env!("CARGO_PKG_VERSION"),
             miswired: Vec::new(),
@@ -249,10 +255,45 @@ mod commands {
         match &cli.command {
             Command::Validate => validate(ferry, cli, printer),
             Command::Schema { out } => schema(ferry, cli, out.as_deref(), printer),
-            Command::Plan => not_implemented(ferry, cli, printer, "plan", "B7"),
-            Command::Run => not_implemented(ferry, cli, printer, "run", "S2"),
-            Command::Resume { .. } => not_implemented(ferry, cli, printer, "resume", "A5"),
-            Command::Retry { .. } => not_implemented(ferry, cli, printer, "retry", "A5"),
+            Command::Plan => plan(ferry, cli, printer),
+            Command::Run => block_on(run::run(ferry, cli, printer, run::Start::New)),
+            Command::Resume { run_id } => block_on(run::run(
+                ferry,
+                cli,
+                printer,
+                run::Start::Resume(run_id.clone()),
+            )),
+            Command::Retry { failed } => block_on(run::run(
+                ferry,
+                cli,
+                printer,
+                run::Start::Retry(failed.clone()),
+            )),
+        }
+    }
+
+    fn block_on<F: std::future::Future>(future: F) -> F::Output {
+        tokio::runtime::Handle::current().block_on(future)
+    }
+
+    fn plan(ferry: &Ferry, cli: &Cli, printer: &mut Printer<'_>) -> Exit {
+        let planned = block_on(plan::plan(
+            &ferry.registry,
+            &cli.config,
+            &|name| std::env::var(name).ok(),
+            &mut printer.redaction,
+        ));
+        match planned {
+            Ok((planned, warnings)) => {
+                let shown: Vec<_> = warnings.into_iter().filter(|_| !cli.quiet).collect();
+                let _ = printer.diagnostics(&shown, &cli.config);
+                let _ = printer.output(&plan::render(&planned));
+                Exit::Success
+            }
+            Err(refused) => {
+                let _ = printer.diagnostics(&refused.diagnostics, &cli.config);
+                refused.exit
+            }
         }
     }
 
@@ -367,28 +408,6 @@ mod commands {
                 Exit::Internal
             }
         }
-    }
-
-    fn not_implemented(
-        ferry: &Ferry,
-        cli: &Cli,
-        printer: &mut Printer<'_>,
-        command: &str,
-        owner: &str,
-    ) -> Exit {
-        let d = Diagnostic::error(
-            code::NOT_IMPLEMENTED,
-            format!(
-                "`{} {command}` is not implemented yet ({owner})",
-                ferry.name
-            ),
-        )
-        .help(format!(
-            "`{} validate` checks the config without connecting",
-            ferry.name
-        ));
-        let _ = printer.diagnostics(&[d], &cli.config);
-        Exit::Internal
     }
 
     fn plural(n: usize) -> &'static str {
