@@ -173,6 +173,18 @@ fn json_value(array: &dyn Array, row: usize) -> Value {
         DataType::Timestamp(TimeUnit::Microsecond, _) => {
             rfc3339(array.as_primitive::<TimestampMicrosecondType>().value(row)).into()
         }
+        DataType::List(_) => {
+            let items = array.as_list::<i32>().value(row);
+            Value::Array((0..items.len()).map(|i| json_value(&items, i)).collect())
+        }
+        DataType::Struct(fields) => {
+            let structs = array.as_struct();
+            let mut object = Map::new();
+            for (field, column) in fields.iter().zip(structs.columns()) {
+                object.insert(field.name().clone(), json_value(column.as_ref(), row));
+            }
+            Value::Object(object)
+        }
         other => panic!("no JSON form for {other} in these tests"),
     }
 }
@@ -232,4 +244,55 @@ pub fn batch_of(entity: &Entity, rows: &[Value], missing: &[&[&str]]) -> RecordB
 
 pub fn list_of(item: CanonicalType) -> CanonicalType {
     CanonicalType::List(Box::new(CanonicalField::new("item", item, true)))
+}
+
+/// A compiled flow as ferry-runtime runs it, wired the way the planner
+/// (B7) does: the driver and every co-partitioned join as inputs (in the
+/// plan's input order), and every staged join's source given through
+/// `stage_with`. `source` is the source of a connection.
+pub fn runtime_flow(
+    compiled: &CompiledFlow,
+    source: impl Fn(&str) -> std::sync::Arc<dyn ferry_core::Source>,
+    driver_connection: &str,
+    sink: std::sync::Arc<dyn ferry_core::Sink>,
+    staging_memory: u64,
+) -> ferry_runtime::Flow {
+    use ferry_dsl::compile::{Staging, Strategy};
+    use ferry_runtime::Input;
+
+    let plan = &compiled.plan;
+    let mut inputs = vec![Input {
+        source: source(driver_connection),
+        entity: plan.entity().clone(),
+        co_partition: None,
+    }];
+    let mut staged = std::collections::BTreeMap::new();
+    for join in plan.joins() {
+        match &join.strategy {
+            Strategy::CoPartition { column } => inputs.push(Input {
+                source: source(&join.connection),
+                entity: join.entity.clone(),
+                co_partition: Some(column.clone()),
+            }),
+            Strategy::Stage => {
+                staged.insert(join.alias.clone(), source(&join.connection));
+            }
+        }
+    }
+    plan.stage_with(Staging {
+        sources: staged,
+        memory: staging_memory,
+        dir: None,
+    })
+    .unwrap();
+    ferry_runtime::Flow {
+        name: compiled.name.clone(),
+        inputs,
+        plan: std::sync::Arc::new(plan.clone()),
+        sink,
+        target: compiled.target.clone(),
+        finalizer: None,
+        mode: compiled.mode,
+        depends_on: Vec::new(),
+    }
 }
