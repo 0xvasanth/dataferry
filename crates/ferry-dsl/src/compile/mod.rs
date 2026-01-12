@@ -40,9 +40,18 @@
 //!   non-array can only show up in a variant (`json`) value, where it is an
 //!   error row.
 //!
-//! Merges (`from:` lists, `nest:`, `unnest: <many alias>`) are B6's.
+//! # Merges
+//!
+//! A `from:` list (B6) runs its joins first, in `from:` order, before the
+//! flow `where:`: `one` joins become `<alias>.<field>` columns of the
+//! driver record, and `many` joins feed `nest:` columns and `unnest:
+//! <alias>` targets. A duplicate match on a `one` join rejects the record.
+//! [`merge`] has the rules and the two strategies (co-partitioned
+//! streaming, or staging), which [`FlowPlan::joins`] shows.
 
 pub mod key;
+mod merge;
+mod side;
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -63,13 +72,16 @@ use ferry_core::transform::{
 };
 use ferry_core::types::CanonicalField;
 use ferry_core::{FerryError, ForeignKey, TargetSchema, TargetTable, WriteMode};
-use futures::StreamExt;
+use futures::{StreamExt, TryStreamExt};
 
 use crate::config::model::{self, Mode};
 use crate::config::{ConfigError, ConfigErrors, ErrorKind, FieldPath, Flow};
 use crate::expr::{Compiled, INDEX_COLUMN, ITEM_COLUMN, KEY_COLUMN, PARENT_COLUMN};
 use crate::typecheck::{Catalog, CheckedFlow, ColumnValue, Predicate};
 use key::Step;
+use merge::{Join, Nest, Sides};
+pub use merge::{JoinPlan, NestOrder, Staging, Strategy};
+use side::{Matched, Sorted};
 
 /// A flow, compiled: everything the runner needs from the DSL.
 #[derive(Clone)]
@@ -88,8 +100,9 @@ pub struct CompiledFlow {
 /// result for `flow` against `catalog`.
 ///
 /// Fails, naming the target, when a `mode: upsert` target has no `key:`
-/// (the loader checks this too; the planner doesn't rely on it), and for
-/// what isn't compiled yet: merges (B6).
+/// (the loader checks this too; the planner doesn't rely on it), and, naming
+/// the join, when `strategy: co_partition` is pinned on a join that can't be
+/// co-partitioned.
 pub fn compile(
     flow: &Flow,
     checked: &CheckedFlow,
@@ -99,27 +112,19 @@ pub fn compile(
         .key("flows")
         .item(0, Some(flow.name.as_str()));
     let mut errors = Vec::new();
-    let unsupported = |at, path: &FieldPath, what: &str| {
-        ConfigError::new(
-            ErrorKind::Invalid,
-            format!(
-                "flow `{}`: {what} can't be compiled yet",
-                flow.name.as_str()
-            ),
-        )
-        .at(at)
-        .path(path)
-        .help("merges (`from:` lists, `nest:`, `unnest:` of a `many` join) arrive with B6")
-    };
-    let entity = match flow.from.value() {
-        model::From::Entity(reference) => catalog.get(reference),
-        model::From::Merge(_) => {
-            errors.push(unsupported(
-                flow.from.location(),
+    let (entity, joins) = match flow.from.value() {
+        model::From::Entity(reference) => (catalog.get(reference).cloned(), Vec::new()),
+        model::From::Merge(entries) => {
+            match merge::plan(
+                flow.name.as_str(),
+                entries,
+                catalog,
                 &path.key("from"),
-                "a merge",
-            ));
-            None
+                &mut errors,
+            ) {
+                Some(merge) => (Some(merge.driver), merge.joins),
+                None => (None, Vec::new()),
+            }
         }
     };
     let mode = match flow.mode {
@@ -129,6 +134,7 @@ pub fn compile(
     let mut warnings = Vec::new();
     let mut tables = Vec::new();
     let mut targets: Vec<PlanTarget> = Vec::new();
+    let mut nests = Vec::new();
     for target in &checked.targets {
         let Some((table, model)) = flow.to.iter().find(|(t, _)| t.as_str() == target.table) else {
             continue;
@@ -163,13 +169,26 @@ pub fn compile(
                 WriteMode::Insert => {}
             }
         }
-        if let (Some(unnest), None) = (&model.unnest, &target.unnest) {
-            errors.push(unsupported(
-                unnest.location(),
-                &target_path.key("unnest"),
-                "`unnest:` of a `many` join",
-            ));
-        }
+        // `unnest: <many alias>`: the type checker leaves `unnest` unset.
+        let many = match (&model.unnest, &target.unnest) {
+            (Some(alias), None) => {
+                let j = joins.iter().position(|j| {
+                    j.plan.alias == alias.as_str() && j.plan.cardinality == model::Cardinality::Many
+                });
+                if j.is_none() {
+                    errors.push(
+                        ConfigError::new(
+                            ErrorKind::Invalid,
+                            format!("`unnest: {}` is not a `many` join", alias.as_str()),
+                        )
+                        .at(alias.location())
+                        .path(&target_path.key("unnest")),
+                    );
+                }
+                j
+            }
+            _ => None,
+        };
         let mut columns = Vec::new();
         for column in &target.columns {
             match &column.value {
@@ -177,11 +196,21 @@ pub fn compile(
                 ColumnValue::Expr(expr) => {
                     columns.push(PlanColumn::Expr(column.field.clone(), expr.clone()))
                 }
-                ColumnValue::Nest { .. } => errors.push(unsupported(
-                    table.location(),
-                    &target_path.key("columns").key(&column.field.name),
-                    "a `nest:` column",
-                )),
+                ColumnValue::Nest { alias, .. } => {
+                    let column_path = target_path.key("columns").key(&column.field.name);
+                    match merge::nest(&column.field, &column.value, &joins, &column_path) {
+                        Ok((nest, order_by)) => {
+                            nests.push(NestOrder {
+                                target: target.table.clone(),
+                                column: column.field.name.clone(),
+                                alias: alias.clone(),
+                                order_by,
+                            });
+                            columns.push(PlanColumn::Nest(column.field.clone(), nest));
+                        }
+                        Err(e) => errors.push(e),
+                    }
+                }
             }
         }
         let parent = target
@@ -206,6 +235,7 @@ pub fn compile(
                 missing_prefix: plain_path(expr.text()),
                 expr,
             }),
+            many,
             input: target.scope.input_schema(),
             filter: target.filter.clone(),
             columns,
@@ -228,9 +258,13 @@ pub fn compile(
     };
     let plan = FlowPlan {
         inner: Arc::new(Inner {
-            inputs: vec![entity.name().to_owned()],
+            name: flow.name.as_str().to_owned(),
+            inputs: inputs(&entity, &joins),
             write_order: targets.iter().map(|t| t.table.clone()).collect(),
-            entity: entity.clone(),
+            stages: Arc::new(Stages::new(joins.len())),
+            joins,
+            nests,
+            entity,
             filter: checked.filter.clone(),
             targets,
         }),
@@ -242,6 +276,18 @@ pub fn compile(
         mode,
         warnings,
     })
+}
+
+/// The plan's inputs: the driver, then every co-partitioned join.
+fn inputs(driver: &Entity, joins: &[Join]) -> Vec<String> {
+    std::iter::once(driver.name().to_owned())
+        .chain(
+            joins
+                .iter()
+                .filter(|j| matches!(j.plan.strategy, Strategy::CoPartition { .. }))
+                .map(|j| j.plan.entity.name().to_owned()),
+        )
+        .collect()
 }
 
 /// A child that maps every key column of its parent from `$parent.<col>`
@@ -291,19 +337,46 @@ pub struct FlowPlan {
     inner: Arc<Inner>,
 }
 
+#[derive(Clone)]
 struct Inner {
+    name: String,
     inputs: Vec<String>,
     write_order: Vec<String>,
     entity: Entity,
+    /// The joined `from:` entries, in order.
+    joins: Vec<Join>,
+    nests: Vec<NestOrder>,
+    stages: Arc<Stages>,
     filter: Vec<Predicate>,
     targets: Vec<PlanTarget>,
 }
 
+/// The staged joins' sources, and each stage once it is built: by the
+/// first partition that needs it, for every partition after.
+struct Stages {
+    staging: std::sync::Mutex<Option<Staging>>,
+    built: Vec<futures::lock::Mutex<Option<Arc<Sorted>>>>,
+}
+
+impl Stages {
+    fn new(joins: usize) -> Self {
+        Self {
+            staging: std::sync::Mutex::new(None),
+            built: (0..joins)
+                .map(|_| futures::lock::Mutex::new(None))
+                .collect(),
+        }
+    }
+}
+
+#[derive(Clone)]
 struct PlanTarget {
     table: String,
     /// Index of the `parent:` target, which comes earlier.
     parent: Option<usize>,
     unnest: Option<Unnest>,
+    /// `unnest: <many alias>`: index of the join.
+    many: Option<usize>,
     /// [`Scope::input_schema`](crate::expr::Scope::input_schema) of the
     /// target's scope.
     input: SchemaRef,
@@ -312,15 +385,19 @@ struct PlanTarget {
     output: SchemaRef,
 }
 
+#[derive(Clone)]
 struct Unnest {
     expr: Compiled,
     missing_prefix: Option<String>,
 }
 
+#[derive(Clone)]
 enum PlanColumn {
     /// `columns: "*"`: the source field of the same name.
     Copy(CanonicalField),
     Expr(CanonicalField, Compiled),
+    /// An array built from a `many` join.
+    Nest(CanonicalField, Nest),
 }
 
 /// The result of one batch: what the runner gets, plus which records the
@@ -353,24 +430,187 @@ impl TransformPlan for FlowPlan {
     fn execute(&self, mut inputs: PartitionInputs) -> ferry_core::Result<TransformStream> {
         let input = inputs.take(self.inner.entity.name())?;
         let plan = self.clone();
-        Ok(input
-            .map(move |batch| Ok(plan.transform_batch(&batch?)?.output))
-            .boxed())
+        if self.inner.joins.is_empty() {
+            return Ok(input
+                .map(move |batch| Ok(plan.transform_batch(&batch?)?.output))
+                .boxed());
+        }
+        let mut co_partitioned = Vec::new();
+        for (j, join) in self.inner.joins.iter().enumerate() {
+            if let Strategy::CoPartition { .. } = join.plan.strategy {
+                co_partitioned.push((j, inputs.take(join.plan.entity.name())?));
+            }
+        }
+        // The joined sides first (this partition's rows of each
+        // co-partitioned input, and the stages), then the driver.
+        let joined = async move {
+            let sides = plan.sides(co_partitioned).await?;
+            Ok::<_, FerryError>(input.map(move |batch| {
+                Ok(Run::new(&plan.inner, batch?, Some(&sides))?
+                    .finish()?
+                    .output)
+            }))
+        };
+        Ok(futures::stream::once(joined).try_flatten().boxed())
     }
 }
 
 impl FlowPlan {
-    /// The driver entity, the plan's only input.
+    /// The driver entity, the plan's first input.
     pub fn entity(&self) -> &Entity {
         &self.inner.entity
+    }
+
+    /// The joined `from:` entries, in order, each with its strategy and
+    /// why (0003 §5.2): what `ferry plan` shows. The plan's inputs after
+    /// the driver ([`TransformPlan::inputs`]) are the co-partitioned ones,
+    /// in this order; staged ones aren't inputs (see
+    /// [`stage_with`](FlowPlan::stage_with)).
+    pub fn joins(&self) -> impl Iterator<Item = &JoinPlan> {
+        self.inner.joins.iter().map(|j| &j.plan)
+    }
+
+    /// Every `nest:` column's full ordering (0003 §5.8).
+    pub fn nest_orders(&self) -> &[NestOrder] {
+        &self.inner.nests
+    }
+
+    /// Gives the staged joins their sources and memory. Needed before the
+    /// first partition runs when any join is staged, and checked here: every
+    /// staged join's alias needs a source.
+    pub fn stage_with(&self, staging: Staging) -> ferry_core::Result<()> {
+        if let Some(join) = self
+            .staged()
+            .find(|j| !staging.sources.contains_key(&j.plan.alias))
+        {
+            return Err(FerryError::MissingInput {
+                entity: format!(
+                    "{} (the source of staged join `{}`)",
+                    join.plan.reference, join.plan.alias
+                ),
+            });
+        }
+        *self.inner.stages.staging.lock().expect("staging lock") = Some(staging);
+        Ok(())
+    }
+
+    /// The same plan with every co-partitioned join staged instead: what
+    /// the planner falls back to when a source can't split on the driver's
+    /// boundaries (0002 step 5). Fails if a join pinned `strategy:
+    /// co_partition`.
+    pub fn without_co_partitioning(&self) -> ferry_core::Result<FlowPlan> {
+        let mut inner = (*self.inner).clone();
+        for join in &mut inner.joins {
+            let Strategy::CoPartition { column } = &join.plan.strategy else {
+                continue;
+            };
+            if join.pinned {
+                return Err(FerryError::CoPartitionUnsupported {
+                    column: column.clone(),
+                    reason: format!(
+                        "join `{}` pins `strategy: co_partition`, so it can't be staged",
+                        join.plan.alias
+                    ),
+                });
+            }
+            join.plan.strategy = Strategy::Stage;
+            join.plan.reason =
+                "staged: its source can't split on the driver's boundaries (0002 step 5)".into();
+        }
+        inner.inputs = inputs(&inner.entity, &inner.joins);
+        let staging = self
+            .inner
+            .stages
+            .staging
+            .lock()
+            .expect("staging lock")
+            .clone();
+        let stages = Stages::new(inner.joins.len());
+        *stages.staging.lock().expect("staging lock") = staging;
+        inner.stages = Arc::new(stages);
+        Ok(FlowPlan {
+            inner: Arc::new(inner),
+        })
+    }
+
+    fn staged(&self) -> impl Iterator<Item = &Join> {
+        self.inner
+            .joins
+            .iter()
+            .filter(|j| j.plan.strategy == Strategy::Stage)
     }
 
     /// Transforms one batch of driver records, laid out as
     /// [`Entity::arrow_schema`]. Fails only when the batch itself is wrong
     /// (columns that don't match, a null key); a bad value rejects its
-    /// record instead.
+    /// record instead. A merge reads its joined inputs too, so it runs
+    /// through [`TransformPlan::execute`] only.
     pub fn transform_batch(&self, batch: &RecordBatch) -> ferry_core::Result<Transformed> {
-        Run::new(&self.inner, batch)?.finish()
+        if !self.inner.joins.is_empty() {
+            return Err(internal(format!(
+                "flow `{}` is a merge: it runs through `execute`, which reads its joined inputs",
+                self.inner.name
+            )));
+        }
+        Run::new(&self.inner, batch.clone(), None)?.finish()
+    }
+
+    /// Each join's side for one partition, in join order.
+    async fn sides(
+        &self,
+        co_partitioned: Vec<(usize, ferry_core::BatchStream)>,
+    ) -> ferry_core::Result<Sides> {
+        let mut streams: BTreeMap<usize, ferry_core::BatchStream> =
+            co_partitioned.into_iter().collect();
+        let mut sides = Vec::with_capacity(self.inner.joins.len());
+        for (j, join) in self.inner.joins.iter().enumerate() {
+            let side = match join.plan.strategy {
+                Strategy::CoPartition { .. } => {
+                    let mut stream =
+                        streams.remove(&j).ok_or_else(|| FerryError::MissingInput {
+                            entity: join.plan.entity.name().to_owned(),
+                        })?;
+                    let mut batches = Vec::new();
+                    while let Some(batch) = stream.next().await {
+                        batches.push(batch?);
+                    }
+                    Arc::new(Sorted::in_memory(Arc::clone(&join.keyed), &batches)?)
+                }
+                Strategy::Stage => self.stage(j).await?,
+            };
+            sides.push(side);
+        }
+        Ok(sides)
+    }
+
+    /// Staged join `j`, built by the first partition that asks.
+    async fn stage(&self, j: usize) -> ferry_core::Result<Arc<Sorted>> {
+        let join = &self.inner.joins[j];
+        let mut built = self.inner.stages.built[j].lock().await;
+        if let Some(sorted) = &*built {
+            return Ok(Arc::clone(sorted));
+        }
+        let staging = self
+            .inner
+            .stages
+            .staging
+            .lock()
+            .expect("staging lock")
+            .clone();
+        let missing = || FerryError::MissingInput {
+            entity: format!(
+                "{} (staged join `{}` has no source: see FlowPlan::stage_with)",
+                join.plan.reference, join.plan.alias
+            ),
+        };
+        let staging = staging.ok_or_else(missing)?;
+        let source = staging.sources.get(&join.plan.alias).ok_or_else(missing)?;
+        let memory = staging.memory / self.staged().count().max(1) as u64;
+        let dir = staging.dir.clone().unwrap_or_else(std::env::temp_dir);
+        let sorted =
+            Arc::new(Sorted::stage(Arc::clone(&join.keyed), source.as_ref(), memory, &dir).await?);
+        *built = Some(Arc::clone(&sorted));
+        Ok(sorted)
     }
 }
 
@@ -429,6 +669,22 @@ fn take_batch(batch: &RecordBatch, indices: &UInt32Array) -> ferry_core::Result<
     batch_of(batch.schema(), columns, indices.len())
 }
 
+/// The columns of `batch` that `schema` names, in its order: the batch an
+/// expression of that scope is evaluated on.
+fn scoped(batch: &RecordBatch, schema: &SchemaRef) -> ferry_core::Result<RecordBatch> {
+    let columns = schema
+        .fields()
+        .iter()
+        .map(|f| {
+            batch
+                .column_by_name(f.name())
+                .cloned()
+                .ok_or_else(|| internal(format!("no column `{}` in scope", f.name())))
+        })
+        .collect::<ferry_core::Result<Vec<_>>>()?;
+    batch_of(Arc::clone(schema), columns, batch.num_rows())
+}
+
 fn batch_of(
     schema: SchemaRef,
     columns: Vec<ArrayRef>,
@@ -462,7 +718,9 @@ fn at(steps: &[Step]) -> String {
 /// The state of one batch going through a plan.
 struct Run<'a> {
     plan: &'a Inner,
-    batch: &'a RecordBatch,
+    /// The driver records, plus a `_ferry_join_<alias>` column per `one`
+    /// join: the driver scope's columns.
+    batch: RecordBatch,
     records: Vec<SourceRecordId>,
     /// The first error of each rejected record.
     rejected: BTreeMap<u32, RejectedRecord>,
@@ -471,10 +729,12 @@ struct Run<'a> {
     kept: Vec<u32>,
     /// Per target, in write order.
     rows: Vec<Rows>,
+    /// Per join, the matches of a `many` join.
+    many: Vec<Option<Matched>>,
 }
 
 impl<'a> Run<'a> {
-    fn new(plan: &'a Inner, batch: &'a RecordBatch) -> ferry_core::Result<Self> {
+    fn new(plan: &'a Inner, batch: RecordBatch, sides: Option<&Sides>) -> ferry_core::Result<Self> {
         let expected = plan.entity.arrow_schema();
         if batch.schema().fields() != expected.fields() {
             return Err(internal(format!(
@@ -482,8 +742,8 @@ impl<'a> Run<'a> {
                 plan.entity.name()
             )));
         }
-        let records = plan.entity.record_ids(batch)?;
-        Ok(Self {
+        let records = plan.entity.record_ids(&batch)?;
+        let mut run = Self {
             plan,
             batch,
             records,
@@ -491,7 +751,12 @@ impl<'a> Run<'a> {
             filtered: Vec::new(),
             kept: Vec::new(),
             rows: Vec::new(),
-        })
+            many: (0..plan.joins.len()).map(|_| None).collect(),
+        };
+        if let Some(sides) = sides {
+            run.join(sides)?;
+        }
+        Ok(run)
     }
 
     fn reject(&mut self, record: u32, target: Option<&str>, error: String) {
@@ -507,7 +772,7 @@ impl<'a> Run<'a> {
     }
 
     fn finish(mut self) -> ferry_core::Result<Transformed> {
-        self.flow_filter();
+        self.flow_filter()?;
         for t in 0..self.plan.targets.len() {
             let rows = self.target(t)?;
             self.rows.push(rows);
@@ -575,10 +840,19 @@ impl<'a> Run<'a> {
             .collect()
     }
 
-    fn flow_filter(&mut self) {
-        let results = Self::predicates(&self.plan.filter, self.batch);
+    fn flow_filter(&mut self) -> ferry_core::Result<()> {
+        let Some(first) = self.plan.filter.first() else {
+            self.kept = (0..self.batch.num_rows() as u32).collect();
+            return Ok(());
+        };
+        let input = scoped(&self.batch, first.expr.input_schema())?;
+        let results = Self::predicates(&self.plan.filter, &input);
         for (row, result) in results.into_iter().enumerate() {
             let record = row as u32;
+            // A join already rejected it.
+            if self.is_rejected(record) {
+                continue;
+            }
             match result {
                 Ok(None) => self.kept.push(record),
                 Ok(Some(reason)) => self.filtered.push(Filtered {
@@ -588,6 +862,7 @@ impl<'a> Run<'a> {
                 Err(error) => self.reject(record, None, error),
             }
         }
+        Ok(())
     }
 
     /// The rows of target `t`: built from where they come from, then its
@@ -640,6 +915,10 @@ impl<'a> Run<'a> {
                     }
                     (field, values)
                 }
+                PlanColumn::Nest(field, nest) => {
+                    let values = self.nest_column(&target.table, field, nest, &rows.record)?;
+                    (field, values)
+                }
             };
             if !field.nullable && values.null_count() > 0 {
                 for row in (0..values.len()).filter(|&r| values.is_null(r)) {
@@ -647,6 +926,7 @@ impl<'a> Run<'a> {
                     let shown = match column {
                         PlanColumn::Expr(_, e) => format!("`{}`", e.text()),
                         PlanColumn::Copy(_) => "the source value".to_owned(),
+                        PlanColumn::Nest(..) => "the nested array".to_owned(),
                     };
                     let error = format!(
                         "{}.{} can't be null, but {shown} is null{}",
@@ -706,7 +986,7 @@ impl<'a> Run<'a> {
                     .collect();
                 let indices = UInt32Array::from(keep.clone());
                 let rows = Rows {
-                    input: take_batch(self.batch, &indices)?,
+                    input: take_batch(&self.batch, &indices)?,
                     steps: vec![Arc::from(Vec::new()); keep.len()],
                     record: keep,
                     mapped: Vec::new(),
@@ -727,10 +1007,13 @@ impl<'a> Run<'a> {
             ..
         } = outer_rows;
 
+        if let Some(j) = target.many {
+            return self.joined_rows(t, j, outer_record, outer_steps, &parent_rows);
+        }
         let Some(unnest) = &target.unnest else {
             // One row per row above. The root is the driver record.
             let driver_rows = UInt32Array::from(outer_record.clone());
-            let root = Root::Driver(take_batch(self.batch, &driver_rows)?);
+            let root = Root::Driver(take_batch(&self.batch, &driver_rows)?);
             let parent = self.parent_struct(target, &parent_rows)?;
             let input = self.input(target, &root, parent, None, &outer_record, &outer_steps)?;
             return Ok(Rows {
@@ -802,6 +1085,56 @@ impl<'a> Run<'a> {
         let sigils = Sigils {
             index: Arc::new(Int64Array::from(elements.index.clone())),
             item: elements.item,
+        };
+        let input = self.input(target, &root, parent, Some(sigils), &record, &steps)?;
+        Ok(Rows {
+            input,
+            record,
+            steps,
+            mapped: Vec::new(),
+        })
+    }
+
+    /// `unnest: <many alias>`: one row per joined row of each outer row's
+    /// driver record, in the joined entity's primary-key order. The root
+    /// is the joined row.
+    fn joined_rows(
+        &mut self,
+        t: usize,
+        j: usize,
+        outer_record: Vec<u32>,
+        outer_steps: Vec<Arc<[Step]>>,
+        parent_rows: &[u32],
+    ) -> ferry_core::Result<Rows> {
+        let target = &self.plan.targets[t];
+        let alias = &self.plan.joins[j].plan.alias;
+        let matched = self.matched(j)?;
+        let mut record = Vec::new();
+        let mut steps = Vec::new();
+        let mut index = Vec::new();
+        let mut take_from = Vec::new();
+        let mut parent = Vec::new();
+        for (o, &r) in outer_record.iter().enumerate() {
+            for (i, m) in matched.range(r as usize).enumerate() {
+                record.push(r);
+                index.push(i as i64);
+                take_from.push(m as u32);
+                let mut path = outer_steps[o].to_vec();
+                path.push(Step {
+                    path: alias.clone(),
+                    index: i as u64,
+                });
+                steps.push(Arc::from(path));
+                if target.parent.is_some() {
+                    parent.push(parent_rows[o]);
+                }
+            }
+        }
+        let root = Root::Driver(take_batch(&matched.rows, &UInt32Array::from(take_from))?);
+        let parent = self.parent_struct(target, &parent)?;
+        let sigils = Sigils {
+            index: Arc::new(Int64Array::from(index)),
+            item: None,
         };
         let input = self.input(target, &root, parent, Some(sigils), &record, &steps)?;
         Ok(Rows {

@@ -15,6 +15,9 @@ workspace = true
 arrow-array = "60"
 arrow-buffer = "60"
 arrow-cast = "60"
+arrow-ipc = "60"
+arrow-ord = "60"
+arrow-row = "60"
 arrow-schema = "60"
 arrow-select = "60"
 async-trait = "0.1"
@@ -38,6 +41,8 @@ schemars = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
+# Staged joins spill to a temporary directory (B6).
+tempfile = "3"
 # `$key`: UUIDv5 child keys (B5).
 uuid = { version = "1", default-features = false, features = ["std", "v5"] }
 
@@ -54,9 +59,10 @@ deadpool-postgres = "0.14"
 testcontainers-modules.workspace = true
 tokio-postgres = "0.7"
 proptest = "1"
-tempfile = "3"
 insta = "1"
 jsonschema = { version = "0.58", default-features = false }
+# The staged merge's peak heap (tests/merge_memory.rs), as ferry-runtime measures it.
+peak_alloc = "0.3"
 # The round-trip test reads serialized JSON back, and column order matters.
 serde_json = { version = "1", features = ["preserve_order"] }
 tokio.workspace = true

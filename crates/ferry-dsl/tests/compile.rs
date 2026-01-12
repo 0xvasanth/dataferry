@@ -15,7 +15,7 @@ use ferry_core::partition::KeyValue;
 use ferry_core::transform::TransformPlan;
 use ferry_core::types::{CanonicalField, CanonicalType};
 use ferry_core::{ForeignKey, WriteMode};
-use ferry_dsl::compile::{Transformed, compile};
+use ferry_dsl::compile::{NestOrder, Strategy, Transformed, compile};
 use ferry_dsl::config::load;
 use ferry_dsl::config::model::Mode;
 use ferry_dsl::typecheck::check;
@@ -493,18 +493,64 @@ fn the_plan_reads_the_driver_entity_and_streams_each_batch() {
 }
 
 #[test]
-fn merges_are_refused_until_b6() {
-    let errors = compile_dir(
+fn the_pg_merge_example_compiles_with_a_strategy_per_join() {
+    let flows = compile_dir(
         &common::repo("examples/pg-merge/ferry"),
         &common::plan::pg_merge_catalog(),
     )
-    .err()
-    .expect("merges aren't compiled yet");
+    .unwrap_or_else(|e| panic!("{e}"));
+    let merge = flows
+        .iter()
+        .find(|f| f.name == "order_summaries")
+        .expect("the merge flow");
+    // The customer lookup is on `o.customer_id`, not the driver's key, so
+    // `auto` stages it; the items pin co-partitioning on `order_id`.
+    let joins: Vec<_> = merge
+        .plan
+        .joins()
+        .map(|j| (j.alias.as_str(), j.strategy.clone(), j.reason.as_str()))
+        .collect();
+    assert_eq!(
+        joins,
+        [
+            (
+                "c",
+                Strategy::Stage,
+                "auto: staged, because `o.customer_id` isn't the driver's key `o.id`"
+            ),
+            (
+                "i",
+                Strategy::CoPartition {
+                    column: "order_id".into()
+                },
+                "pinned by `strategy: co_partition`"
+            ),
+        ]
+    );
+    assert_eq!(
+        merge.plan.inputs(),
+        ["public.orders", "public.order_items"],
+        "the driver, then the co-partitioned input; the staged one isn't read by the runner"
+    );
+    assert_eq!(
+        merge.plan.nest_orders(),
+        [NestOrder {
+            target: "order_summaries".into(),
+            column: "items".into(),
+            alias: "i".into(),
+            order_by: vec!["line_no".into(), "order_id".into()],
+        }]
+    );
+    let items = merge
+        .target
+        .table("order_summaries")
+        .unwrap()
+        .fields
+        .iter()
+        .find(|f| f.name == "items")
+        .unwrap();
     assert!(
-        errors
-            .0
-            .iter()
-            .any(|e| e.message.contains("a merge can't be compiled yet")),
-        "{errors}"
+        !items.nullable,
+        "a driver with no items gets [], never null"
     );
 }
