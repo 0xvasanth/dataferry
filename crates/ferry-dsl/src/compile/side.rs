@@ -15,6 +15,11 @@
 //!   are spread over the whole stage (a `one` lookup on another column)
 //!   reads every block it needs, from the cache when the stage fits there.
 //!
+//! Sorting, spilling and reading the stage's files block, so they run on
+//! tokio's blocking pool ([`blocking`]), never on the async thread that
+//! drives the partition: a stage being sorted doesn't stall the runner's
+//! heartbeats or other partitions on a current-thread runtime.
+//!
 //! Rows are sorted by (join key, primary key), so a key's rows are
 //! contiguous and in primary-key order: the order `unnest:` gives them, and
 //! the last tie-breaker of a `nest:` (0003 §5.8). Keys are compared as
@@ -65,6 +70,65 @@ fn batch_bytes(batch: &RecordBatch) -> usize {
         .iter()
         .map(|c| array_bytes(c.as_ref()))
         .sum()
+}
+
+/// Runs `f` on tokio's blocking pool. Once started it runs to the end,
+/// even if the caller's future is dropped; what it returns is then
+/// dropped on that thread (a dropped stage removes its files there).
+pub(crate) async fn blocking<T: Send + 'static>(
+    context: &str,
+    f: impl FnOnce() -> ferry_core::Result<T> + Send + 'static,
+) -> ferry_core::Result<T> {
+    tokio::task::spawn_blocking(f)
+        .await
+        .map_err(|e| error(context, e))?
+}
+
+/// Blocking pauses a test injects into the stage's file I/O, by the
+/// joined entity's reference, to tell whether it runs on the async thread.
+#[cfg(test)]
+pub(crate) mod pause {
+    use std::collections::BTreeMap;
+    use std::sync::Mutex;
+    use std::thread::ThreadId;
+    use std::time::Duration;
+
+    /// The pause, and every point reached with the thread it ran on.
+    type Pauses = BTreeMap<String, (Duration, Vec<(&'static str, ThreadId)>)>;
+    static PAUSES: Mutex<Pauses> = Mutex::new(BTreeMap::new());
+
+    /// Pauses the first time each point is reached for `reference`.
+    pub(crate) fn set(reference: &str, pause: Duration) {
+        PAUSES
+            .lock()
+            .unwrap()
+            .insert(reference.to_owned(), (pause, Vec::new()));
+    }
+
+    /// The points reached for `reference`, in order, each with its thread.
+    pub(crate) fn hits(reference: &str) -> Vec<(&'static str, ThreadId)> {
+        PAUSES
+            .lock()
+            .unwrap()
+            .get(reference)
+            .map(|(_, hits)| hits.clone())
+            .unwrap_or_default()
+    }
+
+    pub(crate) fn at(reference: &str, point: &'static str) {
+        let pause = PAUSES
+            .lock()
+            .unwrap()
+            .get_mut(reference)
+            .and_then(|(d, hits)| {
+                let first = hits.iter().all(|(p, _)| *p != point);
+                hits.push((point, std::thread::current().id()));
+                first.then_some(*d)
+            });
+        if let Some(pause) = pause {
+            std::thread::sleep(pause);
+        }
+    }
 }
 
 /// What fails here is mostly I/O on the stage's files (a full disk), so it
@@ -462,6 +526,8 @@ impl Sorted {
 
     /// Reads every partition of the joined entity from `source` and sorts
     /// it, in `memory` bytes, spilling to a new directory under `dir`.
+    /// The source is read on the caller's task; everything that sorts or
+    /// touches the files runs on the blocking pool, one batch at a time.
     pub(crate) async fn stage(
         keyed: Arc<Keyed>,
         source: &dyn Source,
@@ -470,18 +536,29 @@ impl Sorted {
     ) -> ferry_core::Result<Self> {
         let context = format!("staging `{}`", keyed.reference);
         let entity = keyed.entity.clone();
-        let mut spill = Spill::new(Arc::clone(&keyed), Limits::new(memory), dir)?;
+        let mut spill = {
+            let (keyed, dir) = (Arc::clone(&keyed), dir.to_path_buf());
+            blocking(&context, move || {
+                Spill::new(keyed, Limits::new(memory), &dir)
+            })
+            .await?
+        };
         let partitions = source
             .plan_partitions(&entity, &PartitionHint::rows(STAGE_PARTITION_ROWS))
             .await?;
         for partition in &partitions {
             let mut batches = source.read(&entity, partition).await?;
             while let Some(batch) = batches.next().await {
-                let prepared = keyed.prepare(&batch?)?;
-                spill.push(prepared).map_err(|e| error(&context, e))?;
+                let (batch, keyed, at) = (batch?, Arc::clone(&keyed), context.clone());
+                spill = blocking(&context, move || {
+                    let prepared = keyed.prepare(&batch)?;
+                    spill.push(prepared).map_err(|e| error(&at, e))?;
+                    Ok(spill)
+                })
+                .await?;
             }
         }
-        spill.finish()
+        blocking(&context, move || spill.finish()).await
     }
 
     /// The joined rows of each row of `keys`.
@@ -565,6 +642,8 @@ impl Sorted {
             return Ok(block);
         }
         let context = format!("reading the stage of `{}`", self.keyed.reference);
+        #[cfg(test)]
+        pause::at(&self.keyed.reference, "read");
         let batch = {
             let mut reader = disk.reader.lock().expect("reader lock");
             reader.set_index(b).map_err(|e| error(&context, e))?;
@@ -682,6 +761,8 @@ impl Spill {
     }
 
     fn spill_run(&mut self) -> IoResult<()> {
+        #[cfg(test)]
+        pause::at(&self.keyed.reference, "spill");
         let parts = std::mem::take(&mut self.buffer);
         self.buffered = 0;
         let sorted = self.keyed.sort(parts).map_err(io)?;
@@ -730,6 +811,8 @@ impl Spill {
                 self.runs.push(path);
             }
         }
+        #[cfg(test)]
+        pause::at(&self.keyed.reference, "merge");
         // A cached block is a sixteenth of the cache.
         let block_rows = self.rows_for(self.limits.cache_bytes, 16);
         let path = self.path();

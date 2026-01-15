@@ -442,13 +442,21 @@ impl TransformPlan for FlowPlan {
             }
         }
         // The joined sides first (this partition's rows of each
-        // co-partitioned input, and the stages), then the driver.
+        // co-partitioned input, and the stages), then the driver. Each
+        // batch runs on the blocking pool: its lookups may read the stage's
+        // files.
         let joined = async move {
-            let sides = plan.sides(co_partitioned).await?;
-            Ok::<_, FerryError>(input.map(move |batch| {
-                Ok(Run::new(&plan.inner, batch?, Some(&sides))?
-                    .finish()?
-                    .output)
+            let sides = Arc::new(plan.sides(co_partitioned).await?);
+            Ok::<_, FerryError>(input.then(move |batch| {
+                let (plan, sides) = (plan.clone(), Arc::clone(&sides));
+                async move {
+                    let batch = batch?;
+                    let context = format!("joining flow `{}`", plan.inner.name);
+                    side::blocking(&context, move || {
+                        Ok(Run::new(&plan.inner, batch, Some(&sides))?.finish()?.output)
+                    })
+                    .await
+                }
             }))
         };
         Ok(futures::stream::once(joined).try_flatten().boxed())
@@ -574,7 +582,12 @@ impl FlowPlan {
                     while let Some(batch) = stream.next().await {
                         batches.push(batch?);
                     }
-                    Arc::new(Sorted::in_memory(Arc::clone(&join.keyed), &batches)?)
+                    let keyed = Arc::clone(&join.keyed);
+                    let context = format!("sorting `{}`", join.plan.reference);
+                    Arc::new(
+                        side::blocking(&context, move || Sorted::in_memory(keyed, &batches))
+                            .await?,
+                    )
                 }
                 Strategy::Stage => self.stage(j).await?,
             };
@@ -1357,4 +1370,170 @@ struct Elements {
 struct Sigils {
     index: ArrayRef,
     item: Option<ArrayRef>,
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::{Duration, Instant};
+
+    use arrow_array::{Int64Array, RecordBatch};
+    use ferry_core::testkit::MemSource;
+    use ferry_core::types::CanonicalType;
+    use futures::StreamExt;
+
+    use super::*;
+
+    fn entity(name: &str, fields: &[&str], key: &str) -> Entity {
+        let fields = fields
+            .iter()
+            .map(|f| CanonicalField::new(*f, CanonicalType::Int64, false))
+            .collect();
+        Entity::new(name, fields, vec![key.into()]).unwrap()
+    }
+
+    fn int_batch(entity: &Entity, columns: Vec<Vec<i64>>) -> RecordBatch {
+        let columns = columns
+            .into_iter()
+            .map(|c| Arc::new(Int64Array::from(c)) as ArrayRef)
+            .collect();
+        RecordBatch::try_new(entity.arrow_schema(), columns).unwrap()
+    }
+
+    /// A staged `many` join that spills, run on a current-thread runtime
+    /// with a pause injected the first time the stage sorts a run, merges
+    /// its runs and reads a block back. The pauses happen on other threads,
+    /// and a 10 ms ticker on the runtime's own thread keeps ticking through
+    /// them: the stage never blocks the async thread (B6 follow-up). The
+    /// threads are the proof; the ticker shows what it means.
+    #[test]
+    fn a_staged_join_sorts_and_reads_its_stage_off_the_async_thread() {
+        let orders = entity("orders", &["id"], "id");
+        let items = entity("items", &["item_id", "order_id", "qty"], "item_id");
+        let catalog = Catalog::new()
+            .with("slow", orders.clone())
+            .with("slow", items.clone());
+        let dir = tempfile::tempdir().unwrap();
+        let write = |path: &str, text: &str| {
+            let path = dir.path().join(path);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, text).unwrap();
+        };
+        write("ferry.yaml", "version: 1\nname: t\n");
+        write(
+            "connections.yaml",
+            "connections:\n  - name: slow\n    type: postgres\n    url: x\n  - name: warehouse\n    type: postgres\n    url: y\n",
+        );
+        write(
+            "flows/f.yaml",
+            "flows:\n  - name: summaries\n    from:\n      - entity: slow.orders\n        as: o\n      - entity: slow.items\n        as: i\n        join:\n          cardinality: many\n          keys: {order_id: o.id}\n          strategy: stage\n    sink: warehouse\n    to:\n      summaries:\n        key: [id]\n        columns:\n          id: id\n          items:\n            nest: i\n            columns:\n              qty: qty\n",
+        );
+        let config = crate::config::load(dir.path()).unwrap();
+        let checked = crate::typecheck::check(&config, &catalog).unwrap();
+        let flow = compile(&config.flows[0], &checked[0], &catalog).unwrap();
+
+        // 20 000 items over 200 orders: about 1 MiB, which spills a few
+        // sorted runs in 4 MiB (B6's `side` tests).
+        let n: i64 = 20_000;
+        let rows = int_batch(
+            &items,
+            vec![
+                (0..n).collect(),
+                (0..n).map(|i| i % 200).collect(),
+                (0..n).map(|_| 1).collect(),
+            ],
+        );
+        let source = MemSource::new()
+            .with_entity(items, rows)
+            .unwrap()
+            .with_batch_rows(997);
+        let stage_dir = tempfile::tempdir().unwrap();
+        flow.plan
+            .stage_with(Staging {
+                sources: [(
+                    "i".to_owned(),
+                    Arc::new(source) as Arc<dyn ferry_core::Source>,
+                )]
+                .into(),
+                memory: 4 << 20,
+                dir: Some(stage_dir.path().to_path_buf()),
+            })
+            .unwrap();
+        // Its own connection name: `side`'s tests stage `shop.items`, in
+        // parallel, and the pauses are per reference.
+        side::pause::set("slow.items", Duration::from_millis(600));
+
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_time()
+            .build()
+            .unwrap();
+        let async_thread = std::thread::current().id();
+        let (gaps, outputs) = runtime.block_on(async {
+            let ticking = Arc::new(std::sync::atomic::AtomicBool::new(true));
+            let ticker = tokio::spawn({
+                let ticking = Arc::clone(&ticking);
+                async move {
+                    let mut gaps = Vec::new();
+                    let mut last = Instant::now();
+                    while ticking.load(std::sync::atomic::Ordering::SeqCst) {
+                        tokio::time::sleep(Duration::from_millis(10)).await;
+                        gaps.push(last.elapsed());
+                        last = Instant::now();
+                    }
+                    gaps
+                }
+            });
+            let driver = int_batch(&orders, vec![(0..200).collect()]);
+            let batches: Vec<ferry_core::Result<RecordBatch>> =
+                (0..4).map(|b| Ok(driver.slice(b * 50, 50))).collect();
+            let inputs = PartitionInputs::new(vec![(
+                "orders".into(),
+                futures::stream::iter(batches).boxed(),
+            )]);
+            let outputs: Vec<TransformOutput> = flow
+                .plan
+                .execute(inputs)
+                .unwrap()
+                .map(|o| o.unwrap())
+                .collect()
+                .await;
+            ticking.store(false, std::sync::atomic::Ordering::SeqCst);
+            (ticker.await.unwrap(), outputs)
+        });
+
+        let hits = side::pause::hits("slow.items");
+        for point in ["spill", "merge", "read"] {
+            assert!(
+                hits.iter().any(|(p, _)| *p == point),
+                "the stage never reached `{point}`: {hits:?}"
+            );
+        }
+        assert!(
+            hits.iter().all(|(_, thread)| *thread != async_thread),
+            "stage I/O ran on the async thread: {hits:?}"
+        );
+        // Three 600 ms pauses, and the ticker never waited through one (a
+        // generous bound: the threads above are the proof).
+        let ticked: Duration = gaps.iter().sum();
+        let longest = gaps.iter().max().copied().unwrap_or_default();
+        assert!(
+            ticked >= Duration::from_millis(1800),
+            "ticked for {ticked:?}"
+        );
+        assert!(
+            longest < Duration::from_millis(500),
+            "a tick waited {longest:?}"
+        );
+        // Every order still finds its 100 items.
+        let mut nested = 0;
+        for output in &outputs {
+            for target in &output.targets {
+                let lists = target.batch.column(1).as_list::<i32>();
+                for row in 0..lists.len() {
+                    assert_eq!(lists.value(row).len(), 100);
+                    nested += 1;
+                }
+            }
+        }
+        assert_eq!(nested, 200);
+    }
 }

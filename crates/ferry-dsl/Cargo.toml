@@ -44,6 +44,8 @@ sha2 = "0.10"
 # Staged joins spill to a temporary directory (B6).
 tempfile = "3"
 # `$key`: UUIDv5 child keys (B5).
+# Merges sort and read their stages on tokio's blocking pool.
+tokio = { version = "1", features = ["rt"] }
 uuid = { version = "1", default-features = false, features = ["std", "v5"] }
 
 [dev-dependencies]
@@ -65,4 +67,4 @@ jsonschema = { version = "0.58", default-features = false }
 peak_alloc = "0.3"
 # The round-trip test reads serialized JSON back, and column order matters.
 serde_json = { version = "1", features = ["preserve_order"] }
-tokio.workspace = true
+tokio = { workspace = true, features = ["time"] }
