@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use ferry_core::{ForeignKey, Result, TargetSchema, TargetTable};
-use ferry_registry::state::{PartitionCounts, RunId};
+use ferry_registry::state::{PartitionCounts, RunId, RunTotals};
 use ferry_registry::{FinalizeProblem, StateStore};
 use ferry_runtime::{Flow, RunReport};
 use futures::StreamExt;
@@ -24,11 +24,20 @@ use crate::verifier_error;
 ///
 /// Nothing here reads the source: counts come from the state store and
 /// the write log, which the runner filled at read and write time.
+///
+/// The state store keeps one set of totals for the whole run. When the run
+/// has flows this verifier doesn't check (they write to another sink, each
+/// verified against its own target), [`in_run`](Verifier::in_run) scopes
+/// those totals to this verifier's flows by taking out what the other
+/// flows' write-time records account for. Without it, the verifier's flows
+/// are taken to be the whole run.
 pub struct Verifier {
     store: Arc<dyn StateStore>,
     log: Arc<dyn WriteLog>,
     target: Arc<dyn Target>,
     flows: Vec<(String, TargetSchema)>,
+    /// The run's flows this verifier doesn't check.
+    others: Vec<String>,
     assertions: Vec<(String, Arc<dyn CompiledAssertion>)>,
     finalized: Vec<(String, FinalizeProblem)>,
 }
@@ -231,18 +240,33 @@ impl Verifier {
                 .iter()
                 .map(|f| (f.name.clone(), f.target.clone()))
                 .collect(),
+            others: Vec::new(),
             assertions: Vec::new(),
             finalized: Vec::new(),
         }
     }
 
+    /// `flows` are every flow of the run, this verifier's and the others
+    /// (written to other sinks). Totals, partition counts and completeness
+    /// are then scoped to this verifier's flows.
+    pub fn in_run(mut self, flows: &[Flow]) -> Self {
+        self.others = flows
+            .iter()
+            .map(|f| f.name.clone())
+            .filter(|name| self.flows.iter().all(|(own, _)| own != name))
+            .collect();
+        self
+    }
+
     /// Fails verification on what the run's finalize couldn't restore
-    /// (A6): a foreign key the loaded rows break, an index that couldn't
-    /// be recreated. The verifier's own constraint checks cover the keys a
-    /// target schema declares; this covers every key the sink dropped.
+    /// (A6) for this verifier's flows: a foreign key the loaded rows break,
+    /// an index that couldn't be recreated. The verifier's own constraint
+    /// checks cover the keys a target schema declares; this covers every
+    /// key the sink dropped.
     pub fn with_finalized(mut self, report: &RunReport) -> Self {
         self.finalized = report
             .finalize_problems()
+            .filter(|(flow, _)| self.flows.iter().any(|(own, _)| own == flow))
             .map(|(flow, p)| (flow.to_owned(), p.clone()))
             .collect();
         self
@@ -263,8 +287,21 @@ impl Verifier {
             .load_run(run)
             .await?
             .ok_or_else(|| verifier_error(format!("no run `{}` in the state store", run.0)))?;
-        let partitions = self.store.counts(run).await?;
-        let totals = self.store.totals(run).await?;
+        let partitions = match self.others.is_empty() {
+            true => self.store.counts(run).await?,
+            false => {
+                let mut sum = PartitionCounts::default();
+                for (flow, _) in &self.flows {
+                    let c = self.store.flow_counts(run, flow).await?;
+                    sum.pending += c.pending;
+                    sum.leased += c.leased;
+                    sum.done += c.done;
+                    sum.failed += c.failed;
+                }
+                sum
+            }
+        };
+        let mut totals = self.store.totals(run).await?;
         let mut problems = Vec::new();
         let mut complete =
             partitions.pending == 0 && partitions.leased == 0 && partitions.failed == 0;
@@ -284,22 +321,39 @@ impl Verifier {
                 complete = false;
                 problems.push(format!("flow `{flow}` was never planned"));
             }
-            let mut missing = 0;
-            for p in planned {
-                if !self.store.is_done(run, &p.id).await? {
-                    continue;
-                }
-                match records.remove(&p.id.0) {
-                    Some(r) if r.flow == *flow => done.entry(flow).or_default().push(r),
-                    _ => missing += 1,
-                }
-            }
+            let (records, missing) = self.done(run, flow, planned, &mut records).await?;
+            done.insert(flow, records);
             if missing > 0 {
                 problems.push(format!(
                     "flow `{flow}`: {missing} done partitions have no write-time record, \
                      so their rows can't be checked"
                 ));
             }
+        }
+        // The other flows' share of the run-wide totals, taken out.
+        for flow in &self.others {
+            let planned = self.store.load_partitions(run, flow).await?;
+            let (theirs, missing) = self.done(run, flow, planned, &mut records).await?;
+            if missing > 0 {
+                problems.push(format!(
+                    "flow `{flow}` (verified elsewhere): {missing} done partitions have no \
+                     write-time record, so the run's totals can't be scoped to the flows \
+                     checked here"
+                ));
+            }
+            for r in &theirs {
+                scope_out(&mut totals, r, &mut problems);
+            }
+        }
+        if !self.others.is_empty() {
+            let own: BTreeSet<&str> = self
+                .flows
+                .iter()
+                .flat_map(|(_, schema)| schema.tables().iter().map(|t| t.name.as_str()))
+                .collect();
+            totals
+                .written
+                .retain(|table, _| own.contains(table.as_str()));
         }
 
         let counts = self.counts(&totals, &done, &mut problems);
@@ -340,6 +394,29 @@ impl Verifier {
             started,
             finished: SystemTime::now(),
         })
+    }
+
+    /// The records of `flow`'s done partitions among `planned`, taken out
+    /// of `records`, and how many done partitions have none.
+    async fn done(
+        &self,
+        run: &RunId,
+        flow: &str,
+        planned: Vec<ferry_core::Partition>,
+        records: &mut BTreeMap<String, PartitionRecord>,
+    ) -> Result<(Vec<PartitionRecord>, u64)> {
+        let mut done = Vec::new();
+        let mut missing = 0;
+        for p in planned {
+            if !self.store.is_done(run, &p.id).await? {
+                continue;
+            }
+            match records.remove(&p.id.0) {
+                Some(r) if r.flow == flow => done.push(r),
+                _ => missing += 1,
+            }
+        }
+        Ok((done, missing))
     }
 
     /// Read-time accounting: every driver row read is a record written,
@@ -648,6 +725,43 @@ impl Verifier {
             checks.push(check);
         }
         checks
+    }
+}
+
+/// Takes another flow's done partition out of the run's totals: its reads,
+/// its dead letters and the rows it handed its sink, per table.
+///
+/// The state store's totals have no per-flow breakdown, so this trusts the
+/// other flows' write-time records. Their own sinks' verification checks
+/// those against what was committed; but when two sinks write tables of
+/// the same name, a sink that committed one row too few and another one
+/// too many leave the shared total unchanged, and neither shows up here.
+fn scope_out(totals: &mut RunTotals, record: &PartitionRecord, problems: &mut Vec<String>) {
+    let mut sub = |what: &str, total: &mut u64, theirs: u64| match total.checked_sub(theirs) {
+        Some(left) => *total = left,
+        None => {
+            problems.push(format!(
+                "flow `{}`'s partition `{}` recorded {theirs} {what}, more than the state \
+                 store's {total} for the whole run",
+                record.flow, record.partition
+            ));
+            *total = 0;
+        }
+    };
+    sub("rows read", &mut totals.read, record.read);
+    sub(
+        "records dead-lettered",
+        &mut totals.dead_lettered,
+        record.records.rejected,
+    );
+    for (table, write) in &record.targets {
+        if let Some(written) = totals.written.get_mut(table) {
+            sub(
+                &format!("rows written to `{table}`"),
+                written,
+                write.checksum.rows,
+            );
+        }
     }
 }
 

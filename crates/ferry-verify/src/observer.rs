@@ -17,19 +17,41 @@ use crate::verifier_error;
 /// Checksums every row the runner writes, per target table, and records
 /// the result with the partition's record counts in a [`WriteLog`]
 /// before the commit. Set it with `Runner::with_observer`.
+///
+/// Each flow is checksummed the way its own target is read back (the
+/// target's timestamp precision). A run into several sinks gives each
+/// flow its sink's target ([`per_flow`](ChecksumObserver::per_flow)); a
+/// flow whose sink can't be read back is still recorded, at full
+/// precision, so its counts can be taken out of the run's totals when the
+/// other sinks are verified.
 pub struct ChecksumObserver {
     log: Arc<dyn WriteLog>,
-    target: Arc<dyn Target>,
+    /// Every flow's target, unless `targets` names one.
+    target: Option<Arc<dyn Target>>,
+    targets: BTreeMap<String, Arc<dyn Target>>,
     /// By flow name: each target table's spec, with the target's
     /// timestamp precision, resolved once the sink prepared the tables.
     specs: Mutex<HashMap<String, Arc<BTreeMap<String, ChecksumSpec>>>>,
 }
 
 impl ChecksumObserver {
+    /// Every flow written to `target`.
     pub fn new(log: Arc<dyn WriteLog>, target: Arc<dyn Target>) -> Self {
         Self {
             log,
-            target,
+            target: Some(target),
+            targets: BTreeMap::new(),
+            specs: Mutex::default(),
+        }
+    }
+
+    /// Each flow written to its target in `targets`, by flow name. Flows
+    /// missing from it are recorded at full timestamp precision.
+    pub fn per_flow(log: Arc<dyn WriteLog>, targets: BTreeMap<String, Arc<dyn Target>>) -> Self {
+        Self {
+            log,
+            target: None,
+            targets,
             specs: Mutex::default(),
         }
     }
@@ -55,7 +77,15 @@ pub(crate) async fn table_specs(
 #[async_trait]
 impl WriteObserver for ChecksumObserver {
     async fn prepared(&self, _: &RunId, flow: &Flow) -> Result<()> {
-        let specs = table_specs(self.target.as_ref(), flow.target.tables()).await?;
+        let specs = match self.targets.get(&flow.name).or(self.target.as_ref()) {
+            Some(target) => table_specs(target.as_ref(), flow.target.tables()).await?,
+            None => flow
+                .target
+                .tables()
+                .iter()
+                .map(|t| (t.name.clone(), ChecksumSpec::new(t)))
+                .collect(),
+        };
         self.specs
             .lock()
             .expect("not poisoned")

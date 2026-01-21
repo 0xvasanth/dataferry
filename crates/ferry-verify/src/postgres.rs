@@ -2,11 +2,12 @@
 //! constraints and aggregates queried on the sink's pool.
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use deadpool_postgres::Pool;
 use ferry_connector_postgres::PostgresSource;
-use ferry_core::types::CanonicalType;
+use ferry_core::types::{CanonicalField, CanonicalType};
 use ferry_core::{
     BatchStream, Entity, FerryError, ForeignKey, Partition, PartitionId, PartitionScope, Result,
     Source, TargetTable,
@@ -17,7 +18,7 @@ use crate::target::{Aggregate, DeadLetters, Scalar, Target};
 
 /// One schema of a Postgres database, as a sink wrote it.
 pub struct PgTarget {
-    source: PostgresSource,
+    source: Arc<dyn Source>,
     pool: Pool,
     schema: String,
 }
@@ -30,10 +31,23 @@ impl PgTarget {
     pub fn new(url: &str, schema: impl Into<String>, pool: Pool) -> Result<Self> {
         let schema = schema.into();
         Ok(Self {
-            source: PostgresSource::new(url, schema.clone())?,
+            source: Arc::new(PostgresSource::new(url, schema.clone())?),
             pool,
             schema,
         })
+    }
+
+    /// Reads tables back through `source`, a Postgres source on `schema`
+    /// of the sink's database, such as the connector built for the
+    /// connection, which applies everything the connection sets (a
+    /// `password:` beside the `url`, TLS). `pool` is as for
+    /// [`new`](PgTarget::new). Does no I/O.
+    pub fn from_source(source: Arc<dyn Source>, schema: impl Into<String>, pool: Pool) -> Self {
+        Self {
+            source,
+            pool,
+            schema: schema.into(),
+        }
     }
 
     fn table(&self, table: &str) -> String {
@@ -90,7 +104,32 @@ fn read_back_entity(table: &TargetTable) -> Result<Entity> {
     } else {
         table.primary_key.clone()
     };
-    Entity::new(table.name.clone(), table.fields.clone(), key)
+    // The Postgres sink stores nested values (structs, maps, lists of
+    // them) as `jsonb` documents: read them back as the JSON text they
+    // are, which the checksum decodes by the column's own type.
+    let fields = table
+        .fields
+        .iter()
+        .map(|f| match document(&f.ty) {
+            true => CanonicalField::new(f.name.clone(), CanonicalType::Json, f.nullable),
+            false => f.clone(),
+        })
+        .collect();
+    Entity::new(table.name.clone(), fields, key)
+}
+
+/// Whether the Postgres sink stores a value of `ty` as a JSON document.
+fn document(ty: &CanonicalType) -> bool {
+    let nested = |ty: &CanonicalType| {
+        matches!(
+            ty,
+            CanonicalType::List(_) | CanonicalType::Struct(_) | CanonicalType::Map { .. }
+        )
+    };
+    match ty {
+        CanonicalType::List(item) => nested(&item.ty),
+        other => nested(other),
+    }
 }
 
 #[async_trait]
