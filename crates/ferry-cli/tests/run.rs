@@ -342,7 +342,7 @@ async fn ctrl_c_stops_a_run_with_exit_130_and_says_how_to_resume() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn a_run_into_two_sinks_runs_both_and_says_it_is_unverified() {
+async fn a_run_into_two_sinks_verifies_each_sink_on_its_own() {
     let (shop, warehouse) = tokio::join!(Shop::golden(), Warehouse::start());
     let dir = golden_copy();
     // A second Postgres connection, another schema of the same database.
@@ -353,12 +353,13 @@ async fn a_run_into_two_sinks_runs_both_and_says_it_is_unverified() {
     );
     std::fs::write(
         dir.path().join("ferry/flows/report.yaml"),
-        "flows:\n  - name: statuses\n    from: shop.orders\n    sink: reporting\n    to:\n      order_status:\n        key: [id]\n        columns:\n          id: string(_id)\n          status: lower(status)\n",
+        "flows:\n  - name: statuses\n    from: shop.orders\n    sink: reporting\n    to:\n      order_status:\n        key: [id]\n        columns:\n          id: string(_id)\n          status: lower(status)\n    expect:\n      every_order: count(order_status) == source.count()\n",
     )
     .unwrap();
     let out = output(golden_ferry(dir.path(), &shop, &warehouse).arg("run"))
         .expect(0)
         .no_secret();
+    let run = run_id(&out.stdout);
     // The second sink isn't the state connection: it falls back.
     assert!(
         out.stdout.contains(
@@ -368,16 +369,180 @@ async fn a_run_into_two_sinks_runs_both_and_says_it_is_unverified() {
         "{}",
         out.stdout
     );
-    assert!(
-        out.stderr.contains(
-            "warning[W0701]: not verified: the run writes to several sinks (`reporting`, \
-             `warehouse`)"
-        ),
-        "{}",
-        out.stderr
+    // Each sink is verified against its own flows' share of the run.
+    let reports = dir.path().join(".ferry/runs").join(&run);
+    for sink in ["reporting", "warehouse"] {
+        let line = format!(
+            "verification of `{sink}` passed; report: {}\n",
+            Path::new(".")
+                .join(".ferry/runs")
+                .join(&run)
+                .join(format!("report-{sink}.md"))
+                .display()
+        );
+        assert!(out.stdout.contains(&line), "{line}\n{}", out.stdout);
+        let json: Value = serde_json::from_str(
+            &std::fs::read_to_string(reports.join(format!("report-{sink}.json"))).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(json["status"], "passed", "{json:#}");
+    }
+    assert!(!out.stderr.contains("W0701"), "{}", out.stderr);
+    assert!(!reports.join("report.json").exists());
+
+    let warehouse_report: Value = serde_json::from_str(
+        &std::fs::read_to_string(reports.join("report-warehouse.json")).unwrap(),
+    )
+    .unwrap();
+    // 10 golden documents per flow, not the run's 20; …0006 is the
+    // warehouse's one dead letter.
+    assert_eq!(warehouse_report["counts"]["read"], 10);
+    assert_eq!(warehouse_report["counts"]["dead_lettered"], 1);
+    assert_eq!(warehouse_report["dead_letter"]["rows"], 1);
+    let reporting_report: Value = serde_json::from_str(
+        &std::fs::read_to_string(reports.join("report-reporting.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(reporting_report["counts"]["read"], 10);
+    assert_eq!(reporting_report["counts"]["dead_lettered"], 0);
+    assert_eq!(
+        reporting_report["counts"]["written"],
+        serde_json::json!({"order_status": 10})
     );
+    // Each report holds its own flows' assertions only.
+    let names = |report: &Value| -> Vec<String> {
+        report["assertions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|a| a["name"].as_str().unwrap().to_owned())
+            .collect()
+    };
+    assert_eq!(names(&reporting_report), ["every_order"]);
+    assert_eq!(
+        names(&warehouse_report),
+        ["order_count", "order_total", "item_count"]
+    );
+
     assert_golden_rows(&warehouse).await;
     // …0004 is filtered by `orders` only; `statuses` has no `where:`, and
     // …0006's items don't matter to it.
     assert_eq!(warehouse.count("reporting.order_status").await, 10);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_sink_password_given_apart_from_its_url_is_used_to_verify_too() {
+    let (shop, warehouse) = tokio::join!(Shop::golden(), Warehouse::start());
+    let dir = golden_copy();
+    edit(
+        &dir.path().join("ferry/connections.yaml"),
+        "    url: ${FERRY_GOLDEN_PG_URL}\n",
+        "    url: ${FERRY_GOLDEN_PG_URL}\n    password: ${FERRY_GOLDEN_PG_PASSWORD}\n",
+    );
+    let out = output(
+        common::ferry(dir.path())
+            .env("FERRY_GOLDEN_MONGO_URL", &shop.url)
+            // No password in the URL: only the `password:` field has it.
+            .env(
+                "FERRY_GOLDEN_PG_URL",
+                format!("postgres://postgres@127.0.0.1:{}/postgres", warehouse.port),
+            )
+            .env("FERRY_GOLDEN_PG_PASSWORD", common::SECRET)
+            .arg("run"),
+    )
+    .expect(0)
+    .no_secret();
+    assert!(
+        out.stdout.contains("verification of `warehouse` passed"),
+        "{}",
+        out.stdout
+    );
+    let report = report(&dir.path().join(".ferry"), &run_id(&out.stdout));
+    assert_eq!(report["status"], "passed");
+    assert_golden_rows(&warehouse).await;
+}
+
+/// Live leases of `run`: leased partitions whose lease hasn't expired.
+async fn live_leases(warehouse: &Warehouse, run: &str) -> i64 {
+    warehouse
+        .client
+        .query_one(
+            "SELECT count(*) FROM _ferry_partitions \
+             WHERE run_id = $1 AND status = 'leased' AND expires_at > now()",
+            &[&run],
+        )
+        .await
+        .unwrap()
+        .get(0)
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn ctrl_c_releases_the_runs_leases_so_resume_starts_at_once() {
+    let (shop, warehouse) = tokio::join!(Shop::golden(), Warehouse::start());
+    let dir = golden_copy();
+    edit(
+        &dir.path().join("ferry/runtime.yaml"),
+        "  workers: 2\n",
+        "  workers: 2\n  source_rows_per_sec: 1\n",
+    );
+    let mut child = std::process::Command::new(assert_cmd::cargo::cargo_bin("ferry"))
+        .current_dir(dir.path())
+        .env_clear()
+        .env("FERRY_GOLDEN_MONGO_URL", &shop.url)
+        .env("FERRY_GOLDEN_PG_URL", &warehouse.url)
+        .arg("run")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut first = String::new();
+    BufReader::new(child.stdout.as_mut().unwrap())
+        .read_line(&mut first)
+        .unwrap();
+    let run = run_id(&first);
+    // Wait until both workers hold a partition.
+    let deadline = Instant::now() + Duration::from_secs(60);
+    while live_leases(&warehouse, &run).await < 2 {
+        assert!(Instant::now() < deadline, "no partition was leased");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    let kill = std::process::Command::new("kill")
+        .args(["-INT", &child.id().to_string()])
+        .status()
+        .unwrap();
+    assert!(kill.success());
+    let status = child.wait().unwrap();
+    let mut stderr = String::new();
+    std::io::Read::read_to_string(child.stderr.as_mut().unwrap(), &mut stderr).unwrap();
+    assert_eq!(status.code(), Some(130), "{stderr}");
+    assert!(
+        stderr.contains(&format!(
+            "interrupted: in-flight partitions of run `{run}` were abandoned, and 2 leases \
+             were released"
+        )),
+        "{stderr}"
+    );
+    // Nothing is left leased: the leases' 30 s don't hold up a resume.
+    assert_eq!(live_leases(&warehouse, &run).await, 0);
+
+    edit(
+        &dir.path().join("ferry/runtime.yaml"),
+        "  source_rows_per_sec: 1\n",
+        "",
+    );
+    let started = Instant::now();
+    output(
+        golden_ferry(dir.path(), &shop, &warehouse)
+            .arg("resume")
+            .arg(&run),
+    )
+    .expect(0)
+    .no_secret();
+    assert!(
+        started.elapsed() < Duration::from_secs(20),
+        "resume waited {:?}",
+        started.elapsed()
+    );
+    assert_golden_rows(&warehouse).await;
+    assert_one_dead_letter(&warehouse, &run).await;
 }

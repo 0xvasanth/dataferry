@@ -9,16 +9,19 @@ use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use common::golden;
-use common::plan::{golden_catalog, project};
+use common::plan::{golden_catalog, pg_merge_discovered, project};
 use common::repo;
 use ferry_core::testkit::MemSink;
 use ferry_core::types::{CanonicalField, CanonicalType};
 use ferry_core::{
-    BatchStream, Entity, IdempotencyStrategy, Partition, PartitionHint, Result, SinkCaps, Source,
-    SourceCaps, TransformPlan,
+    BatchStream, CoPartition, Entity, FerryError, IdempotencyStrategy, Partition, PartitionHint,
+    Result, SinkCaps, Source, SourceCaps, TransformPlan,
 };
+use ferry_dsl::compile::Strategy;
 use ferry_dsl::config::{ConfigErrors, ErrorKind, load};
-use ferry_dsl::plan::{Dependency, Edge, Plan, Setting, StatePlacement, plan, settings};
+use ferry_dsl::plan::{
+    Dependency, Edge, Plan, Setting, SettleError, StatePlacement, plan, settings,
+};
 use ferry_dsl::typecheck::Catalog;
 use ferry_runtime::OnError;
 
@@ -338,11 +341,14 @@ fn flows_run_after_what_they_wait_for_and_otherwise_by_name() {
     assert_eq!(late.waits_for[0].edge, Edge::Declared);
 
     // The runner gets every edge, the inferred one included.
-    let flow = report.runtime_flow(
-        Arc::new(Spy::default()),
-        Arc::new(MemSink::new(vec![DeletePartitionThenInsert])),
-        None,
-    );
+    let flow = report
+        .runtime_flow(
+            &|_| Some(Arc::new(Spy::default())),
+            Arc::new(MemSink::new(vec![DeletePartitionThenInsert])),
+            None,
+            None,
+        )
+        .unwrap();
     assert_eq!(flow.depends_on, ["c_copy"]);
 }
 
@@ -578,11 +584,14 @@ async fn the_driver_is_partitioned_with_the_flows_own_partition_rows() {
     )
     .unwrap();
     let spy = Arc::new(Spy::default());
-    let flow = plan.flows[0].runtime_flow(
-        spy.clone(),
-        Arc::new(MemSink::new(vec![TxnWithState])),
-        None,
-    );
+    let flow = plan.flows[0]
+        .runtime_flow(
+            &|_| Some(spy.clone()),
+            Arc::new(MemSink::new(vec![TxnWithState])),
+            None,
+            None,
+        )
+        .unwrap();
     assert_eq!(flow.name, "orders");
     assert_eq!(flow.inputs[0].entity.name(), "orders");
     // The runner asks with its run-wide default...
@@ -593,4 +602,478 @@ async fn the_driver_is_partitioned_with_the_flows_own_partition_rows() {
         .unwrap();
     // ...and the source is asked for the flow's `runtime: partition_rows`.
     assert_eq!(*spy.hints.lock().unwrap(), [PartitionHint::rows(4)]);
+}
+
+// ------------------------------------------------------------- merges (S3)
+
+const GIB: u64 = 1 << 30;
+
+/// `examples/pg-merge/ferry`, planned against the entities Postgres
+/// discovers, with `reporting` the state connection.
+fn pg_merge_plan(dir: &std::path::Path) -> std::result::Result<Plan, ConfigErrors> {
+    plan_dir(
+        dir,
+        &pg_merge_discovered(),
+        &sinks(&[("reporting", caps(true))]),
+    )
+}
+
+/// A copy of `examples/pg-merge/ferry` with `from` replaced by `to` in its
+/// merge flow.
+fn pg_merge_edited(from: &str, to: &str) -> tempfile::TempDir {
+    let dir = tempfile::tempdir().unwrap();
+    for file in [
+        "ferry.yaml",
+        "connections.yaml",
+        "runtime.yaml",
+        "legacy/customers.yaml",
+        "flows/order_summaries.yaml",
+    ] {
+        let text =
+            std::fs::read_to_string(repo(&format!("examples/pg-merge/ferry/{file}"))).unwrap();
+        let text = match file {
+            "flows/order_summaries.yaml" => {
+                assert!(text.contains(from), "no {from:?}");
+                text.replace(from, to)
+            }
+            _ => text,
+        };
+        write(&dir, file, &text);
+    }
+    dir
+}
+
+#[test]
+fn a_merge_plans_its_joins_its_nest_order_and_a_share_of_memory_for_its_stage() {
+    let config = load(repo("examples/pg-merge/ferry")).unwrap();
+    let plan = pg_merge_plan(&repo("examples/pg-merge/ferry")).unwrap_or_else(|e| panic!("{e}"));
+    let order: Vec<&str> = plan.flows.iter().map(|f| f.name.as_str()).collect();
+    assert_eq!(order, ["customers", "order_summaries"]);
+
+    let merge = plan.flow("order_summaries").unwrap();
+    assert_eq!(merge.driver.to_string(), "app.public.orders");
+    assert_eq!(merge.strategy, TxnWithState);
+    assert_eq!(merge.compiled.plan.entity().name(), "orders");
+    let joins: Vec<(&str, &Strategy, &str)> = merge
+        .compiled
+        .plan
+        .joins()
+        .map(|j| (j.alias.as_str(), &j.strategy, j.reason.as_str()))
+        .collect();
+    assert_eq!(
+        joins,
+        [
+            (
+                "c",
+                &Strategy::Stage,
+                "auto: staged, because `o.customer_id` isn't the driver's key `o.id`"
+            ),
+            (
+                "i",
+                &Strategy::CoPartition {
+                    column: "order_id".into()
+                },
+                "pinned by `strategy: co_partition`"
+            ),
+        ]
+    );
+    let [nest] = merge.compiled.plan.nest_orders() else {
+        panic!("one nest")
+    };
+    assert_eq!(
+        (nest.target.as_str(), nest.column.as_str(), &nest.order_by),
+        (
+            "order_summaries",
+            "items",
+            &vec!["line_no".to_owned(), "order_id".to_owned()]
+        )
+    );
+
+    // `customers` stages nothing; the merge's stage gets a quarter of the
+    // 1GiB budget, and the runner the rest.
+    assert_eq!(plan.flow("customers").unwrap().stage_memory, 0);
+    assert_eq!(merge.stage_memory, GIB / 4);
+    assert_eq!(plan.memory_budget, GIB);
+    assert_eq!(plan.settings(&config).memory_budget, GIB - GIB / 4);
+    assert_eq!(settings(&config).memory_budget, GIB);
+}
+
+#[test]
+fn stages_in_several_flows_split_their_quarter_of_the_budget() {
+    // A second merge, everything staged.
+    let dir = pg_merge_edited("strategy: co_partition", "strategy: stage");
+    let text = std::fs::read_to_string(dir.path().join("flows/order_summaries.yaml")).unwrap();
+    let second = text
+        .replace("name: order_summaries", "name: order_summaries_2")
+        .replace("      order_summaries:", "      order_summaries_2:")
+        .replace("count(order_summaries)", "count(order_summaries_2)")
+        .replace("sum(order_summaries.", "sum(order_summaries_2.");
+    write(&dir, "flows/second.yaml", &second);
+    let config = load(dir.path()).unwrap();
+    let plan = pg_merge_plan(dir.path()).unwrap_or_else(|e| panic!("{e}"));
+    let shares: Vec<(&str, u64)> = plan
+        .flows
+        .iter()
+        .map(|f| (f.name.as_str(), f.stage_memory))
+        .collect();
+    assert_eq!(
+        shares,
+        [
+            ("customers", 0),
+            ("order_summaries", GIB / 8),
+            ("order_summaries_2", GIB / 8)
+        ]
+    );
+    assert_eq!(plan.settings(&config).memory_budget, GIB - GIB / 4);
+}
+
+/// A source that answers the co-partition question as told, and records
+/// every hint.
+struct Splits {
+    answer: fn(&Entity, &PartitionHint) -> Result<Vec<Partition>>,
+    hints: Mutex<Vec<PartitionHint>>,
+}
+
+impl Splits {
+    fn new(answer: fn(&Entity, &PartitionHint) -> Result<Vec<Partition>>) -> Arc<Self> {
+        Arc::new(Self {
+            answer,
+            hints: Mutex::default(),
+        })
+    }
+
+    fn yes() -> Arc<Self> {
+        Self::new(|_, _| Ok(Vec::new()))
+    }
+
+    /// `CoPartitionUnsupported` for a co-partition, partitions otherwise.
+    fn no() -> Arc<Self> {
+        Self::new(|_, hint| match &hint.co_partition {
+            Some(cp) => Err(FerryError::CoPartitionUnsupported {
+                column: cp.column().to_owned(),
+                reason: "no index to range-scan it".into(),
+            }),
+            None => Ok(Vec::new()),
+        })
+    }
+}
+
+#[async_trait]
+impl Source for Splits {
+    async fn discover(&self) -> Result<Vec<Entity>> {
+        Ok(Vec::new())
+    }
+
+    async fn plan_partitions(
+        &self,
+        entity: &Entity,
+        hint: &PartitionHint,
+    ) -> Result<Vec<Partition>> {
+        self.hints.lock().unwrap().push(hint.clone());
+        (self.answer)(entity, hint)
+    }
+
+    async fn read(&self, _: &Entity, _: &Partition) -> Result<BatchStream> {
+        unreachable!("planning only")
+    }
+
+    async fn capabilities(&self) -> Result<SourceCaps> {
+        Ok(SourceCaps::default())
+    }
+}
+
+fn strategies(plan: &Plan, flow: &str) -> Vec<(String, String)> {
+    plan.flow(flow)
+        .unwrap()
+        .compiled
+        .plan
+        .joins()
+        .map(|j| (j.alias.clone(), j.strategy.as_str().to_owned()))
+        .collect()
+}
+
+#[tokio::test]
+async fn a_source_that_can_co_partition_keeps_the_plan_as_compiled() {
+    let config = load(repo("examples/pg-merge/ferry")).unwrap();
+    let mut plan = pg_merge_plan(&repo("examples/pg-merge/ferry")).unwrap();
+    let app = Splits::yes();
+    let source: Arc<dyn Source> = app.clone();
+    plan.settle_co_partitioning(&config, &|c| (c == "app").then(|| Arc::clone(&source)))
+        .await
+        .unwrap();
+    assert_eq!(
+        strategies(&plan, "order_summaries"),
+        [
+            ("c".into(), "stage".into()),
+            ("i".into(), "co_partition".into())
+        ]
+    );
+    assert_eq!(
+        plan.flow("order_summaries").unwrap().co_partition_fallback,
+        None
+    );
+    // Asked once, with one range over every key: no rows read, and the
+    // flow's partition size.
+    assert_eq!(
+        *app.hints.lock().unwrap(),
+        [PartitionHint {
+            target_rows: 50_000,
+            co_partition: Some(CoPartition::new("order_id", Vec::new()).unwrap()),
+        }]
+    );
+}
+
+#[tokio::test]
+async fn a_source_that_cant_co_partition_gets_the_join_staged_and_the_plan_says_why() {
+    // Only the `many` join, on `auto`: co-partitioned at compile time, and
+    // nothing staged yet.
+    let dir = pg_merge_edited(
+        "      - entity: app.public.customers\n        as: c\n        join:\n          cardinality: one                  # a duplicate customer id rejects the order\n          keys: {id: o.customer_id}         # c.id = o.customer_id\n",
+        "",
+    );
+    let flow = dir.path().join("flows/order_summaries.yaml");
+    let text = std::fs::read_to_string(&flow)
+        .unwrap()
+        .replace("          strategy: co_partition\n", "")
+        .replace(
+            "          customer_name: c.name             # null if the customer row is missing\n",
+            "",
+        );
+    std::fs::write(&flow, text).unwrap();
+    let config = load(dir.path()).unwrap();
+    let mut plan = pg_merge_plan(dir.path()).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(
+        strategies(&plan, "order_summaries"),
+        [("i".into(), "co_partition".into())]
+    );
+    assert_eq!(plan.stage_memory(), 0);
+    assert_eq!(plan.settings(&config).memory_budget, GIB);
+
+    let source: Arc<dyn Source> = Splits::no();
+    plan.settle_co_partitioning(&config, &|_| Some(Arc::clone(&source)))
+        .await
+        .unwrap();
+    let merge = plan.flow("order_summaries").unwrap();
+    assert_eq!(
+        strategies(&plan, "order_summaries"),
+        [("i".into(), "stage".into())]
+    );
+    assert_eq!(
+        merge.compiled.plan.joins().next().unwrap().reason,
+        "staged: its source can't split on the driver's boundaries (0002 step 5)"
+    );
+    assert_eq!(
+        merge.co_partition_fallback.as_deref(),
+        Some("`app.public.order_items` can't be split on `order_id`: no index to range-scan it")
+    );
+    // The staged join is no input of the runner's any more, and the stage
+    // now has its share of the budget.
+    assert_eq!(merge.compiled.plan.inputs(), ["orders"]);
+    assert_eq!(merge.stage_memory, GIB / 4);
+    assert_eq!(plan.settings(&config).memory_budget, GIB - GIB / 4);
+    let flow = merge
+        .runtime_flow(
+            &|_| Some(Arc::clone(&source)),
+            Arc::new(MemSink::new(vec![TxnWithState])),
+            None,
+            None,
+        )
+        .unwrap();
+    let inputs: Vec<&str> = flow.inputs.iter().map(|i| i.entity.name()).collect();
+    assert_eq!(inputs, ["orders"]);
+}
+
+#[tokio::test]
+async fn a_pinned_co_partition_its_source_cant_split_refuses_the_plan() {
+    let config = load(repo("examples/pg-merge/ferry")).unwrap();
+    let mut plan = pg_merge_plan(&repo("examples/pg-merge/ferry")).unwrap();
+    let source: Arc<dyn Source> = Splits::no();
+    let error = plan
+        .settle_co_partitioning(&config, &|_| Some(Arc::clone(&source)))
+        .await
+        .unwrap_err();
+    let SettleError::Refused(errors) = error else {
+        panic!("{error:?}")
+    };
+    assert_eq!(errors.0.len(), 1);
+    let e = &errors.0[0];
+    assert_eq!(e.kind, ErrorKind::Plan);
+    assert_eq!(
+        e.message,
+        "flow `order_summaries`: join `i` pins `strategy: co_partition`, but \
+         `app.public.order_items` can't be split on `order_id`: no index to range-scan it"
+    );
+    let location = e.location.as_ref().unwrap();
+    assert!(
+        location.file.ends_with("flows/order_summaries.yaml"),
+        "{location:?}"
+    );
+    // The `order_items` entry.
+    assert_eq!(location.line, 15);
+    // Nothing was changed.
+    assert_eq!(
+        strategies(&plan, "order_summaries"),
+        [
+            ("c".into(), "stage".into()),
+            ("i".into(), "co_partition".into())
+        ]
+    );
+}
+
+#[tokio::test]
+async fn an_unpinned_join_that_cant_co_partition_beside_a_pinned_one_refuses_the_plan() {
+    // A second, unpinned join co-partitioned on the driver's key, whose
+    // source can't split: staging it would stage the pinned `i` too.
+    let dir = pg_merge_edited(
+        "    where:\n",
+        "      - entity: app.public.customers\n        as: k\n        join:\n          cardinality: one\n          keys: {id: o.id}\n\n    where:\n",
+    );
+    let config = load(dir.path()).unwrap();
+    let mut plan = pg_merge_plan(dir.path()).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(
+        strategies(&plan, "order_summaries"),
+        [
+            ("c".into(), "stage".into()),
+            ("i".into(), "co_partition".into()),
+            ("k".into(), "co_partition".into())
+        ]
+    );
+    let source: Arc<dyn Source> = Splits::new(|entity, hint| match &hint.co_partition {
+        Some(cp) if entity.name() == "customers" => Err(FerryError::CoPartitionUnsupported {
+            column: cp.column().to_owned(),
+            reason: "no index to range-scan it".into(),
+        }),
+        _ => Ok(Vec::new()),
+    });
+    let error = plan
+        .settle_co_partitioning(&config, &|_| Some(Arc::clone(&source)))
+        .await
+        .unwrap_err();
+    let SettleError::Refused(errors) = error else {
+        panic!("{error:?}")
+    };
+    assert_eq!(
+        errors.0[0].message,
+        "flow `order_summaries`: join `k` can't be co-partitioned (`app.public.customers` \
+         can't be split on `id`: no index to range-scan it), and staging it stages every \
+         co-partitioned join of the flow, but join `i` pins `strategy: co_partition`"
+    );
+}
+
+#[tokio::test]
+async fn a_source_failing_when_asked_is_not_taken_for_a_no() {
+    let config = load(repo("examples/pg-merge/ferry")).unwrap();
+    let mut plan = pg_merge_plan(&repo("examples/pg-merge/ferry")).unwrap();
+    let source: Arc<dyn Source> = Splits::new(|_, _| {
+        Err(FerryError::Connector {
+            connector: "postgres".into(),
+            message: "connection refused".into(),
+        })
+    });
+    let error = plan
+        .settle_co_partitioning(&config, &|_| Some(Arc::clone(&source)))
+        .await
+        .unwrap_err();
+    match error {
+        SettleError::Source { connection, error } => {
+            assert_eq!(connection, "app");
+            assert!(error.to_string().contains("connection refused"), "{error}");
+        }
+        other => panic!("{other:?}"),
+    }
+    // No source at all for the connection.
+    let error = plan
+        .settle_co_partitioning(&config, &|_| None)
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(&error, SettleError::Source { connection, .. } if connection == "app"),
+        "{error:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_merge_runs_its_co_partitioned_joins_as_inputs_and_hands_staged_ones_their_source() {
+    let plan = pg_merge_plan(&repo("examples/pg-merge/ferry")).unwrap();
+    let merge = plan.flow("order_summaries").unwrap();
+    let app = Splits::yes();
+    let source: Arc<dyn Source> = app.clone();
+    let flow = merge
+        .runtime_flow(
+            &|c| (c == "app").then(|| Arc::clone(&source)),
+            Arc::new(MemSink::new(vec![TxnWithState])),
+            None,
+            None,
+        )
+        .unwrap();
+    let inputs: Vec<(&str, Option<&str>)> = flow
+        .inputs
+        .iter()
+        .map(|i| (i.entity.name(), i.co_partition.as_deref()))
+        .collect();
+    assert_eq!(
+        inputs,
+        [("orders", None), ("order_items", Some("order_id"))]
+    );
+    assert_eq!(flow.plan.inputs(), ["orders", "order_items"]);
+    assert_eq!(flow.depends_on, ["customers"]);
+    // The co-partitioned input is sized like the flow, its boundaries
+    // passed through untouched.
+    let cp = CoPartition::new("order_id", vec![ferry_core::KeyValue::Int(11)]).unwrap();
+    flow.inputs[1]
+        .source
+        .plan_partitions(
+            &flow.inputs[1].entity,
+            &PartitionHint {
+                target_rows: 7,
+                co_partition: Some(cp.clone()),
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        *app.hints.lock().unwrap(),
+        [PartitionHint {
+            target_rows: 50_000,
+            co_partition: Some(cp)
+        }]
+    );
+
+    // A connection with no source is an error, not a flow that can't run.
+    let error = merge
+        .runtime_flow(
+            &|_| None,
+            Arc::new(MemSink::new(vec![TxnWithState])),
+            None,
+            None,
+        )
+        .err()
+        .unwrap();
+    assert!(
+        error
+            .to_string()
+            .contains("app.public.orders (connection `app` has no source)"),
+        "{error}"
+    );
+}
+
+#[test]
+fn a_flow_reading_a_schema_qualified_table_waits_for_the_flow_writing_it() {
+    let dir = project(&format!(
+        "flows:\n{}{}",
+        copy_flow("c_copy", "shop.orders", "order_copy", ""),
+        copy_flow("b_report", "warehouse.public.order_copy", "report", ""),
+    ));
+    let catalog = golden_catalog().with("warehouse.public", table("order_copy"));
+    let plan = plan_dir(dir.path(), &catalog, &sinks(&[("warehouse", caps(true))]))
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(
+        plan.flow("b_report").unwrap().waits_for,
+        [Dependency {
+            flow: "c_copy".into(),
+            edge: Edge::Reads("warehouse.public.order_copy".into())
+        }]
+    );
+    let order: Vec<&str> = plan.flows.iter().map(|f| f.name.as_str()).collect();
+    assert_eq!(order, ["c_copy", "b_report"]);
 }

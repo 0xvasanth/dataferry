@@ -122,11 +122,14 @@ async fn golden_0006_lands_nowhere_but_once_in_the_dead_letter_queue_with_the_co
     .unwrap_or_else(|e| panic!("{e}"));
     let planned = &plan.flows[0];
     assert_eq!(planned.strategy, IdempotencyStrategy::TxnWithState);
-    let flow = planned.runtime_flow(
-        Arc::clone(&source),
-        Arc::clone(&sink),
-        warehouse.endpoints.finalizer.clone(),
-    );
+    let flow = planned
+        .runtime_flow(
+            &|_| Some(Arc::clone(&source)),
+            Arc::clone(&sink),
+            warehouse.endpoints.finalizer.clone(),
+            None,
+        )
+        .unwrap();
 
     let options: PostgresOptions =
         serde_json::from_value(Value::Object(warehouse_conn.fields.clone())).unwrap();

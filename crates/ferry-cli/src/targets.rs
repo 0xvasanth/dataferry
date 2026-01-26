@@ -32,26 +32,37 @@ impl Targets {
 }
 
 /// The built-in `postgres` target: the sink connection's schema, read back
-/// through the Postgres source on the connection's own pool.
+/// through a Postgres source built for the connection the way the
+/// connector builds every source, so `password:`, TLS and the rest of the
+/// entry apply as they do to the run. Constraints and aggregates are
+/// queried on a pool built from the same entry (connecting lazily), not
+/// the run's own.
 #[cfg(feature = "postgres")]
 pub(crate) fn postgres(conn: &RawConnection) -> Result<Arc<dyn Target>, String> {
     use ferry_connector_postgres::{PostgresConnector, PostgresOptions};
-    use ferry_registry::{BuildContext, BuildError, StateCapable};
+    use ferry_registry::{BuildContext, BuildError, Connector, Roles, StateCapable};
 
-    let options: PostgresOptions =
+    let options = || -> Result<PostgresOptions, String> {
         serde_json::from_value(serde_json::Value::Object(conn.fields.clone()))
-            .map_err(|e| e.to_string())?;
-    let pool = PostgresConnector
-        .pool(&BuildContext::new(&conn.name), &options)
-        .map_err(|e| match e {
-            BuildError::Options(errors) => errors
-                .iter()
-                .map(|e| format!("{}: {}", e.path, e.message))
-                .collect::<Vec<_>>()
-                .join("; "),
-            BuildError::Other(e) => e.to_string(),
-        })?;
-    let target = ferry_verify::PgTarget::new(options.url.expose(), options.schema.clone(), pool)
-        .map_err(|e| e.to_string())?;
-    Ok(Arc::new(target))
+            .map_err(|e| e.to_string())
+    };
+    let built = |e: BuildError| match e {
+        BuildError::Options(errors) => errors
+            .iter()
+            .map(|e| format!("{}: {}", e.path, e.message))
+            .collect::<Vec<_>>()
+            .join("; "),
+        BuildError::Other(e) => e.to_string(),
+    };
+    let ctx = BuildContext::new(&conn.name);
+    let schema = options()?.schema;
+    let pool = PostgresConnector.pool(&ctx, &options()?).map_err(built)?;
+    let source = PostgresConnector
+        .build(&ctx, options()?, Roles::SOURCE)
+        .map_err(built)?
+        .source
+        .ok_or("the postgres connector built no source")?;
+    Ok(Arc::new(ferry_verify::PgTarget::from_source(
+        source, schema, pool,
+    )))
 }

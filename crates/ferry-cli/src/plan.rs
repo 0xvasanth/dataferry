@@ -1,21 +1,30 @@
 //! `ferry plan` (B7): `validate`, then discover every source the flows
 //! read and ask every sink for its capabilities, then plan (ferry-dsl's
 //! planner) and print the flows in run order with their strategies,
-//! partitioning, targets and the DDL each sink would run. Writes nothing:
-//! discovery and capabilities only read, and the DDL is rendered, never
-//! run. `run`, `resume` and `retry` start from the same plan.
+//! partitioning, joins, targets and the DDL each sink would run. Writes
+//! nothing: discovery and capabilities only read, and the DDL is rendered,
+//! never run. `run`, `resume` and `retry` start from the same plan.
+//!
+//! - A flow may name an entity with its connection's namespace
+//!   (`app.public.orders` for the `orders` a Postgres connection on schema
+//!   `public` discovers, see [`namespaces`](crate::namespaces)).
+//! - A merge's co-partitioned joins are checked with their sources before
+//!   the plan is shown (0002 step 5): one whose source can't split on the
+//!   driver's boundaries is staged instead, and the plan says why, unless
+//!   it pins `strategy: co_partition`, which refuses the plan.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::path::Path;
 
 use ferry_core::{IdempotencyStrategy, TargetSchema, TransformPlan, WriteMode};
-use ferry_dsl::config::model::Where;
+use ferry_dsl::compile::Strategy;
+use ferry_dsl::config::model::{Cardinality, EntityRef, Where};
 use ferry_dsl::config::{Config, ConfigErrors, Flow};
-use ferry_dsl::plan::{Plan, PlannedFlow, StatePlacement};
+use ferry_dsl::plan::{Plan, PlannedFlow, SettleError, StatePlacement};
 use ferry_dsl::typecheck::Catalog;
-use ferry_registry::ConnectorRegistry;
 
+use crate::Ferry;
 use crate::diagnostic::{Diagnostic, Redaction, code};
 use crate::exit::Exit;
 use crate::validate::{self, Summary};
@@ -34,12 +43,12 @@ pub(crate) struct Refused {
 
 /// Validates, discovers and plans `dir`. Warnings come back either way.
 pub(crate) async fn plan(
-    registry: &ConnectorRegistry,
+    ferry: &Ferry,
     dir: &Path,
     env: &dyn Fn(&str) -> Option<String>,
     redaction: &mut Redaction,
 ) -> Result<(Planned, Vec<Diagnostic>), Refused> {
-    let report = validate::validate(registry, dir, env, redaction);
+    let report = validate::validate(&ferry.registry, dir, env, redaction);
     let exit = report.exit();
     let mut diagnostics = report.diagnostics;
     let Some(summary) = report.valid else {
@@ -59,6 +68,11 @@ pub(crate) async fn plan(
         };
         match source.discover().await {
             Ok(entities) => {
+                let namespace = summary
+                    .raw
+                    .get(name)
+                    .and_then(|raw| ferry.namespaces.of(raw));
+                qualify(&mut catalog, config, name, namespace.as_deref(), &entities);
                 for entity in entities {
                     catalog.insert(name, entity);
                 }
@@ -102,39 +116,100 @@ pub(crate) async fn plan(
         return Err(Refused { diagnostics, exit });
     }
 
-    match ferry_dsl::plan::plan(config, &catalog, &sinks) {
-        Ok(plan) => {
-            diagnostics.extend(
-                plan.warnings
-                    .iter()
-                    .map(|w| Diagnostic::warning(code::PLAN_WARNING, w.clone())),
-            );
-            Ok((Planned { summary, plan }, diagnostics))
-        }
+    let mut plan = match ferry_dsl::plan::plan(config, &catalog, &sinks) {
+        Ok(plan) => plan,
         Err(ConfigErrors(errors)) => {
             diagnostics.extend(errors.into_iter().map(Diagnostic::from));
-            Err(Refused {
+            return Err(Refused {
                 diagnostics,
                 exit: Exit::PlanRefused,
-            })
+            });
+        }
+    };
+    let sources = |name: &str| summary.endpoints.get(name).and_then(|e| e.source.clone());
+    match plan.settle_co_partitioning(config, &sources).await {
+        Ok(()) => {}
+        Err(SettleError::Refused(ConfigErrors(errors))) => {
+            diagnostics.extend(errors.into_iter().map(Diagnostic::from));
+            return Err(Refused {
+                diagnostics,
+                exit: Exit::PlanRefused,
+            });
+        }
+        Err(SettleError::Source { connection, error }) => {
+            diagnostics.push(
+                Diagnostic::error(
+                    code::CONNECT,
+                    format!(
+                        "could not ask `{connection}` whether it can split a joined entity on \
+                         the driver's boundaries: {error}"
+                    ),
+                )
+                .path(format!("connections[{connection}]"))
+                .at(config.connection(&connection).map(|c| c.name.location())),
+            );
+            return Err(Refused {
+                diagnostics,
+                exit: Exit::Connect,
+            });
+        }
+    }
+    diagnostics.extend(
+        plan.warnings
+            .iter()
+            .map(|w| Diagnostic::warning(code::PLAN_WARNING, w.clone())),
+    );
+    Ok((Planned { summary, plan }, diagnostics))
+}
+
+/// Makes `<connection>.<namespace>.<entity>` find what `connection`
+/// discovered as `<entity>`, for every such reference in the config.
+/// Only references the config makes are added, so an entity the config
+/// never names qualified is listed once in a typo's suggestions (one it
+/// does name is listed under both keys); a discovered name that has the
+/// dots itself always wins.
+fn qualify(
+    catalog: &mut Catalog,
+    config: &Config,
+    connection: &str,
+    namespace: Option<&str>,
+    discovered: &[ferry_core::Entity],
+) {
+    let Some(namespace) = namespace else {
+        return;
+    };
+    let qualified = format!("{connection}.{namespace}");
+    for reference in references(config) {
+        if reference.connection.as_str() != connection
+            || discovered.iter().any(|e| e.name() == reference.entity)
+        {
+            continue;
+        }
+        let Some(name) = reference
+            .entity
+            .strip_prefix(namespace)
+            .and_then(|rest| rest.strip_prefix('.'))
+        else {
+            continue;
+        };
+        if let Some(entity) = discovered.iter().find(|e| e.name() == name) {
+            catalog.insert(&qualified, entity.clone());
         }
     }
 }
 
+/// Every entity the flows read: drivers and joined entries.
+fn references(config: &Config) -> impl Iterator<Item = &EntityRef> {
+    use ferry_dsl::config::model::From;
+    config.flows.iter().flat_map(|f| match f.from.value() {
+        From::Entity(e) => vec![e],
+        From::Merge(entries) => entries.iter().map(|e| e.entity.value()).collect(),
+    })
+}
+
 /// Every connection a flow reads from, in name order.
 fn read_connections(config: &Config) -> BTreeSet<&str> {
-    use ferry_dsl::config::model::From;
-    config
-        .flows
-        .iter()
-        .flat_map(|f| match f.from.value() {
-            From::Entity(e) => vec![e.connection.as_str()],
-            From::Merge(entries) => entries
-                .iter()
-                .map(|e| e.entity.value().connection.as_str())
-                .collect(),
-        })
-        .collect()
+    references(config).map(|e| e.connection.as_str()).collect()
 }
 
 fn sink_connections(config: &Config) -> BTreeSet<&str> {
@@ -271,6 +346,7 @@ fn flow_section(out: &mut String, summary: &Summary, flow: &PlannedFlow, model: 
         flow.partition_rows_from.describe(),
         flow.name
     );
+    joins_section(out, flow);
     if let Some(filter) = &model.filter {
         let _ = writeln!(out, "  where:       {}", where_text(filter.value()));
     }
@@ -357,6 +433,76 @@ fn flow_section(out: &mut String, summary: &Summary, flow: &PlannedFlow, model: 
             );
         }
     }
+}
+
+/// A merge's joins, each with its strategy and why (0002, 0003 §5.2), and
+/// the full ordering of each `nest:` (0003 §5.8).
+fn joins_section(out: &mut String, flow: &PlannedFlow) {
+    let plan = &flow.compiled.plan;
+    let joins: Vec<_> = plan.joins().collect();
+    if joins.is_empty() {
+        return;
+    }
+    let _ = writeln!(out, "  joins:");
+    for join in joins {
+        let cardinality = match join.cardinality {
+            Cardinality::One => "one",
+            Cardinality::Many => "many",
+        };
+        let keys: Vec<String> = join
+            .keys
+            .iter()
+            .map(|(column, other)| format!("{}.{column} = {other}", join.alias))
+            .collect();
+        let _ = writeln!(
+            out,
+            "    {} {} ({cardinality}, on {})",
+            join.alias,
+            join.reference,
+            keys.join(" and ")
+        );
+        let strategy = match &join.strategy {
+            Strategy::CoPartition { column } => {
+                format!("co-partitioned on `{column}`, streamed with each driver partition")
+            }
+            Strategy::Stage => match flow.stage_memory {
+                0 => "staged: read once, sorted and spilled to disk".to_owned(),
+                n => format!(
+                    "staged: read once, sorted in {} and spilled to disk",
+                    bytes(n)
+                ),
+            },
+        };
+        let _ = writeln!(out, "      strategy: {strategy}");
+        let _ = writeln!(out, "      why:      {}", join.reason);
+        if let (Strategy::Stage, Some(why)) = (&join.strategy, &flow.co_partition_fallback) {
+            let _ = writeln!(out, "                (the source said: {why})");
+        }
+    }
+    for nest in plan.nest_orders() {
+        let _ = writeln!(
+            out,
+            "  nest:        {}.{} from {}, ordered by {}",
+            nest.target,
+            nest.column,
+            nest.alias,
+            nest.order_by.join(", ")
+        );
+    }
+}
+
+/// `256MiB`, `1.5GiB`, `512KiB`, `100B`.
+fn bytes(n: u64) -> String {
+    const UNITS: [(&str, u64); 3] = [("GiB", 1 << 30), ("MiB", 1 << 20), ("KiB", 1 << 10)];
+    for (unit, size) in UNITS {
+        if n >= size {
+            return match n % size {
+                0 => format!("{}{unit}", n / size),
+                _ => format!("{:.1}{unit}", n as f64 / size as f64),
+            };
+        }
+    }
+    format!("{n}B")
 }
 
 fn where_text(filter: &Where) -> String {
