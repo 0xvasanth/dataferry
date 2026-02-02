@@ -12,17 +12,23 @@
 //!   checksums and the source-side aggregates of `expect:` (B8). Both keep
 //!   their records in files under the work directory, so a run killed
 //!   half-way is verified on resume with every attempt's records.
-//! - After the run, the flows are verified and the report is written to
-//!   `<work dir>/runs/<run id>/report.{json,md}`. The verifier checks one
-//!   target against the run's totals, so a run is verified when every flow
-//!   writes to one sink this binary can read back. Any other run is
-//!   reported unverified (a warning), and what finalize couldn't restore
-//!   still fails it.
+//! - A merge's co-partitioned joins are inputs of the runner; its staged
+//!   joins read their sources themselves, in their share of
+//!   `memory_budget`, spilling under `<work dir>/stage` (B6, 0002).
+//! - After the run, each sink's flows are verified against that sink, with
+//!   the run's totals scoped to them, and the report is written to
+//!   `<work dir>/runs/<run id>/report.{json,md}`, or
+//!   `report-<sink>.{json,md}` per sink when the run writes to several. A
+//!   sink this binary can't read back is reported unverified (a warning),
+//!   and what finalize couldn't restore on it still fails the run.
+//! - Ctrl-C stops the run with exit 130 and releases the leases it held
+//!   ([`leases`](crate::leases)), so `ferry resume` doesn't wait for them
+//!   to expire.
 //!
 //! `run` prints the run id before any partition is processed, so a run
 //! that is killed can always be resumed.
 
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
@@ -42,6 +48,7 @@ use crate::Ferry;
 use crate::cli::Cli;
 use crate::diagnostic::{Diagnostic, Printer, code};
 use crate::exit::Exit;
+use crate::leases::Tracked;
 use crate::plan::{self, Planned};
 
 /// The engine version a run is pinned to (A4).
@@ -62,7 +69,7 @@ pub(crate) enum Start {
 
 pub(crate) async fn run(ferry: &Ferry, cli: &Cli, printer: &mut Printer<'_>, start: Start) -> Exit {
     let planned = plan::plan(
-        &ferry.registry,
+        ferry,
         &cli.config,
         &|name| std::env::var(name).ok(),
         &mut printer.redaction,
@@ -103,58 +110,60 @@ pub(crate) fn work_dir(cli: &Cli) -> PathBuf {
     }
 }
 
-/// How a run is verified (A8).
-enum Check {
-    /// Every flow writes to `sink`, read back through `target`.
-    Verified {
-        sink: String,
-        target: Arc<dyn Target>,
-    },
+/// How one sink's flows are verified (A8).
+struct Check {
+    sink: String,
+    /// The flows writing to it, by name.
+    flows: Vec<String>,
+    how: How,
+}
+
+enum How {
+    /// Read back through `target`.
+    Verified(Arc<dyn Target>),
     /// Not verified, and why: a warning, not a failure.
     Unverified(String),
 }
 
 impl Check {
-    /// `Verifier` compares one target with the run's totals in the state
-    /// store, which cover every flow, so only a run with one sink can be
-    /// verified as a whole. `Err` when the sink's target can't be opened:
-    /// the run must not start, since what it wrote could never be
-    /// verified.
+    /// One check per sink the run writes to, in name order. `Err` when a
+    /// sink's target can't be opened: the run must not start, since what
+    /// it wrote could never be verified.
     fn of(
         ferry: &Ferry,
         summary: &crate::validate::Summary,
         flows: &[PlannedFlow],
-    ) -> Result<Self, String> {
-        let sinks: BTreeSet<&str> = flows.iter().map(|f| f.sink.as_str()).collect();
-        let [sink] = sinks.into_iter().collect::<Vec<_>>()[..] else {
-            let names: Vec<String> = flows
-                .iter()
-                .map(|f| format!("`{}`", f.sink))
-                .collect::<BTreeSet<_>>()
-                .into_iter()
-                .collect();
-            return Ok(Check::Unverified(format!(
-                "the run writes to several sinks ({}); verifying a run across sinks isn't \
-                 supported yet",
-                names.join(", ")
-            )));
-        };
-        let raw = summary
-            .raw
-            .get(sink)
-            .ok_or_else(|| format!("connection `{sink}` was not built"))?;
-        let Some(factory) = ferry.targets.get(&raw.r#type) else {
-            return Ok(Check::Unverified(format!(
-                "this binary can't read `{}` connections back, so `{sink}` isn't verified",
-                raw.r#type
-            )));
-        };
-        let target =
-            factory(raw).map_err(|e| format!("could not open `{sink}` to verify it: {e}"))?;
-        Ok(Check::Verified {
-            sink: sink.to_owned(),
-            target,
-        })
+    ) -> Result<Vec<Self>, String> {
+        let mut by_sink: BTreeMap<&str, Vec<String>> = BTreeMap::new();
+        for flow in flows {
+            by_sink
+                .entry(flow.sink.as_str())
+                .or_default()
+                .push(flow.name.clone());
+        }
+        let mut checks = Vec::new();
+        for (sink, flows) in by_sink {
+            let raw = summary
+                .raw
+                .get(sink)
+                .ok_or_else(|| format!("connection `{sink}` was not built"))?;
+            let how = match ferry.targets.get(&raw.r#type) {
+                None => How::Unverified(format!(
+                    "this binary can't read `{}` connections back, so `{sink}` isn't verified",
+                    raw.r#type
+                )),
+                Some(factory) => How::Verified(
+                    factory(raw)
+                        .map_err(|e| format!("could not open `{sink}` to verify it: {e}"))?,
+                ),
+            };
+            checks.push(Check {
+                sink: sink.to_owned(),
+                flows,
+                how,
+            });
+        }
+        Ok(checks)
     }
 }
 
@@ -162,10 +171,12 @@ struct Execution<'a> {
     planned: &'a Planned,
     work: PathBuf,
     store: Arc<dyn StateStore>,
+    /// `store`, remembering the leases the runner holds.
+    leases: Arc<Tracked>,
     write_log: Arc<dyn WriteLog>,
     source_log: Arc<dyn SourceLog>,
     flows: Vec<Flow>,
-    check: Check,
+    checks: Vec<Check>,
     runner: Runner,
 }
 
@@ -173,7 +184,7 @@ impl<'a> Execution<'a> {
     fn new(ferry: &Ferry, cli: &Cli, planned: &'a Planned) -> Result<Self, Diagnostic> {
         let Planned { summary, plan } = planned;
         let work = work_dir(cli);
-        let store: Arc<dyn StateStore> = match &summary.state_store {
+        let inner: Arc<dyn StateStore> = match &summary.state_store {
             Some(store) => Arc::clone(store),
             None => {
                 let path = summary
@@ -184,17 +195,15 @@ impl<'a> Execution<'a> {
                 Arc::new(FileStateStore::new(path))
             }
         };
+        let leases = Arc::new(Tracked::new(inner));
+        let store: Arc<dyn StateStore> = leases.clone();
         let write_log: Arc<dyn WriteLog> = Arc::new(FileWriteLog::new(work.join("writes")));
         let source_log: Arc<dyn SourceLog> = Arc::new(FileSourceLog::new(work.join("sources")));
 
         let internal = |message: String| Diagnostic::error(code::RUN, message);
+        let sources = |name: &str| summary.endpoints.get(name).and_then(|e| e.source.clone());
         let mut flows = Vec::new();
         for planned_flow in &plan.flows {
-            let source = summary
-                .endpoints
-                .get(planned_flow.driver.connection.as_str())
-                .and_then(|e| e.source.clone())
-                .ok_or_else(|| internal(format!("`{}` has no source", planned_flow.driver)))?;
             let sink_endpoints = summary
                 .endpoints
                 .get(&planned_flow.sink)
@@ -203,34 +212,52 @@ impl<'a> Execution<'a> {
                 .sink
                 .clone()
                 .ok_or_else(|| internal(format!("`{}` has no sink", planned_flow.sink)))?;
-            flows.push(planned_flow.runtime_flow(source, sink, sink_endpoints.finalizer.clone()));
+            let flow = planned_flow
+                .runtime_flow(
+                    &sources,
+                    sink,
+                    sink_endpoints.finalizer.clone(),
+                    Some(work.join("stage")),
+                )
+                .map_err(|e| internal(format!("flow `{}`: {e}", planned_flow.name)))?;
+            flows.push(flow);
         }
-        let check = Check::of(ferry, summary, &plan.flows)
+        let checks = Check::of(ferry, summary, &plan.flows)
             .map_err(|why| Diagnostic::error(code::VERIFY_FAILED, why).help("nothing was run"))?;
 
         let settings = Settings {
             lease_ttl: LEASE_TTL,
             heartbeat: HEARTBEAT,
-            ..ferry_dsl::plan::settings(&summary.config)
+            ..plan.settings(&summary.config)
         };
         let mut runner = Runner::new(Arc::clone(&store), flows.clone(), settings)
             .map_err(|e| internal(format!("the planned flows don't fit the runner: {e}")))?;
-        if let Check::Verified { target, .. } = &check {
-            runner = runner.with_observer(Arc::new(ChecksumObserver::new(
-                Arc::clone(&write_log),
-                Arc::clone(target),
-            )));
-        }
+        // Every flow is recorded, so each sink's verification can take the
+        // others' rows out of the run's totals; each is checksummed the way
+        // its own sink is read back.
+        let targets: BTreeMap<String, Arc<dyn Target>> = checks
+            .iter()
+            .filter_map(|c| match &c.how {
+                How::Verified(target) => Some((c, target)),
+                How::Unverified(_) => None,
+            })
+            .flat_map(|(c, target)| c.flows.iter().map(|f| (f.clone(), Arc::clone(target))))
+            .collect();
+        runner = runner.with_observer(Arc::new(ChecksumObserver::per_flow(
+            Arc::clone(&write_log),
+            targets,
+        )));
         let expectations = Expectations::new(&plan.checked(), Arc::clone(&source_log));
         runner = runner.with_observer(expectations.observer());
         Ok(Self {
             planned,
             work,
             store,
+            leases,
             write_log,
             source_log,
             flows,
-            check,
+            checks,
             runner,
         })
     }
@@ -301,16 +328,27 @@ impl<'a> Execution<'a> {
             }
         };
         let report = tokio::select! {
-            report = execute => report,
-            _ = interrupt.wait() => {
-                let d = Diagnostic::error(
-                    code::INTERRUPTED,
-                    format!("interrupted: in-flight partitions of run `{}` were abandoned", run.0),
-                )
-                .help(format!("continue it with `ferry resume {}`", run.0));
-                let _ = printer.diagnostics(&[d], &cli.config);
-                return Exit::Interrupted;
-            }
+            report = execute => Some(report),
+            _ = interrupt.wait() => None,
+        };
+        // The run future is dropped by now, and its workers with it.
+        let Some(report) = report else {
+            let released = self.leases.release().await;
+            let d = Diagnostic::error(
+                code::INTERRUPTED,
+                format!(
+                    "interrupted: in-flight partitions of run `{}` were abandoned, and {released} \
+                     {} released",
+                    run.0,
+                    match released {
+                        1 => "lease was",
+                        _ => "leases were",
+                    }
+                ),
+            )
+            .help(format!("continue it with `ferry resume {}`", run.0));
+            let _ = printer.diagnostics(&[d], &cli.config);
+            return Exit::Interrupted;
         };
         let report = match report {
             Ok(report) => report,
@@ -378,8 +416,8 @@ impl<'a> Execution<'a> {
         }
     }
 
-    /// Verifies the run, writes its report and prints the outcome. `true`
-    /// if verification failed.
+    /// Verifies each sink's flows, writes their reports and prints the
+    /// outcome. `true` if any verification failed.
     async fn check(
         &self,
         cli: &Cli,
@@ -388,61 +426,82 @@ impl<'a> Execution<'a> {
         report: &RunReport,
         timing: RunTiming,
     ) -> bool {
-        let (sink, target) = match &self.check {
-            Check::Verified { sink, target } => (sink, target),
-            Check::Unverified(why) => {
-                let d = Diagnostic::warning(code::UNVERIFIED, format!("not verified: {why}"));
-                let _ = printer.diagnostics(&[d], &cli.config);
-                // Without the verifier, what finalize couldn't restore is
-                // still a failed load.
-                let problems: Vec<Diagnostic> = report
-                    .finalize_problems()
-                    .map(|(flow, p)| {
-                        Diagnostic::error(
-                            code::VERIFY_FAILED,
-                            format!("flow `{flow}`: finalize couldn't restore {p}"),
-                        )
-                    })
-                    .collect();
-                let _ = printer.diagnostics(&problems, &cli.config);
-                return !problems.is_empty();
-            }
-        };
         let dir = self.report_dir(run);
-        match self
-            .verify(Arc::clone(target), run, report, timing, &dir, printer)
-            .await
-        {
-            Ok(v) => {
-                let text = match v.status {
-                    Status::Passed => "passed".to_owned(),
-                    Status::Failed => format!("failed ({} problems)", v.problems.len()),
-                    Status::Incomplete => "incomplete: the run isn't finished".to_owned(),
-                };
-                let _ = printer.output(&format!(
-                    "verification of `{sink}` {text}; report: {}\n",
-                    dir.join("report.md").display()
-                ));
-                let diagnostics: Vec<Diagnostic> = match v.status {
-                    Status::Failed => v
-                        .problems
-                        .iter()
-                        .map(|p| Diagnostic::error(code::VERIFY_FAILED, p.clone()))
-                        .collect(),
-                    _ => Vec::new(),
-                };
-                let _ = printer.diagnostics(&diagnostics, &cli.config);
-                v.status == Status::Failed
-            }
-            Err(e) => {
-                let d = Diagnostic::error(
-                    code::VERIFY_FAILED,
-                    format!("could not verify the flows writing to `{sink}`: {e}"),
-                );
-                let _ = printer.diagnostics(&[d], &cli.config);
-                true
+        let several = self.checks.len() > 1;
+        let mut failed = false;
+        for check in &self.checks {
+            let target = match &check.how {
+                How::Verified(target) => target,
+                How::Unverified(why) => {
+                    let d = Diagnostic::warning(code::UNVERIFIED, format!("not verified: {why}"));
+                    let _ = printer.diagnostics(&[d], &cli.config);
+                    // Without the verifier, what finalize couldn't restore
+                    // is still a failed load.
+                    let problems: Vec<Diagnostic> = report
+                        .finalize_problems()
+                        .filter(|(flow, _)| check.flows.iter().any(|f| f == flow))
+                        .map(|(flow, p)| {
+                            Diagnostic::error(
+                                code::VERIFY_FAILED,
+                                format!("flow `{flow}`: finalize couldn't restore {p}"),
+                            )
+                        })
+                        .collect();
+                    let _ = printer.diagnostics(&problems, &cli.config);
+                    failed |= !problems.is_empty();
+                    continue;
+                }
+            };
+            let name = match several {
+                true => format!("report-{}", check.sink),
+                false => "report".to_owned(),
+            };
+            let sink = &check.sink;
+            match self
+                .verify(
+                    check,
+                    Arc::clone(target),
+                    run,
+                    report,
+                    timing,
+                    &dir,
+                    &name,
+                    printer,
+                )
+                .await
+            {
+                Ok(v) => {
+                    let text = match v.status {
+                        Status::Passed => "passed".to_owned(),
+                        Status::Failed => format!("failed ({} problems)", v.problems.len()),
+                        Status::Incomplete => "incomplete: the run isn't finished".to_owned(),
+                    };
+                    let _ = printer.output(&format!(
+                        "verification of `{sink}` {text}; report: {}\n",
+                        dir.join(format!("{name}.md")).display()
+                    ));
+                    let diagnostics: Vec<Diagnostic> = match v.status {
+                        Status::Failed => v
+                            .problems
+                            .iter()
+                            .map(|p| Diagnostic::error(code::VERIFY_FAILED, p.clone()))
+                            .collect(),
+                        _ => Vec::new(),
+                    };
+                    let _ = printer.diagnostics(&diagnostics, &cli.config);
+                    failed |= v.status == Status::Failed;
+                }
+                Err(e) => {
+                    let d = Diagnostic::error(
+                        code::VERIFY_FAILED,
+                        format!("could not verify the flows writing to `{sink}`: {e}"),
+                    );
+                    let _ = printer.diagnostics(&[d], &cli.config);
+                    failed = true;
+                }
             }
         }
+        failed
     }
 
     fn report_dir(&self, run: &RunId) -> PathBuf {
@@ -457,32 +516,51 @@ impl<'a> Execution<'a> {
         self.work.join("runs").join(name)
     }
 
+    /// Verifies `check`'s flows against `target`, and writes
+    /// `<name>.json` and `<name>.md` into `dir`.
+    #[allow(clippy::too_many_arguments)]
     async fn verify(
         &self,
+        check: &Check,
         target: Arc<dyn Target>,
         run: &RunId,
         report: &RunReport,
         timing: RunTiming,
         dir: &Path,
+        name: &str,
         printer: &Printer<'_>,
     ) -> ferry_core::Result<Verification> {
+        let ours = |flow: &str| check.flows.iter().any(|f| f == flow);
+        let flows: Vec<Flow> = self
+            .flows
+            .iter()
+            .filter(|f| ours(&f.name))
+            .cloned()
+            .collect();
         let verifier = Verifier::new(
             Arc::clone(&self.store),
             Arc::clone(&self.write_log),
             target,
-            &self.flows,
+            &flows,
         )
+        .in_run(&self.flows)
         .with_finalized(report);
-        let checked = self.planned.plan.checked();
+        let checked: Vec<_> = self
+            .planned
+            .plan
+            .checked()
+            .into_iter()
+            .filter(|c| ours(&c.name))
+            .collect();
         let verifier = Expectations::new(&checked, Arc::clone(&self.source_log)).verifier(verifier);
         let verification = verifier.verify(run).await?;
         let written = Report::new(&verification).with_run_timing(timing);
         std::fs::create_dir_all(dir).map_err(|e| io_error(dir, e))?;
-        for (name, text) in [
-            ("report.json", written.to_json()),
-            ("report.md", written.to_markdown()),
+        for (file, text) in [
+            (format!("{name}.json"), written.to_json()),
+            (format!("{name}.md"), written.to_markdown()),
         ] {
-            let path = dir.join(name);
+            let path = dir.join(file);
             std::fs::write(&path, printer.redaction.apply(&text))
                 .map_err(|e| io_error(&path, e))?;
         }

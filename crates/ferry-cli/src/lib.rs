@@ -31,6 +31,8 @@ mod builtins;
 mod cli;
 mod diagnostic;
 mod exit;
+mod leases;
+mod namespaces;
 mod plan;
 mod run;
 mod schema;
@@ -56,6 +58,9 @@ pub struct Ferry {
     registry: ConnectorRegistry,
     /// How `run` verifies each sink type it can read back (A8).
     targets: targets::Targets,
+    /// The namespace each connection type's entities may be qualified
+    /// with in a flow (`app.public.orders`).
+    namespaces: namespaces::Namespaces,
     name: &'static str,
     version: &'static str,
     /// Registration mistakes, reported when the binary starts.
@@ -74,6 +79,7 @@ impl Ferry {
         Self {
             registry: ConnectorRegistry::new(),
             targets: targets::Targets::default(),
+            namespaces: namespaces::Namespaces::default(),
             name: "ferry",
             version: env!("CARGO_PKG_VERSION"),
             miswired: Vec::new(),
@@ -243,8 +249,15 @@ impl Ferry {
                 return Exit::Internal;
             }
         };
-        let _guard = runtime.enter();
-        commands::run(&self, &cli, &mut printer)
+        let exit = {
+            let _guard = runtime.enter();
+            commands::run(&self, &cli, &mut printer)
+        };
+        // A blocking task still running (a merge's stage being sorted when
+        // Ctrl-C stopped the run) would otherwise hold the exit until it
+        // ends. A few seconds lets a state store write in flight finish.
+        runtime.shutdown_timeout(std::time::Duration::from_secs(5));
+        exit
     }
 }
 
@@ -278,7 +291,7 @@ mod commands {
 
     fn plan(ferry: &Ferry, cli: &Cli, printer: &mut Printer<'_>) -> Exit {
         let planned = block_on(plan::plan(
-            &ferry.registry,
+            ferry,
             &cli.config,
             &|name| std::env::var(name).ok(),
             &mut printer.redaction,

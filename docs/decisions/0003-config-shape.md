@@ -141,6 +141,13 @@ Flows reference connections in exactly two ways:
   connection name (which can't contain a dot), and the rest is the entity
   name exactly as the connector's `discover()` reports it (`Entity::name`).
   So `app.public.orders` is entity `public.orders` on connection `app`.
+  *Amended in S3 (2026-10-17):* a connector type may also accept the
+  entity qualified by the namespace its connection reads. For `postgres`
+  that is the connection's `schema:`, so on a connection with `schema:
+  public`, `app.public.orders` names the table `orders` that `discover()`
+  reports, as does `app.orders`. An entity discovered under the full dotted
+  name still wins. Which types have a namespace is set where the binary
+  registers its connectors, next to how their sinks are verified.
 - **A connection**, by bare name: `sink:`, and `runtime.state.connection`.
 
 Target tables (the keys under `to:`) are plain identifiers with no dots. Which
@@ -474,6 +481,16 @@ Overrides use the same key names under the flow's `runtime:`. Precedence is
 the flow value, then `runtime.yaml`, then the built-in default. There are no
 per-file defaults. Setting a non-overridable key on a flow is an error that
 names the key and gives the reason above.
+
+**v0.1 limit, v0.2 item (S3, 2026-10-17).** The v0.1 runner has run-wide
+`on_error` and `max_errors` only, so `ferry plan` refuses a flow whose
+`on_error` or `max_errors` differs from `runtime.yaml`'s (exit 4, naming the
+key), rather than silently applying the run-wide value. A flow value equal
+to the run-wide one is accepted. Per-flow budgets (a flow's own error
+count, checked alongside the run-wide one, and per-flow `fail` vs
+`dead_letter`) are planned for v0.2, together with the runner support they
+need. The grammar above doesn't change, so configs written for v0.2 keep
+their meaning; `partition_rows` is honoured per flow already.
 
 ### 7. `depends_on:` for ordering flows
 

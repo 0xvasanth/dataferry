@@ -37,14 +37,16 @@ pub fn golden_catalog() -> Catalog {
     Catalog::new().with("shop", golden::entity())
 }
 
-/// The entities `examples/pg-merge` reads, as Postgres discovers them.
-pub fn pg_merge_catalog() -> Catalog {
+/// The entities `examples/pg-merge` reads, as Postgres discovers them
+/// (`customers`, `orders`, `order_items`), each name prefixed with
+/// `prefix`.
+pub fn pg_merge_entities(prefix: &str) -> Vec<Entity> {
     let utc = CanonicalType::Timestamp {
         tz: Some("UTC".into()),
     };
     let f = |n: &str, t: CanonicalType, null: bool| CanonicalField::new(n, t, null);
     let customers = Entity::new(
-        "public.customers",
+        format!("{prefix}customers"),
         vec![
             f("id", CanonicalType::Int64, false),
             f("name", CanonicalType::Utf8, false),
@@ -54,7 +56,7 @@ pub fn pg_merge_catalog() -> Catalog {
     )
     .unwrap();
     let orders = Entity::new(
-        "public.orders",
+        format!("{prefix}orders"),
         vec![
             f("id", CanonicalType::Int64, false),
             f("customer_id", CanonicalType::Int64, true),
@@ -66,7 +68,7 @@ pub fn pg_merge_catalog() -> Catalog {
     )
     .unwrap();
     let items = Entity::new(
-        "public.order_items",
+        format!("{prefix}order_items"),
         vec![
             f("order_id", CanonicalType::Int64, false),
             f("line_no", CanonicalType::Int32, false),
@@ -77,10 +79,24 @@ pub fn pg_merge_catalog() -> Catalog {
         vec!["order_id".into(), "line_no".into()],
     )
     .unwrap();
-    Catalog::new()
-        .with("app", customers)
-        .with("app", orders)
-        .with("app", items)
+    vec![customers, orders, items]
+}
+
+/// The entities `examples/pg-merge` reads, named `public.<table>` so the
+/// config's `app.public.<table>` finds them.
+pub fn pg_merge_catalog() -> Catalog {
+    pg_merge_entities("public.")
+        .into_iter()
+        .fold(Catalog::new(), |c, e| c.with("app", e))
+}
+
+/// The same entities as `ferry` resolves them: discovered as `<table>`, and
+/// reachable as `app.public.<table>` because `public` is the `app`
+/// connection's schema.
+pub fn pg_merge_discovered() -> Catalog {
+    pg_merge_entities("")
+        .into_iter()
+        .fold(Catalog::new(), |c, e| c.with("app.public", e))
 }
 
 /// Loads, type-checks and compiles every flow under `dir`. Load and type

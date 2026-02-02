@@ -33,8 +33,8 @@ registers only what is left.
 | --- | --- | --- |
 | `ferry validate` | Loads the `ferry/` directory, substitutes `${ENV}`, and builds every connection through the registry with the roles its flows use. Checks connection options, that `from:` connections are sources and `sink:` connections are sinks, and that `runtime.state.connection` is a state-capable connection of the `backend:` type. Reports every error. | No |
 | `ferry schema [--out <dir>]` | The JSON Schema of each config file for this binary, with one `connections` branch per registered type. Prints one JSON object keyed by file name, or writes `<dir>/<file>.schema.json`. | No |
-| `ferry plan` | `validate`, then discovers every source the flows read and asks each sink for its capabilities, then type-checks and compiles every flow (`expect:` included). Prints the flows in run order (a flow waits for its `depends_on:` and for any flow writing a table it reads), each flow's idempotency strategy (and, when it isn't `TxnWithState`, why), partitioning, targets and the DDL its sink would run. Runs no DDL and writes nothing. | Read-only |
-| `ferry run` | Plans, prints the run id, then runs every flow on the runner with `runtime.yaml`'s settings and the `runtime.state` store. Verifies each sink after the run and writes `report.json` and `report.md`. | Yes |
+| `ferry plan` | `validate`, then discovers every source the flows read and asks each sink for its capabilities, then type-checks and compiles every flow (`expect:` included). Prints the flows in run order (a flow waits for its `depends_on:` and for any flow writing a table it reads), each flow's idempotency strategy (and, when it isn't `TxnWithState`, why), partitioning, a merge's joins with each one's strategy (co-partitioned or staged) and why, each `nest:`'s full ordering, targets and the DDL its sink would run. Asks each co-partitioned join's source whether it can split on the driver's boundaries, and stages the join if it can't. Runs no DDL and writes nothing. | Read-only |
+| `ferry run` | Plans, prints the run id, then runs every flow on the runner with `runtime.yaml`'s settings and the `runtime.state` store. Verifies each sink after the run and writes `report.json` and `report.md` (one pair per sink, `report-<sink>.*`, when the run writes to several). | Yes |
 | `ferry resume <run-id>` | Plans again and continues the run from its stored partitions. Refused (exit 8) if the config hash or engine version changed. | Yes |
 | `ferry retry --failed <run-id>` | Puts the run's failed partitions back to pending, then resumes it. | Yes |
 
@@ -46,8 +46,10 @@ output goes to stdout, diagnostics to stderr.
 The work directory (default: `.ferry` next to the config directory) holds
 what a run keeps outside the state store: the write-time records the
 verifier and `expect:` check against (so a resumed run is verified with
-every attempt's records), `runs/<run-id>/report.{json,md}`, and, under
-`backend: file` without a `path:`, the state itself (`state/`).
+every attempt's records), `runs/<run-id>/report.{json,md}` (or
+`report-<sink>.{json,md}` per sink), the spill files of staged merge joins
+while a run is going (`stage/`), and, under `backend: file` without a
+`path:`, the state itself (`state/`).
 
 ## Exit codes
 
@@ -65,12 +67,12 @@ against the code.
 | 6 | Run finished with failed partitions or exceeded `max_errors`. | `ferry retry --failed <run-id>`. |
 | 7 | Verification failed (`expect:`). Data was written. | Inspect the report. |
 | 8 | Resume refused: config hash or engine version changed. | Revert the config, or start a new run. |
-| 130 | Interrupted (Ctrl-C). In-flight partitions are abandoned uncommitted; their leases expire. | `ferry resume <run-id>`. |
+| 130 | Interrupted (Ctrl-C). In-flight partitions are abandoned uncommitted, and the leases the run held are released, so a resume takes them at once. | `ferry resume <run-id>`. |
 
-A run is verified when every flow writes to one sink this binary can read
-back. A run into several sinks, or into a third-party type without a
-verifier, still runs and is reported unverified (W0701), which doesn't
-affect the exit code; what finalize couldn't restore still fails it (7).
+Each sink is verified on its own, against its flows' share of the run's
+totals. A sink of a type this binary can't read back (a third-party type
+without a verifier) is reported unverified (W0701), which doesn't affect the
+exit code; what finalize couldn't restore on it still fails the run (7).
 
 ## Diagnostics
 

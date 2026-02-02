@@ -7,7 +7,8 @@ use crate::Ferry;
 
 /// `postgres` (source and sink, and the home of the `postgres` state
 /// backend) and `mongo` (source), as their features allow. A `postgres`
-/// sink is verified after a run by reading it back.
+/// sink is verified after a run by reading it back, and its tables may be
+/// named with the connection's schema (`app.public.orders`).
 pub(crate) fn register(ferry: Ferry) -> Ferry {
     #[cfg(feature = "postgres")]
     let ferry = {
@@ -16,6 +17,9 @@ pub(crate) fn register(ferry: Ferry) -> Ferry {
             ferry_state::PgStateBackend,
         );
         ferry.targets.add("postgres", crate::targets::postgres);
+        ferry
+            .namespaces
+            .add("postgres", crate::namespaces::postgres);
         ferry
     };
     #[cfg(feature = "mongo")]
