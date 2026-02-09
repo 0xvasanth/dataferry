@@ -4,7 +4,10 @@ Configs written in the grammar of
 [`docs/decisions/0003-config-shape.md`](../docs/decisions/0003-config-shape.md).
 The type-specific connection fields (`url`, `database`, `schema`) follow
 [`0004-connector-registry.md`](../docs/decisions/0004-connector-registry.md) §2.
-`ferry-dsl` loads every one of them in its tests (`tests/examples.rs`).
+`ferry-dsl` loads every one of them in its tests (`tests/examples.rs`), and
+CI runs `ferry validate` on each (`scripts/check-examples.sh`): every
+`ferry/` directory outside `bad/` must pass, and every `bad/<case>/ferry`
+must be rejected with exit 3. New examples are found, not listed.
 
 | Directory | What it shows |
 | --- | --- |
@@ -30,6 +33,9 @@ your environment):
 | `FERRY_GOLDEN_PG_URL` | `golden/`, every `bad/` case. `bad/missing-env` sets it to a secret-looking value and checks the value is never printed |
 | `APP_DATABASE_URL`, `REPORTING_DATABASE_URL` | `pg-merge/` |
 | `FERRY_EDGE_APP_URL`, `FERRY_EDGE_REPORTING_URL` | `edge/layout/` |
+
+CI's values for them, all unroutable, are in [`ci.env`](ci.env). A new
+example's variables go there too, or the check fails naming them.
 
 To run the golden config yourself, point the first two at a Mongo holding
 `fixtures/golden/source/orders.json` and an empty Postgres.
