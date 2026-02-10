@@ -414,7 +414,7 @@ impl Source for MongoSource {
         let mut n: u64 = 0;
         while let Some(doc) = ids.try_next().await.map_err(mongo_error)? {
             if n > 0
-                && n % target == 0
+                && n.is_multiple_of(target)
                 && let Some(key) = doc.get("_id").and_then(|id| kind.key_value(id))
             {
                 bounds.push(key);

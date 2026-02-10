@@ -1645,6 +1645,7 @@ dependencies = [
  "insta",
  "mongodb",
  "schemars 1.2.3",
+ "serde",
  "serde_json",
  "tempfile",
  "testcontainers-modules",

@@ -6,6 +6,10 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords.workspace = true
+categories = ["command-line-utilities", "database"]
 
 [lints]
 workspace = true
@@ -43,6 +47,8 @@ ferry-state = { workspace = true, features = ["postgres"] }
 insta = "1"
 # The plan and run tests: real Mongo and Postgres on testcontainers.
 mongodb = "3"
+# The README's connector example (tests/readme_connector.rs).
+serde = { version = "1", features = ["derive"] }
 tempfile = "3"
 testcontainers-modules.workspace = true
 tokio.workspace = true
