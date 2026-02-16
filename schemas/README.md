@@ -11,6 +11,10 @@ generated from the `ferry-dsl` model (`crates/ferry-dsl/src/config/schema.rs`).
 | `ferry/runtime.yaml` | [`v1/runtime.schema.json`](v1/runtime.schema.json) |
 | `ferry/flows/**/*.yaml`, `*.yml` | [`v1/flows.schema.json`](v1/flows.schema.json) |
 
+Every key is described in the
+[config reference](../docs/config-reference.md), which a test checks against
+`ferry schema`.
+
 A file reached through `include:` holds `flows:`, `connections:` or both, and
 matches the flows or connections schema for what it holds.
 
