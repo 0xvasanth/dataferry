@@ -21,5 +21,39 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets
       # Connector tests start Postgres and MongoDB through testcontainers,
-      # using the Docker daemon that ubuntu-latest runners ship with.
+      # using the Docker daemon that ubuntu-latest runners ship with. This
+      # includes the README quickstart (crates/ferry-cli/tests/readme.rs)
+      # and the config reference check (tests/config_reference.rs).
       - run: cargo test --workspace
+
+  # Every example config passes `ferry validate`, and every examples/bad
+  # case is rejected as invalid. A broken example fails here.
+  examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --locked -p ferry-cli
+      - run: scripts/check-examples.sh
+
+  # Every crate that can be published packages and builds from its
+  # tarball. ferry-dsl and ferry-cli wait for a DataFusion release on
+  # arrow 60 (README, Publishing); acme-ferry is test-only.
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo package --workspace --exclude ferry-dsl --exclude ferry-cli --exclude acme-ferry
+
+  # The declared minimum Rust version (workspace rust-version) builds
+  # everything.
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.95
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --locked --workspace --all-targets

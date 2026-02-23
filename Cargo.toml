@@ -17,20 +17,26 @@ members = [
 [workspace.package]
 version = "0.0.1"
 edition = "2024"
-rust-version = "1.85"
+# The DataFusion pin (ferry-dsl, and ferry-cli through it) needs 1.95, and
+# every crate declares the same minimum. CI builds the workspace with it.
+rust-version = "1.95"
 license = "Apache-2.0"
 repository = "https://github.com/0xvasanth/ferry"
+homepage = "https://github.com/0xvasanth/ferry"
+readme = "README.md"
+keywords = ["migration", "etl", "postgres", "mongodb", "arrow"]
+categories = ["database"]
 
 [workspace.dependencies]
-ferry-core = { path = "crates/ferry-core" }
-ferry-dsl = { path = "crates/ferry-dsl" }
-ferry-registry = { path = "crates/ferry-registry" }
-ferry-state = { path = "crates/ferry-state" }
-ferry-runtime = { path = "crates/ferry-runtime" }
-ferry-verify = { path = "crates/ferry-verify" }
-ferry-connector-tls = { path = "crates/ferry-connectors/tls" }
-ferry-connector-postgres = { path = "crates/ferry-connectors/postgres" }
-ferry-connector-mongo = { path = "crates/ferry-connectors/mongo" }
+ferry-core = { version = "0.0.1", path = "crates/ferry-core" }
+ferry-dsl = { version = "0.0.1", path = "crates/ferry-dsl" }
+ferry-registry = { version = "0.0.1", path = "crates/ferry-registry" }
+ferry-state = { version = "0.0.1", path = "crates/ferry-state" }
+ferry-runtime = { version = "0.0.1", path = "crates/ferry-runtime" }
+ferry-verify = { version = "0.0.1", path = "crates/ferry-verify" }
+ferry-connector-tls = { version = "0.0.1", path = "crates/ferry-connectors/tls" }
+ferry-connector-postgres = { version = "0.0.1", path = "crates/ferry-connectors/postgres" }
+ferry-connector-mongo = { version = "0.0.1", path = "crates/ferry-connectors/mongo" }
 
 # DataFusion for the expression language (ferry-dsl expr). Pinned to a commit
 # on main: no DataFusion release is built on arrow 60 yet (55.2 uses arrow

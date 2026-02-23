@@ -3,10 +3,13 @@ name = "ferry-dsl"
 description = "0xferry configuration model, expression language and planner"
 version.workspace = true
 edition.workspace = true
-# DataFusion (main, arrow 60) needs 1.95.
-rust-version = "1.95"
+rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+homepage.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [lints]
 workspace = true
