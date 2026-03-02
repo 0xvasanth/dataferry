@@ -45,7 +45,6 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "tim
 assert_cmd = "2"
 # A sink type with no verifier, for the unverified-sink test.
 ferry-core = { workspace = true, features = ["testkit"] }
-serde = { version = "1", features = ["derive"] }
 # The built-ins by name, for the tests that register them again.
 ferry-connector-mongo.workspace = true
 ferry-connector-postgres.workspace = true
@@ -53,7 +52,8 @@ ferry-state = { workspace = true, features = ["postgres"] }
 insta = "1"
 # The plan and run tests: real Mongo and Postgres on testcontainers.
 mongodb = "3"
-# The README's connector example (tests/readme_connector.rs).
+# The README's connector example (tests/readme_connector.rs) and the
+# unverified-sink test.
 serde = { version = "1", features = ["derive"] }
 tempfile = "3"
 testcontainers-modules.workspace = true
