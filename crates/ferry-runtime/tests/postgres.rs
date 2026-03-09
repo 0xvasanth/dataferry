@@ -641,6 +641,8 @@ impl Server {
 const DIR: &str = "FERRY_CHAOS_DIR";
 const URL: &str = "FERRY_CHAOS_URL";
 const BACKEND: &str = "FERRY_CHAOS_BACKEND";
+/// In the run directory: what every child printed.
+const CHILD_LOG: &str = "children.log";
 
 /// The child process: one attempt at the run kept in `$FERRY_CHAOS_DIR`.
 /// Only the chaos tests run it, through `--ignored`.
@@ -659,6 +661,10 @@ async fn chaos_child() {
 struct GoldenChaos {
     url: String,
     backend: Backend,
+    /// The store progress is read from while a child runs, opened once.
+    /// The file store is read afresh every time instead: it caches what
+    /// it read, and the child is the one writing it.
+    store: tokio::sync::OnceCell<Arc<dyn StateStore>>,
 }
 
 #[async_trait]
@@ -688,8 +694,15 @@ impl Scenario for GoldenChaos {
         ])
         .env(DIR, dir)
         .env(URL, &self.url)
-        .env(BACKEND, self.backend.name())
-        .stdout(std::process::Stdio::null());
+        .env(BACKEND, self.backend.name());
+        // Every attempt's output, where libtest prints a panic, for a run
+        // that fails.
+        let log = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(dir.join(CHILD_LOG))
+            .unwrap();
+        cmd.stdout(log.try_clone().unwrap()).stderr(log);
         cmd
     }
 
@@ -697,47 +710,52 @@ impl Scenario for GoldenChaos {
         let Some(run) = chaos::recorded_run(dir) else {
             return Ok(Progress::default());
         };
-        let (store, _) = self.backend.open(&self.url, dir);
-        let counts = store.counts(&run).await.map_err(|e| e.to_string())?;
-        Ok(Progress {
-            started: true,
-            done: counts.done,
-            total: counts.pending + counts.leased + counts.done + counts.failed,
-        })
+        let store = match self.backend {
+            Backend::File => self.backend.open(&self.url, dir).0,
+            Backend::Postgres | Backend::PostgresSink => Arc::clone(
+                self.store
+                    .get_or_init(|| async { self.backend.open(&self.url, dir).0 })
+                    .await,
+            ),
+        };
+        Progress::of(store.as_ref(), &run)
+            .await
+            .map_err(|e| e.to_string())
     }
 
-    async fn verify(&self) -> std::result::Result<(), String> {
+    async fn verify(&self, _: &Path) -> std::result::Result<(), String> {
         verify(&self.url, self.backend).await
+    }
+
+    async fn explain(&self, dir: &Path) -> String {
+        let log = std::fs::read_to_string(dir.join(CHILD_LOG)).unwrap_or_default();
+        format!("\n--- the children's output\n{log}")
     }
 }
 
-/// One chaos run at a time: each calibrates its kill window on
-/// uninterrupted runs, which only holds if the machine is as busy during
-/// the kills as during the calibration.
-static CHAOS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
-
 async fn chaos(backend: Backend, seed: u64) {
-    let _one_at_a_time = CHAOS.lock().await;
     let server = Server::start().await;
     let scenario = GoldenChaos {
         url: server.database(&format!("chaos_{}", backend.name())).await,
         backend,
+        store: tokio::sync::OnceCell::new(),
     };
     let work = tempfile::tempdir().unwrap();
     let config = chaos::Config {
         runs: 50,
         seed,
         max_kills: 3,
-        kill_window: None,
+        in_flight: settings().workers as u64,
+        poll: Duration::from_millis(2),
         timeout: Duration::from_secs(60),
     };
     let report = chaos::run(&config, &scenario, work.path()).await.unwrap();
     eprintln!("{backend:?}: {report:?}");
     assert_eq!(report.runs, 50);
-    // The kills have to land inside runs, between partitions, for the test
-    // to mean anything.
-    assert!(report.kills_mid_run >= 50, "{report:?}");
-    assert!(report.kills_between_partitions >= 25, "{report:?}");
+    // Every run is killed mid-partition at least once (the harness redoes
+    // one whose kills all missed), so each tests a resume that has
+    // committed work to keep, a partition to take over and work left.
+    assert!(report.kills_mid_partition >= 50, "{report:?}");
 }
 
 #[tokio::test(flavor = "multi_thread")]
