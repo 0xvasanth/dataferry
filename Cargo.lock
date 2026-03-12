@@ -1633,6 +1633,7 @@ name = "ferry-cli"
 version = "0.0.1"
 dependencies = [
  "assert_cmd",
+ "async-trait",
  "clap",
  "ferry-connector-mongo",
  "ferry-connector-postgres",

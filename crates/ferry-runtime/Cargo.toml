@@ -12,7 +12,8 @@ workspace = true
 
 [features]
 # The kill -9 chaos harness (`testkit::chaos`), for this crate's tests and
-# for end-to-end tests that rerun it against a real sink.
+# for end-to-end tests that rerun it against a real sink, and the connector
+# conformance suite built on it (`testkit::conformance`).
 testkit = ["dep:fastrand", "tokio/process"]
 
 [dependencies]
