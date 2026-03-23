@@ -21,6 +21,17 @@
 //! - **JSON** is re-serialized with sorted object keys and no whitespace,
 //!   as `jsonb` returns it. Number spellings (`1e2` vs `100`) are not
 //!   normalized.
+//! - **Nested values stored as documents.** A sink may store a struct, a
+//!   map or a list of them as a JSON document (Postgres `jsonb`), so it is
+//!   read back as JSON text. Such text, in a column whose canonical type is
+//!   nested, is decoded by that type and hashed exactly as the Arrow value
+//!   it was written from: arrays as lists, objects as structs (fields by
+//!   name, in declared order), and the values JSON has no type for as the
+//!   sink spells them, dates and timestamps in ISO 8601, UUIDs in their
+//!   canonical form, bytes as `\x`-prefixed hex. Numbers go through
+//!   `f64`, so a decimal of more than 15 significant digits inside a
+//!   document doesn't verify; maps stored as documents can't be checked
+//!   (their entry order is lost). Both fail verification, loudly.
 
 use std::fmt;
 
@@ -235,10 +246,18 @@ impl Value<'_> {
                     DataType::Utf8 => array.as_string::<i32>().value(row),
                     _ => array.as_string::<i64>().value(row),
                 };
-                if self.ty == Some(&CanonicalType::Json) {
-                    json(text, out);
-                } else {
-                    bytes(TEXT, text.as_bytes(), out);
+                match self.ty {
+                    Some(CanonicalType::Json) => json(text, out),
+                    Some(
+                        ty @ (CanonicalType::List(_)
+                        | CanonicalType::Struct(_)
+                        | CanonicalType::Map { .. }),
+                    ) => {
+                        let value: serde_json::Value = serde_json::from_str(text)
+                            .map_err(|e| format!("a stored document isn't JSON: {e}"))?;
+                        document(ty, &value, self.digits, out)?;
+                    }
+                    _ => bytes(TEXT, text.as_bytes(), out),
                 }
             }
             DataType::Binary => bytes(BYTES, array.as_binary::<i32>().value(row), out),
@@ -416,6 +435,164 @@ fn write_json(value: &serde_json::Value, out: &mut String) {
     }
 }
 
+/// `value`, a document a sink stored for a value of type `ty`, encoded as
+/// [`Value::encode`] encodes that value from Arrow.
+fn document(
+    ty: &CanonicalType,
+    value: &serde_json::Value,
+    digits: u8,
+    out: &mut Vec<u8>,
+) -> Result<(), String> {
+    use CanonicalType as C;
+    use serde_json::Value as J;
+    let wrong = || format!("`{value}` in a stored document isn't a {ty:?}");
+    match (ty, value) {
+        (_, J::Null) => out.push(NULL),
+        (C::Bool, J::Bool(b)) => {
+            out.push(BOOL);
+            out.push(u8::from(*b));
+        }
+        (
+            C::Int8 | C::Int16 | C::Int32 | C::Int64 | C::UInt8 | C::UInt16 | C::UInt32 | C::UInt64,
+            J::Number(n),
+        ) => {
+            let n = n
+                .as_i64()
+                .map(i128::from)
+                .or_else(|| n.as_u64().map(i128::from))
+                .ok_or_else(wrong)?;
+            integer(n, out);
+        }
+        (C::Decimal(_), J::Number(n)) => {
+            let (unscaled, scale) = decimal_text(&n.to_string()).ok_or_else(wrong)?;
+            number(unscaled, scale, out);
+        }
+        // A float32 is hashed widened from its own bits at write time, and
+        // the sink writes it in its shortest float32 spelling: narrow first.
+        (C::Float32, J::Number(n)) => float(f64::from(n.as_f64().ok_or_else(wrong)? as f32), out),
+        (C::Float64, J::Number(n)) => float(n.as_f64().ok_or_else(wrong)?, out),
+        (C::Utf8, J::String(s)) => bytes(TEXT, s.as_bytes(), out),
+        (C::Json, _) => {
+            let mut canonical = String::new();
+            write_json(value, &mut canonical);
+            bytes(JSON, canonical.as_bytes(), out);
+        }
+        (C::Binary, J::String(s)) => {
+            let hex = s.strip_prefix("\\x").ok_or_else(wrong)?;
+            bytes(BYTES, &unhex(hex).ok_or_else(wrong)?, out);
+        }
+        (C::Uuid, J::String(s)) => {
+            let hex: String = s.chars().filter(|c| *c != '-').collect();
+            match unhex(&hex) {
+                Some(b) if b.len() == 16 && s.len() == 36 => bytes(FIXED, &b, out),
+                _ => return Err(wrong()),
+            }
+        }
+        (C::Date, J::String(s)) => {
+            let days = iso_date(s).ok_or_else(wrong)?;
+            out.push(DATE);
+            out.extend(i32::try_from(days).map_err(|_| wrong())?.to_le_bytes());
+        }
+        (C::Timestamp { .. }, J::String(s)) => {
+            let micros = iso_timestamp(s).ok_or_else(wrong)?;
+            out.push(TIMESTAMP);
+            out.extend(round_to_digits(micros * 1_000, digits).to_le_bytes());
+        }
+        (C::List(item), J::Array(items)) => {
+            out.push(LIST);
+            out.extend((items.len() as u64).to_le_bytes());
+            for v in items {
+                document(&item.ty, v, digits, out)?;
+            }
+        }
+        (C::Struct(fields), J::Object(map)) => {
+            if let Some(extra) = map.keys().find(|k| fields.iter().all(|f| &f.name != *k)) {
+                return Err(format!(
+                    "a stored document has a field `{extra}` its type doesn't declare"
+                ));
+            }
+            out.push(STRUCT);
+            out.extend((fields.len() as u64).to_le_bytes());
+            for f in fields {
+                document(&f.ty, map.get(&f.name).unwrap_or(&J::Null), digits, out)?;
+            }
+        }
+        (C::Map { .. }, _) => {
+            return Err(
+                "maps stored as JSON documents can't be checksummed: their entry \
+                        order is lost"
+                    .into(),
+            );
+        }
+        _ => return Err(wrong()),
+    }
+    Ok(())
+}
+
+/// `-12.50` as (-1250, 2). No exponents: a sink writes decimals plainly.
+fn decimal_text(text: &str) -> Option<(i256, i8)> {
+    let (whole, fraction) = text.split_once('.').unwrap_or((text, ""));
+    let digits = whole.trim_start_matches('-');
+    if digits.is_empty()
+        || !digits.bytes().all(|b| b.is_ascii_digit())
+        || !fraction.bytes().all(|b| b.is_ascii_digit())
+    {
+        return None;
+    }
+    let scale = i8::try_from(fraction.len()).ok()?;
+    let unscaled = i256::from_string(&format!("{whole}{fraction}"))?;
+    Some((unscaled, scale))
+}
+
+fn unhex(hex: &str) -> Option<Vec<u8>> {
+    if !hex.len().is_multiple_of(2) {
+        return None;
+    }
+    (0..hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(hex.get(i..i + 2)?, 16).ok())
+        .collect()
+}
+
+/// `YYYY-MM-DD` as days since the Unix epoch.
+fn iso_date(text: &str) -> Option<i64> {
+    let mut parts = text.splitn(3, '-');
+    let (y, m, d) = (parts.next()?, parts.next()?, parts.next()?);
+    if y.len() != 4 || m.len() != 2 || d.len() != 2 {
+        return None;
+    }
+    let (y, m, d): (i64, i64, i64) = (y.parse().ok()?, m.parse().ok()?, d.parse().ok()?);
+    if !(1..=12).contains(&m) || !(1..=31).contains(&d) {
+        return None;
+    }
+    // Howard Hinnant's `days_from_civil`.
+    let y = if m <= 2 { y - 1 } else { y };
+    let era = y.div_euclid(400);
+    let yoe = y.rem_euclid(400);
+    let doy = (153 * (if m > 2 { m - 3 } else { m + 9 }) + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    Some(era * 146_097 + doe - 719_468)
+}
+
+/// `YYYY-MM-DDTHH:MM:SS[.ffffff][Z]` as microseconds since the epoch.
+fn iso_timestamp(text: &str) -> Option<i128> {
+    let text = text.strip_suffix('Z').unwrap_or(text);
+    let (date, time) = text.split_once('T')?;
+    let (hms, fraction) = time.split_once('.').unwrap_or((time, ""));
+    let mut parts = hms.splitn(3, ':');
+    let (h, m, s) = (parts.next()?, parts.next()?, parts.next()?);
+    if [h, m, s].iter().any(|p| p.len() != 2) || fraction.len() > 6 {
+        return None;
+    }
+    let (h, m, s): (i128, i128, i128) = (h.parse().ok()?, m.parse().ok()?, s.parse().ok()?);
+    let us: i128 = match fraction {
+        "" => 0,
+        f => format!("{f:0<6}").parse().ok()?,
+    };
+    let days = i128::from(iso_date(date)?);
+    Some(((days * 86_400 + h * 3_600 + m * 60 + s) * 1_000_000) + us)
+}
+
 /// `nanos` rounded to `digits` fractional-second digits, half away from
 /// zero, the way Postgres applies a `timestamp(p)` typmod.
 fn round_to_digits(nanos: i128, digits: u8) -> i128 {
@@ -474,6 +651,153 @@ mod tests {
         assert_eq!(enc(7, -2), enc(700, 0));
         assert_eq!(enc(-1250, 3), enc(-125, 2));
         assert_ne!(enc(7, 1), enc(7, 0));
+    }
+
+    /// A `nest:` column, `List(Struct)`, as Arrow at write time and as the
+    /// `jsonb` text Postgres returns: the same bytes.
+    #[test]
+    fn a_nested_value_hashes_the_same_as_arrow_and_as_its_stored_document() {
+        use std::sync::Arc;
+
+        use arrow_array::builder::{Int32Builder, ListBuilder, StringBuilder, StructBuilder};
+        use arrow_array::{ArrayRef, StringArray};
+        use arrow_schema::{Field, Fields};
+        use ferry_core::types::CanonicalField;
+
+        let ts = CanonicalType::Timestamp {
+            tz: Some("UTC".into()),
+        };
+        let item = CanonicalType::Struct(vec![
+            CanonicalField::new("sku", CanonicalType::Utf8, false),
+            CanonicalField::new("qty", CanonicalType::Int32, true),
+            CanonicalField::new("at", ts.clone(), true),
+        ]);
+        let ty = CanonicalType::List(Box::new(CanonicalField::new("item", item.clone(), true)));
+        let fields = Fields::from(vec![
+            Field::new("sku", DataType::Utf8, false),
+            Field::new("qty", DataType::Int32, true),
+            Field::new(
+                "at",
+                DataType::Timestamp(TimeUnit::Microsecond, Some("UTC".into())),
+                true,
+            ),
+        ]);
+        let mut list = ListBuilder::new(StructBuilder::new(
+            fields.clone(),
+            vec![
+                Box::new(StringBuilder::new()),
+                Box::new(Int32Builder::new()),
+                Box::new(
+                    arrow_array::builder::TimestampMicrosecondBuilder::new().with_timezone("UTC"),
+                ),
+            ],
+        ));
+        // [{SKU-1, 2, 1970-01-01T00:00:01.5Z}, {SKU-2, null, null}], then [].
+        for (sku, qty, at) in [("SKU-1", Some(2), Some(1_500_000)), ("SKU-2", None, None)] {
+            let s = list.values();
+            s.field_builder::<StringBuilder>(0)
+                .unwrap()
+                .append_value(sku);
+            s.field_builder::<Int32Builder>(1)
+                .unwrap()
+                .append_option(qty);
+            s.field_builder::<arrow_array::builder::TimestampMicrosecondBuilder>(2)
+                .unwrap()
+                .append_option(at);
+            s.append(true);
+        }
+        list.append(true);
+        list.append(true);
+        let written: ArrayRef = Arc::new(list.finish());
+        let stored: ArrayRef = Arc::new(StringArray::from(vec![
+            r#"[{"at": "1970-01-01T00:00:01.500000Z", "qty": 2, "sku": "SKU-1"}, {"at": null, "qty": null, "sku": "SKU-2"}]"#,
+            "[]",
+        ]));
+        let enc = |array: &ArrayRef, row: usize| {
+            let mut out = Vec::new();
+            Value {
+                ty: Some(&ty),
+                digits: MICROS,
+            }
+            .encode(array.as_ref(), row, &mut out)
+            .unwrap();
+            out
+        };
+        assert_eq!(enc(&written, 0), enc(&stored, 0));
+        assert_eq!(enc(&written, 1), enc(&stored, 1));
+        assert_ne!(enc(&written, 0), enc(&written, 1));
+
+        // A changed value, a reordered array or an extra field differ.
+        let differ = |text: &str| -> Result<Vec<u8>, String> {
+            let mut out = Vec::new();
+            let array: ArrayRef = Arc::new(StringArray::from(vec![text]));
+            Value {
+                ty: Some(&ty),
+                digits: MICROS,
+            }
+            .encode(array.as_ref(), 0, &mut out)
+            .map(|()| out)
+        };
+        let original = enc(&written, 0);
+        for changed in [
+            r#"[{"at": "1970-01-01T00:00:01.500000Z", "qty": 3, "sku": "SKU-1"}, {"sku": "SKU-2"}]"#,
+            r#"[{"sku": "SKU-2"}, {"at": "1970-01-01T00:00:01.500000Z", "qty": 2, "sku": "SKU-1"}]"#,
+            r#"[{"at": "1970-01-01T00:00:01.400000Z", "qty": 2, "sku": "SKU-1"}, {"sku": "SKU-2"}]"#,
+        ] {
+            assert_ne!(differ(changed).unwrap(), original, "{changed}");
+        }
+        // A missing field is null, like the written one.
+        assert_eq!(
+            differ(
+                r#"[{"at": "1970-01-01T00:00:01.5Z", "qty": 2, "sku": "SKU-1"}, {"sku": "SKU-2"}]"#
+            )
+            .unwrap(),
+            original
+        );
+        assert!(differ(r#"[{"sku": "SKU-1", "colour": "red"}]"#).is_err());
+        assert!(differ(r#"[{"sku": 7}]"#).is_err());
+        assert!(differ("not json").is_err());
+    }
+
+    #[test]
+    fn document_scalars_decode_as_the_sink_spells_them() {
+        let enc = |ty: CanonicalType, text: &str| {
+            let mut out = Vec::new();
+            document(&ty, &serde_json::from_str(text).unwrap(), MICROS, &mut out).map(|()| out)
+        };
+        let mut seven = Vec::new();
+        number(i256::from_i128(700), 2, &mut seven);
+        let decimal = CanonicalType::Decimal(ferry_core::types::DecimalSpec::new(10, 2).unwrap());
+        assert_eq!(enc(decimal.clone(), "7.00").unwrap(), seven);
+        assert_eq!(enc(decimal, "7").unwrap(), seven);
+        let mut day = Vec::new();
+        day.push(DATE);
+        day.extend(19_782_i32.to_le_bytes());
+        assert_eq!(enc(CanonicalType::Date, r#""2024-02-29""#).unwrap(), day);
+        let mut b = Vec::new();
+        bytes(BYTES, &[0xde, 0xad], &mut b);
+        assert_eq!(enc(CanonicalType::Binary, r#""\\xdead""#).unwrap(), b);
+        let mut u = Vec::new();
+        bytes(FIXED, &[0x11; 16], &mut u);
+        assert_eq!(
+            enc(
+                CanonicalType::Uuid,
+                r#""11111111-1111-1111-1111-111111111111""#
+            )
+            .unwrap(),
+            u
+        );
+        // `0.1f32` is written `0.1` and hashed as the f32 it was.
+        let mut tenth = Vec::new();
+        float(f64::from(0.1_f32), &mut tenth);
+        assert_eq!(enc(CanonicalType::Float32, "0.1").unwrap(), tenth);
+        let mut tenth64 = Vec::new();
+        float(0.1, &mut tenth64);
+        assert_eq!(enc(CanonicalType::Float64, "0.1").unwrap(), tenth64);
+        assert_eq!(iso_timestamp("1969-12-31T23:59:59.999999Z"), Some(-1));
+        assert_eq!(iso_date("1970-01-01"), Some(0));
+        assert!(enc(CanonicalType::Int64, "1.5").is_err());
+        assert!(enc(CanonicalType::Date, r#""2024-13-01""#).is_err());
     }
 
     #[test]

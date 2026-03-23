@@ -13,7 +13,21 @@
 //!   plan says why (0004 §8). A sink with no strategy for the mode refuses
 //!   the flow (0001);
 //! - settles how its driver is partitioned: `partition_rows` from the
-//!   flow's `runtime:`, else `runtime.yaml`, else the default (0003 §6).
+//!   flow's `runtime:`, else `runtime.yaml`, else the default (0003 §6);
+//! - for a merge (B6), keeps each join's strategy, and gives the flows
+//!   whose joins are staged a share of `memory_budget` (see
+//!   [`Plan::settings`]).
+//!
+//! # Merges and their sources
+//!
+//! Which joins can be co-partitioned is decided at compile time from the
+//! discovered entities (0002 steps 1, 2, 4). Whether the joined entity's
+//! source can actually split on the driver's boundaries (step 3) is the
+//! source's to say, so [`Plan::settle_co_partitioning`] asks it before a
+//! run, without reading any rows. A source that answers
+//! `CoPartitionUnsupported` gets its flow's co-partitioned joins staged
+//! instead (step 5), and the plan shows why; a join pinned to
+//! `strategy: co_partition` makes that a plan error instead.
 //!
 //! # The flow DAG
 //!
@@ -31,17 +45,18 @@
 //! ties broken by name, so it doesn't depend on which file a flow is in.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use async_trait::async_trait;
 use ferry_core::entity::RESERVED_PREFIX;
 use ferry_core::{
-    BatchStream, Entity, IdempotencyStrategy, Partition, PartitionHint, Result, SinkCaps, Source,
-    SourceCaps, WriteMode,
+    BatchStream, CoPartition, Entity, FerryError, IdempotencyStrategy, Partition, PartitionHint,
+    Result, SinkCaps, Source, SourceCaps, WriteMode,
 };
 
-use crate::compile::{CompiledFlow, compile};
-use crate::config::model::{EntityRef, FILE_BACKEND, From, OnError, Workers};
+use crate::compile::{CompiledFlow, Staging, Strategy, compile};
+use crate::config::model::{EntityRef, FILE_BACKEND, From, JoinStrategy, OnError, Workers};
 use crate::config::{
     Config, ConfigError, ConfigErrors, ConfigHash, ErrorKind, FieldPath, Flow, Location,
 };
@@ -59,9 +74,167 @@ pub struct Plan {
     /// What the plan should point out but doesn't stop a run, flows' own
     /// warnings included.
     pub warnings: Vec<String>,
+    /// `memory_budget` from `runtime.yaml`: the runner's and the stages'
+    /// together.
+    pub memory_budget: u64,
+}
+
+/// The share of `memory_budget` the stages of a run get when any flow
+/// stages a join: a quarter, the split B6's 5M-row merge was measured
+/// with (48 MiB for the runner, 16 MiB for the stage).
+const STAGE_SHARE: u64 = 4;
+
+/// Why [`Plan::settle_co_partitioning`] couldn't settle the plan.
+#[derive(Debug)]
+pub enum SettleError {
+    /// A join pinned to `strategy: co_partition` whose source can't split
+    /// on the driver's boundaries: the plan is refused.
+    Refused(ConfigErrors),
+    /// A source failed while it was asked, or the connection has none.
+    Source {
+        connection: String,
+        error: FerryError,
+    },
 }
 
 impl Plan {
+    /// `runtime.yaml` as the runner's settings, with what the stages hold
+    /// taken out of `memory_budget`, so the runner and the stages together
+    /// stay within it.
+    pub fn settings(&self, config: &Config) -> ferry_runtime::Settings {
+        let mut settings = settings(config);
+        settings.memory_budget = settings.memory_budget.saturating_sub(self.stage_memory());
+        settings
+    }
+
+    /// Bytes every staged join of the run may hold together.
+    pub fn stage_memory(&self) -> u64 {
+        self.flows.iter().map(|f| f.stage_memory).sum()
+    }
+
+    /// A quarter of `memory_budget` for the stages, when any flow stages a
+    /// join, split evenly between those flows: flows run concurrently, so
+    /// their stages can be held at the same time.
+    fn share_stage_memory(&mut self) {
+        let staging = self.flows.iter().filter(|f| f.stages()).count() as u64;
+        let each = match staging {
+            0 => 0,
+            n => self.memory_budget / STAGE_SHARE / n,
+        };
+        for flow in &mut self.flows {
+            flow.stage_memory = if flow.stages() { each } else { 0 };
+        }
+    }
+
+    /// 0002 step 3, asked before a run: can each co-partitioned join's
+    /// source split its entity on the join column? The source is given a
+    /// co-partition with no boundaries (one range covering every key), so
+    /// it checks the column and its kind without reading rows; the driver's
+    /// real boundaries come when the runner plans the partitions.
+    ///
+    /// A flow with a join whose source answers `CoPartitionUnsupported`
+    /// gets every co-partitioned join staged instead
+    /// ([`FlowPlan::without_co_partitioning`](crate::compile::FlowPlan::without_co_partitioning),
+    /// 0002 step 5), and [`PlannedFlow::co_partition_fallback`] says why.
+    /// A join pinned to `strategy: co_partition` can't be staged, so that
+    /// refuses the plan, naming the join and the source's reason.
+    /// `sources` gives each connection's source, by name.
+    pub async fn settle_co_partitioning(
+        &mut self,
+        config: &Config,
+        sources: &dyn Fn(&str) -> Option<Arc<dyn Source>>,
+    ) -> std::result::Result<(), SettleError> {
+        let mut errors = Vec::new();
+        for flow in &mut self.flows {
+            let mut unsupported = None;
+            for join in flow.compiled.plan.joins() {
+                let Strategy::CoPartition { column } = &join.strategy else {
+                    continue;
+                };
+                let source = sources(&join.connection).ok_or_else(|| SettleError::Source {
+                    connection: join.connection.clone(),
+                    error: no_source(&join.connection, &join.reference),
+                })?;
+                let hint = PartitionHint {
+                    target_rows: flow.partition_rows,
+                    co_partition: Some(CoPartition::new(column.clone(), Vec::new()).map_err(
+                        |error| SettleError::Source {
+                            connection: join.connection.clone(),
+                            error,
+                        },
+                    )?),
+                };
+                match source.plan_partitions(&join.entity, &hint).await {
+                    Ok(_) => {}
+                    Err(FerryError::CoPartitionUnsupported { reason, .. }) => {
+                        unsupported.get_or_insert((
+                            join.alias.clone(),
+                            join.reference.clone(),
+                            column.clone(),
+                            reason,
+                        ));
+                    }
+                    Err(error) => {
+                        return Err(SettleError::Source {
+                            connection: join.connection.clone(),
+                            error,
+                        });
+                    }
+                }
+            }
+            let Some((alias, reference, column, reason)) = unsupported else {
+                continue;
+            };
+            let model = config
+                .flow(&flow.name)
+                .expect("planned flows are config flows");
+            let why = format!("`{reference}` can't be split on `{column}`: {reason}");
+            match flow.compiled.plan.without_co_partitioning() {
+                Ok(staged) => {
+                    flow.compiled.plan = staged;
+                    flow.co_partition_fallback = Some(why);
+                }
+                Err(_) => {
+                    let pinned = pinned_joins(model);
+                    let message = match pinned.contains(&alias.as_str()) {
+                        true => format!(
+                            "flow `{}`: join `{alias}` pins `strategy: co_partition`, but {why}",
+                            flow.name
+                        ),
+                        false => format!(
+                            "flow `{}`: join `{alias}` can't be co-partitioned ({why}), and \
+                             staging it stages every co-partitioned join of the flow, but \
+                             join `{}` pins `strategy: co_partition`",
+                            flow.name,
+                            pinned.first().copied().unwrap_or_default()
+                        ),
+                    };
+                    let (location, i) = entry_of(model, &alias);
+                    errors.push(
+                        plan_error(message)
+                            .at(location)
+                            .path(
+                                &flow_path(model)
+                                    .key("from")
+                                    .item(i, None)
+                                    .key("join")
+                                    .key("strategy"),
+                            )
+                            .help(
+                                "use `strategy: auto` to stage the join when its source can't \
+                                 split on the driver's boundaries, or `strategy: stage` (0002)",
+                            ),
+                    );
+                }
+            }
+        }
+        if !errors.is_empty() {
+            return Err(SettleError::Refused(ConfigErrors(errors)));
+        }
+        self.share_stage_memory();
+        Ok(())
+    }
+
     /// The type-checked flows, for `Expectations` (B8).
     pub fn checked(&self) -> Vec<CheckedFlow> {
         self.flows.iter().map(|f| f.checked.clone()).collect()
@@ -118,6 +291,13 @@ pub struct PlannedFlow {
     pub partition_rows_from: Setting,
     /// The flows this one waits for, by name, and why.
     pub waits_for: Vec<Dependency>,
+    /// Bytes the flow's staged joins may hold together (0 without any):
+    /// its share of `memory_budget` ([`Plan::settings`]).
+    pub stage_memory: u64,
+    /// Why the flow's joins are staged although they could have been
+    /// co-partitioned: the source couldn't split on the driver's
+    /// boundaries ([`Plan::settle_co_partitioning`]).
+    pub co_partition_fallback: Option<String>,
 }
 
 /// Where a setting's value came from (0003 §6 precedence).
@@ -168,26 +348,74 @@ impl PlannedFlow {
         self.compiled.mode
     }
 
-    /// The flow as the runner takes it (A5), reading its driver from
-    /// `source` and writing to `sink`.
+    /// Whether any of the flow's joins is staged.
+    pub fn stages(&self) -> bool {
+        self.compiled
+            .plan
+            .joins()
+            .any(|j| j.strategy == Strategy::Stage)
+    }
+
+    /// The flow as the runner takes it (A5), writing to `sink`. `sources`
+    /// gives each connection's source, by name: the driver's is the first
+    /// input, each co-partitioned join's another, split on the driver's
+    /// boundaries (0002), and each staged join's source goes to the plan
+    /// itself with the flow's [`stage_memory`](Self::stage_memory),
+    /// spilling under `stage_dir` (default: the system's temporary
+    /// directory). Fails when a connection the flow reads has no source.
     pub fn runtime_flow(
         &self,
-        source: Arc<dyn Source>,
+        sources: &dyn Fn(&str) -> Option<Arc<dyn Source>>,
         sink: Arc<dyn ferry_core::Sink>,
         finalizer: Option<Arc<dyn ferry_registry::Finalizer>>,
-    ) -> ferry_runtime::Flow {
-        let entity = self.compiled.plan.entity().clone();
-        ferry_runtime::Flow {
-            name: self.name.clone(),
-            inputs: vec![ferry_runtime::Input {
-                source: Arc::new(Sized {
-                    inner: source,
-                    target_rows: self.partition_rows,
+        stage_dir: Option<PathBuf>,
+    ) -> Result<ferry_runtime::Flow> {
+        let source = |connection: &str, reference: &str| {
+            sources(connection).ok_or_else(|| no_source(connection, reference))
+        };
+        let sized = |inner: Arc<dyn Source>| -> Arc<dyn Source> {
+            Arc::new(Sized {
+                inner,
+                target_rows: self.partition_rows,
+            })
+        };
+        let plan = &self.compiled.plan;
+        let mut inputs = vec![ferry_runtime::Input {
+            source: sized(source(
+                self.driver.connection.as_str(),
+                &self.driver.to_string(),
+            )?),
+            entity: plan.entity().clone(),
+            co_partition: None,
+        }];
+        let mut staged = BTreeMap::new();
+        for join in plan.joins() {
+            let joined = source(&join.connection, &join.reference)?;
+            match &join.strategy {
+                Strategy::CoPartition { column } => inputs.push(ferry_runtime::Input {
+                    source: sized(joined),
+                    entity: join.entity.clone(),
+                    co_partition: Some(column.clone()),
                 }),
-                entity,
-                co_partition: None,
-            }],
-            plan: Arc::new(self.compiled.plan.clone()),
+                Strategy::Stage => {
+                    staged.insert(join.alias.clone(), joined);
+                }
+            }
+        }
+        if !staged.is_empty() {
+            plan.stage_with(Staging {
+                sources: staged,
+                memory: match self.stage_memory {
+                    0 => Staging::DEFAULT_MEMORY,
+                    n => n,
+                },
+                dir: stage_dir,
+            })?;
+        }
+        Ok(ferry_runtime::Flow {
+            name: self.name.clone(),
+            inputs,
+            plan: Arc::new(plan.clone()),
             sink,
             target: self.compiled.target.clone(),
             finalizer,
@@ -199,8 +427,50 @@ impl PlannedFlow {
                 .collect::<BTreeSet<_>>()
                 .into_iter()
                 .collect(),
+        })
+    }
+}
+
+fn no_source(connection: &str, reference: &str) -> FerryError {
+    FerryError::MissingInput {
+        entity: format!("{reference} (connection `{connection}` has no source)"),
+    }
+}
+
+/// The aliases of `flow`'s joins pinned to `strategy: co_partition`.
+fn pinned_joins(flow: &Flow) -> Vec<&str> {
+    match flow.from.value() {
+        From::Entity(_) => Vec::new(),
+        From::Merge(entries) => entries
+            .iter()
+            .filter(|e| {
+                e.join
+                    .as_ref()
+                    .is_some_and(|j| j.strategy == JoinStrategy::CoPartition)
+            })
+            .map(|e| {
+                e.alias
+                    .as_ref()
+                    .map_or_else(|| e.entity.default_alias(), |a| a.as_str())
+            })
+            .collect(),
+    }
+}
+
+/// Where the `from:` entry aliased `alias` is, and its index.
+fn entry_of<'a>(flow: &'a Flow, alias: &str) -> (&'a Location, usize) {
+    if let From::Merge(entries) = flow.from.value() {
+        for (i, e) in entries.iter().enumerate() {
+            let name = e
+                .alias
+                .as_ref()
+                .map_or_else(|| e.entity.default_alias(), |a| a.as_str());
+            if name == alias {
+                return (e.entity.location(), i);
+            }
         }
     }
+    (flow.from.location(), 0)
 }
 
 /// A source whose partitions are sized by its flow: the runner's
@@ -303,12 +573,13 @@ pub fn plan(
             continue;
         };
         let (partition_rows, partition_rows_from) = partition_rows(config, flow);
-        let From::Entity(driver) = flow.from.value() else {
-            unreachable!("compile refuses merges until B6");
+        let driver = match flow.from.value() {
+            From::Entity(driver) => driver.clone(),
+            From::Merge(entries) => entries[0].entity.value().clone(),
         };
         planned.push(PlannedFlow {
             name: flow.name.as_str().to_owned(),
-            driver: driver.clone(),
+            driver,
             sink: flow.sink.as_str().to_owned(),
             compiled,
             checked,
@@ -317,13 +588,15 @@ pub fn plan(
             partition_rows,
             partition_rows_from,
             waits_for: Vec::new(),
+            stage_memory: 0,
+            co_partition_fallback: None,
         });
     }
     if !errors.is_empty() {
         return Err(ConfigErrors(errors));
     }
 
-    let edges = edges(config);
+    let edges = edges(config, catalog);
     for flow in &mut planned {
         flow.waits_for = edges.get(flow.name.as_str()).cloned().unwrap_or_default();
     }
@@ -332,13 +605,16 @@ pub fn plan(
         Err(e) => return Err(ConfigErrors(vec![e])),
     };
     planned.sort_by_key(|f| order.iter().position(|o| *o == f.name));
-    Ok(Plan {
+    let mut plan = Plan {
         name: config.name.as_str().to_owned(),
         hash: config.hash(),
         state,
         flows: planned,
         warnings,
-    })
+        memory_budget: config.runtime.memory_budget.0.get(),
+    };
+    plan.share_stage_memory();
+    Ok(plan)
 }
 
 fn flow_path(flow: &Flow) -> FieldPath {
@@ -477,8 +753,10 @@ fn partition_rows(config: &Config, flow: &Flow) -> (u64, Setting) {
 }
 
 /// What each flow waits for, by flow name: `depends_on:`, and every flow
-/// writing a table it reads.
-fn edges(config: &Config) -> BTreeMap<&str, Vec<Dependency>> {
+/// writing a table it reads. A read names the table as written
+/// (`warehouse.orders`) or as the catalog resolved it
+/// (`warehouse.public.orders` is the discovered `orders`).
+fn edges<'a>(config: &'a Config, catalog: &Catalog) -> BTreeMap<&'a str, Vec<Dependency>> {
     let graph = config.dependency_graph();
     let mut out: BTreeMap<&str, Vec<Dependency>> = BTreeMap::new();
     for flow in &config.flows {
@@ -489,9 +767,13 @@ fn edges(config: &Config) -> BTreeMap<&str, Vec<Dependency>> {
             edge: Edge::Declared,
         }));
         for read in reads(flow) {
+            let discovered = catalog.get(read).map(Entity::name);
             for writer in &config.flows {
                 let writes = writer.sink.as_str() == read.connection.as_str()
-                    && writer.to.keys().any(|t| t.as_str() == read.entity);
+                    && writer
+                        .to
+                        .keys()
+                        .any(|t| t.as_str() == read.entity || Some(t.as_str()) == discovered);
                 if writes {
                     waits.push(Dependency {
                         flow: writer.name.as_str().to_owned(),
