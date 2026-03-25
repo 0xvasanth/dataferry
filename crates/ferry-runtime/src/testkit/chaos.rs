@@ -156,6 +156,16 @@ pub trait Scenario: Send + Sync {
     /// kept in `dir` finished.
     async fn verify(&self, dir: &Path) -> Result<(), String>;
 
+    /// Called after each kill, before the run's progress is read: does what
+    /// the databases would do on their own once the child's connections
+    /// closed, where the test's network hides that they did. A
+    /// port-forwarding proxy (Docker Desktop, OrbStack) can keep a killed
+    /// client's server-side session open, and with it its transaction and
+    /// locks, which the next child or `reset` then waits on for ever.
+    async fn killed(&self, _dir: &Path) -> Result<(), String> {
+        Ok(())
+    }
+
     /// More about the run kept in `dir` when it fails, such as the last
     /// child's output.
     async fn explain(&self, _dir: &Path) -> String {
@@ -256,7 +266,7 @@ async fn one_run(
     rng: &mut fastrand::Rng,
     report: &mut Report,
 ) -> Result<bool, String> {
-    scenario.reset().await?;
+    bounded(config, "reset", scenario.reset()).await?;
     // One in four runs first gets an early kill, as soon as the run exists
     // (while it plans, or with its first partitions in flight). Then
     // 1..=max_kills kills, the first once a partition is done. A later
@@ -292,7 +302,8 @@ async fn one_run(
             }
         }
         report.kills += 1;
-        let progress = scenario.progress(dir).await?;
+        bounded(config, "cleaning up after a kill", scenario.killed(dir)).await?;
+        let progress = bounded(config, "reading progress", scenario.progress(dir)).await?;
         if progress.mid_run() {
             report.kills_mid_run += 1;
         }
@@ -309,7 +320,7 @@ async fn one_run(
     if !finished {
         finish_child(config, spawn(scenario, dir)?).await?;
     }
-    scenario.verify(dir).await?;
+    bounded(config, "verifying", scenario.verify(dir)).await?;
     Ok(landed)
 }
 
@@ -355,7 +366,7 @@ async fn kill_at(
                 config.timeout
             ));
         }
-        let p = scenario.progress(dir).await?;
+        let p = bounded(config, "reading progress", scenario.progress(dir)).await?;
         seen_leased |= p.leased > 0;
         let reached = match (point, done_at) {
             _ if !p.started => false,
@@ -406,6 +417,17 @@ fn killed(status: std::process::ExitStatus) -> bool {
 #[cfg(not(unix))]
 fn killed(status: std::process::ExitStatus) -> bool {
     !status.success()
+}
+
+/// `f`, given as long as a child: no step of the harness waits for ever.
+async fn bounded<T>(
+    config: &Config,
+    what: &str,
+    f: impl std::future::Future<Output = Result<T, String>>,
+) -> Result<T, String> {
+    tokio::time::timeout(config.timeout, f)
+        .await
+        .map_err(|_| format!("{what} didn't finish within {:?}", config.timeout))?
 }
 
 fn spawn(scenario: &dyn Scenario, dir: &Path) -> Result<Child, String> {

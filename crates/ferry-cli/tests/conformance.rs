@@ -33,6 +33,35 @@ use tokio_postgres::{Client, NoTls};
 /// four. Eight dead letters, within the config's `max_errors: 10`.
 const COPIES: usize = 8;
 
+/// The `application_name` of `ferry`'s Postgres connections.
+const FERRY_APP: &str = "ferry_conformance";
+
+/// How long ending a killed child's sessions may take.
+const SESSIONS_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+
+/// The sessions named `app`, for an error: what each is doing.
+async fn sessions(client: &Client, app: &str) -> String {
+    let sql = "SELECT concat_ws(' ', pid, state, wait_event_type, wait_event, \
+                      'for ' || (now() - state_change)::text, \
+                      'blocked by ' || pg_blocking_pids(pid)::text, \
+                      'from ' || client_addr || ':' || client_port, left(query, 120)) \
+               FROM pg_stat_activity WHERE application_name = $1";
+    match client.query(sql, &[&app]).await {
+        Ok(rows) => rows
+            .iter()
+            .map(|r| r.get::<_, String>(0))
+            .collect::<Vec<_>>()
+            .join("; "),
+        Err(e) => format!("(couldn't list them: {e})"),
+    }
+}
+
+/// `url` with [`FERRY_APP`] as its `application_name`.
+fn with_app(url: &str) -> String {
+    let sep = if url.contains('?') { '&' } else { '?' };
+    format!("{url}{sep}application_name={FERRY_APP}")
+}
+
 /// `id` as copy `copy` has it.
 fn copy_id(id: &str, copy: usize) -> String {
     assert!(id.starts_with("650000") && id.len() == 24, "{id}");
@@ -183,17 +212,58 @@ impl Pair for Golden {
         let mut cmd = Command::new(env!("CARGO_BIN_EXE_ferry"));
         cmd.current_dir(self.config.path())
             .env_clear()
-            .env("FERRY_GOLDEN_PG_URL", &self.warehouse.url);
+            .env("FERRY_GOLDEN_PG_URL", with_app(&self.warehouse.url));
         match &self.source {
             Source::Mongo(shop) => cmd.env("FERRY_GOLDEN_MONGO_URL", &shop.url),
-            Source::Postgres { url } => cmd.env("FERRY_GOLDEN_PG_SOURCE_URL", url),
+            Source::Postgres { url } => cmd.env("FERRY_GOLDEN_PG_SOURCE_URL", with_app(url)),
         };
         cmd
+    }
+
+    /// Ends the killed `ferry`'s sessions on the warehouse's server (both
+    /// databases of Postgres → Postgres are on it), which Docker's port
+    /// forwarding can keep open with their transactions and locks. One
+    /// still running a statement is left to finish first, as the server
+    /// would on a closed connection; one waiting on the dead client (the
+    /// rest of a COPY) is ended at once.
+    async fn killed(&self) -> Result<(), String> {
+        let client = &self.warehouse.client;
+        let started = std::time::Instant::now();
+        loop {
+            client
+                .execute(
+                    "SELECT pg_terminate_backend(pid) FROM pg_stat_activity \
+                     WHERE application_name = $1 \
+                 AND (state <> 'active' OR wait_event_type = 'Client')",
+                    &[&FERRY_APP],
+                )
+                .await
+                .map_err(|e| e.to_string())?;
+            let left: i64 = client
+                .query_one(
+                    "SELECT count(*) FROM pg_stat_activity WHERE application_name = $1",
+                    &[&FERRY_APP],
+                )
+                .await
+                .map_err(|e| e.to_string())?
+                .get(0);
+            if left == 0 {
+                return Ok(());
+            }
+            if started.elapsed() > SESSIONS_TIMEOUT {
+                return Err(format!(
+                    "sessions of a killed child didn't end: {}",
+                    sessions(client, FERRY_APP).await
+                ));
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+        }
     }
 
     /// Every schema in the warehouse, so the target tables, `_ferry_dlq`
     /// and the state store's tables all go.
     async fn reset(&self) -> Result<(), String> {
+        self.killed().await?;
         let schemas = self
             .warehouse
             .client
@@ -340,17 +410,12 @@ async fn mongo_to_postgres_is_certified() {
     certify(Golden::mongo().await, &assertions).await;
 }
 
-/// Ignored until merges reach the planner (0XT-267, unnest/merge/nest on
-/// the real runner): `examples/golden-pg/ferry` is a merge, which `ferry
-/// plan` can't plan yet ("compile refuses merges until B6"). Un-ignore it
-/// once merges plan.
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "needs merges in the planner (0XT-267)"]
 async fn postgres_to_postgres_is_certified() {
     certify(Golden::postgres().await, &["order_count", "order_total"]).await;
 }
 
-/// What Postgres → Postgres runs on, checked without it: the source, with
+/// What Postgres → Postgres runs on, checked on its own: the source, with
 /// its copies, is the golden documents as rows.
 #[tokio::test(flavor = "multi_thread")]
 async fn the_postgres_source_holds_the_golden_documents_as_rows() {

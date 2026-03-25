@@ -107,6 +107,12 @@ pub trait Pair: Send + Sync {
     /// `Err` with the difference unless the target holds exactly the
     /// expected rows: no duplicates, no gaps, the same values.
     async fn verify(&self) -> Result<(), String>;
+
+    /// After each kill: ends the killed binary's database sessions if the
+    /// test's network can keep them open (see [`Scenario::killed`]).
+    async fn killed(&self) -> Result<(), String> {
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -259,6 +265,10 @@ impl Scenario for Chaos<'_> {
             ));
         }
         Ok(())
+    }
+
+    async fn killed(&self, _: &Path) -> Result<(), String> {
+        self.pair.killed().await
     }
 
     async fn explain(&self, dir: &Path) -> String {

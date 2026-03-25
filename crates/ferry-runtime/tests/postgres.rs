@@ -260,21 +260,27 @@ struct JsonSink {
 
 #[async_trait]
 impl Sink for JsonSink {
+    /// Under a lock: a child killed while it created the tables can leave
+    /// its CREATE running on the server, and two concurrent `CREATE TABLE
+    /// IF NOT EXISTS` of one table fail on the catalog's unique index.
     async fn prepare(&self, target: &TargetSchema, _: WriteMode) -> Result<()> {
-        let client = self.pool.get().await.map_err(|e| FerryError::Connector {
+        let mut client = self.pool.get().await.map_err(|e| FerryError::Connector {
             connector: "jsonpg".into(),
             message: e.to_string(),
         })?;
+        let txn = client.transaction().await.map_err(pg)?;
+        txn.execute("SELECT pg_advisory_xact_lock(hashtext('jsonpg'))", &[])
+            .await
+            .map_err(pg)?;
         for t in target.tables() {
-            client
-                .batch_execute(&format!(
-                    "CREATE TABLE IF NOT EXISTS {} (partition_id text NOT NULL, row text NOT NULL)",
-                    t.name
-                ))
-                .await
-                .map_err(pg)?;
+            txn.batch_execute(&format!(
+                "CREATE TABLE IF NOT EXISTS {} (partition_id text NOT NULL, row text NOT NULL)",
+                t.name
+            ))
+            .await
+            .map_err(pg)?;
         }
-        Ok(())
+        txn.commit().await.map_err(pg)
     }
 
     async fn begin(
@@ -643,6 +649,78 @@ const URL: &str = "FERRY_CHAOS_URL";
 const BACKEND: &str = "FERRY_CHAOS_BACKEND";
 /// In the run directory: what every child printed.
 const CHILD_LOG: &str = "children.log";
+/// The `application_name` of the children's connections.
+const CHILD_APP: &str = "ferry_chaos_child";
+
+/// How long ending a killed child's sessions may take.
+const SESSIONS_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// The sessions named `app`, for an error: what each is doing.
+async fn sessions(client: &Client, app: &str) -> String {
+    let sql = "SELECT concat_ws(' ', pid, state, wait_event_type, wait_event, \
+                      'for ' || (now() - state_change)::text, \
+                      'blocked by ' || pg_blocking_pids(pid)::text, \
+                      'from ' || client_addr || ':' || client_port, left(query, 120)) \
+               FROM pg_stat_activity WHERE application_name = $1";
+    match client.query(sql, &[&app]).await {
+        Ok(rows) => rows
+            .iter()
+            .map(|r| r.get::<_, String>(0))
+            .collect::<Vec<_>>()
+            .join("; "),
+        Err(e) => format!("(couldn't list them: {e})"),
+    }
+}
+
+/// `url` with `param` added to its query.
+fn with_query(url: &str, param: &str) -> String {
+    let sep = if url.contains('?') { '&' } else { '?' };
+    format!("{url}{sep}{param}")
+}
+
+/// Ends every server session the children opened, and waits until they are
+/// gone. Run after a kill: through Docker's port forwarding the server can
+/// keep a killed child's session, its open transaction and its locks, until
+/// someone ends it; on a real network the closed connection would. A
+/// session still running a statement (a COMMIT the child sent before it
+/// died, say) is left to finish, as the server would, and ended once idle;
+/// one waiting on the dead child (the rest of a COPY, say) is ended at once.
+async fn end_child_sessions(url: &str) -> std::result::Result<(), String> {
+    let (client, connection) = tokio_postgres::connect(url, NoTls)
+        .await
+        .map_err(|e| e.to_string())?;
+    tokio::spawn(connection);
+    let started = std::time::Instant::now();
+    loop {
+        client
+            .execute(
+                "SELECT pg_terminate_backend(pid) FROM pg_stat_activity \
+                 WHERE application_name = $1 \
+                 AND (state <> 'active' OR wait_event_type = 'Client')",
+                &[&CHILD_APP],
+            )
+            .await
+            .map_err(|e| e.to_string())?;
+        let left: i64 = client
+            .query_one(
+                "SELECT count(*) FROM pg_stat_activity WHERE application_name = $1",
+                &[&CHILD_APP],
+            )
+            .await
+            .map_err(|e| e.to_string())?
+            .get(0);
+        if left == 0 {
+            return Ok(());
+        }
+        if started.elapsed() > SESSIONS_TIMEOUT {
+            return Err(format!(
+                "sessions of a killed child didn't end: {}",
+                sessions(&client, CHILD_APP).await
+            ));
+        }
+        tokio::time::sleep(Duration::from_millis(5)).await;
+    }
+}
 
 /// The child process: one attempt at the run kept in `$FERRY_CHAOS_DIR`.
 /// Only the chaos tests run it, through `--ignored`.
@@ -670,6 +748,7 @@ struct GoldenChaos {
 #[async_trait]
 impl Scenario for GoldenChaos {
     async fn reset(&self) -> std::result::Result<(), String> {
+        end_child_sessions(&self.url).await?;
         let (client, connection) = tokio_postgres::connect(&self.url, NoTls)
             .await
             .map_err(|e| e.to_string())?;
@@ -693,7 +772,10 @@ impl Scenario for GoldenChaos {
             "-q",
         ])
         .env(DIR, dir)
-        .env(URL, &self.url)
+        .env(
+            URL,
+            with_query(&self.url, &format!("application_name={CHILD_APP}")),
+        )
         .env(BACKEND, self.backend.name());
         // Every attempt's output, where libtest prints a panic, for a run
         // that fails.
@@ -725,6 +807,10 @@ impl Scenario for GoldenChaos {
 
     async fn verify(&self, _: &Path) -> std::result::Result<(), String> {
         verify(&self.url, self.backend).await
+    }
+
+    async fn killed(&self, _: &Path) -> std::result::Result<(), String> {
+        end_child_sessions(&self.url).await
     }
 
     async fn explain(&self, dir: &Path) -> String {

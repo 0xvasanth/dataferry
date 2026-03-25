@@ -9,6 +9,7 @@
 #![cfg(unix)]
 
 use std::path::Path;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -38,6 +39,10 @@ struct Fake {
     script: String,
     /// What `verify` says, if not that every partition is done.
     broken: Option<&'static str>,
+    /// `reset` never returns, like a DROP waiting on a dead session's lock.
+    stuck_reset: bool,
+    /// Calls to `killed`.
+    killed: AtomicUsize,
 }
 
 impl Fake {
@@ -45,6 +50,8 @@ impl Fake {
         Self {
             script,
             broken: None,
+            stuck_reset: false,
+            killed: AtomicUsize::new(0),
         }
     }
 }
@@ -58,6 +65,9 @@ fn done(dir: &Path) -> u64 {
 #[async_trait]
 impl Scenario for Fake {
     async fn reset(&self) -> Result<(), String> {
+        if self.stuck_reset {
+            std::future::pending::<()>().await;
+        }
         Ok(())
     }
 
@@ -84,6 +94,11 @@ impl Scenario for Fake {
             PARTITIONS => Ok(()),
             n => Err(format!("{n} of {PARTITIONS} partitions")),
         }
+    }
+
+    async fn killed(&self, _: &Path) -> Result<(), String> {
+        self.killed.fetch_add(1, Ordering::SeqCst);
+        Ok(())
     }
 
     async fn explain(&self, dir: &Path) -> String {
@@ -229,4 +244,28 @@ async fn a_child_that_never_progresses_times_out() {
         ),
         "{e}"
     );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_scenario_cleans_up_after_every_kill() {
+    let fake = Fake::new(script("0.005"));
+    let work = tempfile::tempdir().unwrap();
+
+    let report = chaos::run(&config(5), &fake, work.path()).await.unwrap();
+
+    assert!(report.kills >= 5, "{report:?}");
+    assert_eq!(fake.killed.load(Ordering::SeqCst), report.kills);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_scenario_step_that_never_returns_fails_the_run_instead_of_hanging() {
+    let mut fake = Fake::new(script("0.005"));
+    fake.stuck_reset = true;
+    let work = tempfile::tempdir().unwrap();
+    let mut config = config(1);
+    config.timeout = Duration::from_millis(300);
+
+    let e = chaos::run(&config, &fake, work.path()).await.unwrap_err();
+
+    assert!(e.contains("reset didn't finish within 300ms"), "{e}");
 }
