@@ -277,6 +277,15 @@ Check it with the contract suites in `ferry-registry`'s `testkit` feature
 the state store). [`crates/ferry-cli/tests/acme-ferry`](crates/ferry-cli/tests/acme-ferry)
 is a complete third-party binary, used by the tests.
 
+A connector counts as certified once it passes the conformance suite,
+`ferry_runtime::testkit::conformance` (`ferry-runtime`'s `testkit`
+feature), against real databases through your binary: a golden migration
+with a green report, then 50 runs killed with SIGKILL mid-partition and
+resumed, each ending with the expected rows and the uninterrupted run's
+checksums. Its module docs show the `Pair` to implement;
+[`crates/ferry-cli/tests/conformance.rs`](crates/ferry-cli/tests/conformance.rs)
+certifies the built-ins (Mongo → Postgres, Postgres → Postgres) with it.
+
 ## Workspace
 
 | Crate | Path | What it is |
@@ -314,6 +323,8 @@ export DOCKER_HOST=$(docker context inspect -f '{{.Endpoints.docker.Host}}')
 
 `scripts/check-examples.sh` runs `ferry validate` on every example and
 checks every `examples/bad/` case fails, as CI does.
+[`examples/golden/demo.sh`](examples/golden/README.md) runs the golden demo
+on Docker, from `ferry validate` to the report.
 
 ## Publishing
 

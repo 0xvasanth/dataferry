@@ -12,7 +12,7 @@ must be rejected with exit 3. New examples are found, not listed.
 | Directory | What it shows |
 | --- | --- |
 | `golden/ferry/` | Mongo `orders` → Postgres `orders` + `order_items`: split, unnest, flow `where:`, dead-lettering, `expect:`, state on the sink connection (`TxnWithState`). Expresses `fixtures/golden/`, and is what S2 runs end to end. [`golden/demo.sh`](golden/README.md) runs it on Docker and prints the report. |
-| `golden-pg/ferry/` | The golden mapping from a Postgres source: `golden-pg/source.sql` holds the golden documents as `orders` and `order_items` rows, joined back (`many`) and unnested from the join. Gives the golden expected rows, less the generated `order_items.id`. The conformance suite runs Postgres → Postgres on it once merges plan (0XT-267); until then its test is ignored. |
+| `golden-pg/ferry/` | The golden mapping from a Postgres source: `golden-pg/source.sql` holds the golden documents as `orders` and `order_items` rows, joined back (`many`) and unnested from the join. Gives the golden expected rows, less the generated `order_items.id`. The conformance suite certifies Postgres → Postgres on it. |
 | `pg-merge/ferry/` | Postgres → Postgres merge: a driver plus a `one` join and a `many` join, `nest:` into an ordered array, upsert, `depends_on:`, `include:`. Source schema in `pg-merge/source.sql`. |
 | `edge/layout/ferry/` | Valid, and only there for the loader: flows in nested directories and in a `.yml` file, a `README.md` under `flows/`, and `include:` globs that overlap each other and `flows/`. Every reached file loads once. |
 | `bad/<case>/ferry/` | The golden config with exactly one defect each. [`bad/README.md`](bad/README.md) lists every case, the error it must give and the ticket that owns the check. |
