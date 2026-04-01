@@ -49,11 +49,13 @@ ferry-core = { workspace = true, features = ["testkit"] }
 ferry-connector-mongo.workspace = true
 ferry-connector-postgres.workspace = true
 ferry-state = { workspace = true, features = ["postgres"] }
+# The conformance suite (`testkit::conformance`) and its chaos harness.
+ferry-runtime = { workspace = true, features = ["testkit"] }
 insta = "1"
 # The plan and run tests: real Mongo and Postgres on testcontainers.
 mongodb = "3"
-# The README's connector example (tests/readme_connector.rs) and the
-# unverified-sink test.
+# The README's connector example (tests/readme_connector.rs), and the
+# unverified-sink test's sink type.
 serde = { version = "1", features = ["derive"] }
 tempfile = "3"
 testcontainers-modules.workspace = true

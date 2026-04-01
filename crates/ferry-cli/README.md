@@ -43,6 +43,12 @@ Global flags: `-c, --config <dir>` (default `./ferry`, or `FERRY_CONFIG`),
 `NO_COLOR`), `-v`, `-q`, and `--work-dir <dir>` (or `FERRY_WORK_DIR`). Command
 output goes to stdout, diagnostics to stderr.
 
+A run's leases last 30 seconds without a heartbeat (every 10), so a resume
+after a process was killed waits at most that long for the partitions it
+held. `FERRY_LEASE_TTL_MS` sets the lease in milliseconds (the heartbeat is
+a third of it); anything but a whole number of at least 3 is a usage
+error. The chaos and conformance suites use it to resume at once.
+
 The work directory (default: `.ferry` next to the config directory) holds
 what a run keeps outside the state store: the write-time records the
 verifier and `expect:` check against (so a resumed run is verified with

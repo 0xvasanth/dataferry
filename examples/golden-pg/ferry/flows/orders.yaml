@@ -1,0 +1,50 @@
+flows:
+  - name: orders
+    # The golden mapping over rows: `order_items` joined to its order, and
+    # unnested from the join where the documents unnest `items`.
+    from:
+      - entity: shop.orders                     # driver: first, no join
+        as: o
+      - entity: shop.order_items
+        as: i
+        join:
+          cardinality: many
+          keys: {order_id: o.id}
+    sink: warehouse
+    mode: insert
+
+    # Only …0004 is soft-deleted; its item is dropped with it.
+    where:
+      not_deleted: deleted_at == null
+
+    runtime:
+      partition_rows: 4
+
+    to:
+      orders:
+        key: [id]
+        columns:
+          id: id
+          customer_id: customer_id
+          status: lower(status)
+          placed_at:
+            expr: created_at
+            type: timestamp(UTC)
+          total_cents: int(round(total * 100))   # decimal half-up: 1.005 → 101
+
+      # No `id: $key`: a key generated over a join isn't the one the golden
+      # documents' `items` path gives, so the column is left out.
+      order_items:
+        parent: orders
+        unnest: i
+        key: [order_id, line_no]
+        columns:
+          order_id: $parent.id
+          line_no: line_no
+          sku: sku
+          qty: int(qty)                         # "three" (…0006) rejects the whole order
+          unit_cents: int(round(price * 100))
+
+    expect:
+      order_count: count(orders) == source.count()
+      order_total: sum(orders.total_cents) == source.sum(int(round(total * 100)))

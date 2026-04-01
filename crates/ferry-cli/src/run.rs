@@ -59,6 +59,10 @@ pub(crate) const ENGINE_VERSION: &str = env!("CARGO_PKG_VERSION");
 const LEASE_TTL: Duration = Duration::from_secs(30);
 const HEARTBEAT: Duration = Duration::from_secs(10);
 
+/// Overrides [`LEASE_TTL`], in milliseconds, with a heartbeat a third as
+/// long: the chaos and conformance suites kill runs and resume them at once.
+const LEASE_TTL_ENV: &str = "FERRY_LEASE_TTL_MS";
+
 /// Which command is running.
 #[derive(Debug, Clone)]
 pub(crate) enum Start {
@@ -68,6 +72,20 @@ pub(crate) enum Start {
 }
 
 pub(crate) async fn run(ferry: &Ferry, cli: &Cli, printer: &mut Printer<'_>, start: Start) -> Exit {
+    let lease = match std::env::var(LEASE_TTL_ENV) {
+        Err(std::env::VarError::NotPresent) => (LEASE_TTL, HEARTBEAT),
+        ms => match ms.ok().and_then(|ms| ms.parse::<u64>().ok()) {
+            Some(ms) if ms >= 3 => (Duration::from_millis(ms), Duration::from_millis(ms / 3)),
+            _ => {
+                let d = Diagnostic::error(
+                    code::RUN,
+                    format!("{LEASE_TTL_ENV} must be a whole number of milliseconds, at least 3"),
+                );
+                let _ = printer.diagnostics(&[d], &cli.config);
+                return Exit::Usage;
+            }
+        },
+    };
     let planned = plan::plan(
         ferry,
         &cli.config,
@@ -86,7 +104,7 @@ pub(crate) async fn run(ferry: &Ferry, cli: &Cli, printer: &mut Printer<'_>, sta
             return refused.exit;
         }
     };
-    match Execution::new(ferry, cli, &planned) {
+    match Execution::new(ferry, cli, &planned, lease) {
         Ok(execution) => execution.run(cli, printer, start).await,
         Err(d) => {
             let _ = printer.diagnostics(&[d], &cli.config);
@@ -181,7 +199,12 @@ struct Execution<'a> {
 }
 
 impl<'a> Execution<'a> {
-    fn new(ferry: &Ferry, cli: &Cli, planned: &'a Planned) -> Result<Self, Diagnostic> {
+    fn new(
+        ferry: &Ferry,
+        cli: &Cli,
+        planned: &'a Planned,
+        (lease_ttl, heartbeat): (Duration, Duration),
+    ) -> Result<Self, Diagnostic> {
         let Planned { summary, plan } = planned;
         let work = work_dir(cli);
         let inner: Arc<dyn StateStore> = match &summary.state_store {
@@ -226,8 +249,8 @@ impl<'a> Execution<'a> {
             .map_err(|why| Diagnostic::error(code::VERIFY_FAILED, why).help("nothing was run"))?;
 
         let settings = Settings {
-            lease_ttl: LEASE_TTL,
-            heartbeat: HEARTBEAT,
+            lease_ttl,
+            heartbeat,
             ..plan.settings(&summary.config)
         };
         let mut runner = Runner::new(Arc::clone(&store), flows.clone(), settings)

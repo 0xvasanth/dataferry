@@ -1,0 +1,5 @@
+# The golden demo from a Postgres source: examples/golden-pg/source.sql (the
+# golden documents as rows) becomes fixtures/golden/expected/{orders,
+# order_items}.json in Postgres, less order_items.id (see flows/orders.yaml).
+version: 1
+name: golden_orders_pg
