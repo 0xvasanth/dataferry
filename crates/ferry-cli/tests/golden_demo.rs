@@ -126,10 +126,14 @@ async fn the_golden_demo_runs_end_to_end_and_shows_a_readable_green_report() {
         assert!(row.ends_with(&format!(" | {values} | pass |")), "{row}");
     }
     assert!(!md.contains("**fail**"), "{md}");
-    // The dead letter, with the reason a person can act on.
+    // The dead letter, with the reason a person can act on. Its backticks
+    // are escaped, so they read as the error wrote them.
     let letter = row(&md, &["orders", "order_items"]);
     assert!(
-        letter.contains("`\"three\"` is not an integer (at items[1])"),
+        letter.contains(
+            "| order_items.qty = \\`int(qty)\\`: int(): \\`\"three\"\\` is not an integer \
+             (at items[1]) |"
+        ),
         "{letter}"
     );
     assert!(

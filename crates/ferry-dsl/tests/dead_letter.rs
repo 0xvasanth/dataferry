@@ -247,7 +247,8 @@ async fn golden_0006_lands_nowhere_but_once_in_the_dead_letter_queue_with_the_co
             ]
         );
         let md = Report::new(&v).to_markdown();
-        assert!(md.contains("`\"three\"` is not an integer"), "{md}");
+        // The error's backticks are escaped: they read as written.
+        assert!(md.contains("\\`\"three\"\\` is not an integer"), "{md}");
         runs.push(report.run);
     }
     assert_ne!(runs[0], runs[1]);

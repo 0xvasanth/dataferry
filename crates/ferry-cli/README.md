@@ -53,7 +53,9 @@ The work directory (default: `.ferry` next to the config directory) holds
 what a run keeps outside the state store: the write-time records the
 verifier and `expect:` check against (so a resumed run is verified with
 every attempt's records), `runs/<run-id>/report.{json,md}` (or
-`report-<sink>.{json,md}` per sink), the spill files of staged merge joins
+`report-<sink>.{json,md}` per sink; `report.md` escapes what the source and
+target held and cuts each value to 200 characters, `report.json` keeps it
+whole), the spill files of staged merge joins
 while a run is going (`stage/`), and, under `backend: file` without a
 `path:`, the state itself (`state/`).
 

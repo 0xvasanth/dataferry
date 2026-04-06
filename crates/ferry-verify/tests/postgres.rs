@@ -258,11 +258,12 @@ async fn a_split_run_verifies_counts_checksums_constraints_and_assertions() {
     assert!(!v.assertions[0].passed && v.assertions[0].error.is_none());
     assert!(v.assertions[1].error.as_deref().unwrap().contains(PASSWORD));
     let (json_path, md_path) = Report::new(&v).write(dir.path(), &redactor).unwrap();
-    for path in [json_path, md_path] {
+    // Markdown escapes the `***` it was redacted to; it reads the same.
+    for (path, redacted) in [(json_path, "***"), (md_path, "\\*\\*\\*")] {
         let text = std::fs::read_to_string(&path).unwrap();
         assert!(text.contains("could not connect to"), "{}", path.display());
         assert!(!text.contains(PASSWORD), "{}: {text}", path.display());
-        assert!(text.contains("***"));
+        assert!(text.contains(redacted), "{}: {text}", path.display());
     }
 }
 

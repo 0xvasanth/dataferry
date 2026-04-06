@@ -579,9 +579,12 @@ impl<'a> Execution<'a> {
         let verification = verifier.verify(run).await?;
         let written = Report::new(&verification).with_run_timing(timing);
         std::fs::create_dir_all(dir).map_err(|e| io_error(dir, e))?;
+        // Each value is redacted before it is escaped for Markdown, which
+        // could otherwise split a secret; the whole text is redacted after.
+        let markdown = written.to_markdown_redacted(&|text| printer.redaction.apply(text));
         for (file, text) in [
             (format!("{name}.json"), written.to_json()),
-            (format!("{name}.md"), written.to_markdown()),
+            (format!("{name}.md"), markdown),
         ] {
             let path = dir.join(file);
             std::fs::write(&path, printer.redaction.apply(&text))

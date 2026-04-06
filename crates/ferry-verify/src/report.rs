@@ -100,23 +100,38 @@ impl<'a> Report<'a> {
 
     /// `report.md`.
     pub fn to_markdown(&self) -> String {
+        self.to_markdown_redacted(&|text| text.to_owned())
+    }
+
+    /// `report.md`, with `redact` applied to every value before it is
+    /// escaped and cut short, so a secret is found as it was written.
+    /// Redact the whole text after it too: this is the first pass, not
+    /// the last.
+    pub fn to_markdown_redacted(&self, redact: &dyn Fn(&str) -> String) -> String {
         let v = self.verification;
+        // A value as text, and as code: in a table cell, a list item or a
+        // paragraph alike, it can't end the cell or the line, and can't
+        // turn into markup.
+        let t = |s: &str| text(&redact(s));
+        let c = |s: &str| code(&redact(s), false);
+        // In a table cell, a code span must escape `|` too.
+        let cc = |s: &str| code(&redact(s), true);
         let mut md = String::new();
         let status = match v.status {
             Status::Passed => "PASSED",
             Status::Failed => "FAILED",
             Status::Incomplete => "INCOMPLETE",
         };
-        let _ = writeln!(md, "# Run {}: verification {status}\n", v.run.id);
+        let _ = writeln!(md, "# Run {}: verification {status}\n", t(&v.run.id));
         let _ = writeln!(md, "{PROVES}\n\n{DOES_NOT_PROVE}\n");
 
         let _ = writeln!(md, "## Run\n");
-        let _ = writeln!(md, "- Config hash: `{}`", v.run.config_hash);
-        let _ = writeln!(md, "- Engine version: {}", v.run.engine_version);
+        let _ = writeln!(md, "- Config hash: {}", c(&v.run.config_hash));
+        let _ = writeln!(md, "- Engine version: {}", t(&v.run.engine_version));
         let _ = writeln!(md, "- Verifier version: {}", env!("CARGO_PKG_VERSION"));
-        let _ = writeln!(md, "- Target: {}", v.target);
-        for c in &v.run.connections {
-            let _ = writeln!(md, "- Connection `{}`: {}", c.name, c.kind);
+        let _ = writeln!(md, "- Target: {}", t(&v.target));
+        for conn in &v.run.connections {
+            let _ = writeln!(md, "- Connection {}: {}", c(&conn.name), t(&conn.kind));
         }
         if let Some(t) = self.run {
             let _ = writeln!(
@@ -144,7 +159,7 @@ impl<'a> Report<'a> {
         if !v.problems.is_empty() {
             let _ = writeln!(md, "## Problems\n");
             for problem in &v.problems {
-                let _ = writeln!(md, "- {problem}");
+                let _ = writeln!(md, "- {}", list_item(&t(problem)));
             }
             md.push('\n');
         }
@@ -164,7 +179,7 @@ impl<'a> Report<'a> {
             let _ = writeln!(
                 md,
                 "| {} | {} | {} | {} | {} | {} |",
-                f.flow,
+                t(&f.flow),
                 f.read,
                 f.records.written,
                 f.records.filtered,
@@ -179,34 +194,34 @@ impl<'a> Report<'a> {
             "| Table | Committed | Written | Read back | Checksum | Result |"
         );
         let _ = writeln!(md, "|---|---:|---:|---:|---|---|");
-        for t in &v.tables {
-            let read_back = t
+        for table in &v.tables {
+            let read_back = table
                 .read_back
                 .map_or_else(|| "error".to_owned(), |c| c.rows.to_string());
-            let matches = match t.read_back {
-                Some(c) if c.sum == t.at_write.sum => "matches",
+            let matches = match table.read_back {
+                Some(c) if c.sum == table.at_write.sum => "matches",
                 Some(_) => "**differs**",
                 None => "n/a",
             };
             let _ = writeln!(
                 md,
                 "| {} | {} | {} | {read_back} | {matches} | {} |",
-                t.table,
-                t.written,
-                t.at_write.rows,
-                pass(t.passed)
+                t(&table.table),
+                table.written,
+                table.at_write.rows,
+                pass(table.passed)
             );
         }
-        for t in v.tables.iter().filter(|t| !t.timestamp_digits.is_empty()) {
-            let columns: Vec<String> = t
+        for table in v.tables.iter().filter(|t| !t.timestamp_digits.is_empty()) {
+            let columns: Vec<String> = table
                 .timestamp_digits
                 .iter()
-                .map(|(c, d)| format!("`{c}` at {d} digits"))
+                .map(|(column, d)| format!("{} at {d} digits", c(column)))
                 .collect();
             let _ = writeln!(
                 md,
-                "\n`{}`: timestamps compared as the target stores them: {}.",
-                t.table,
+                "\n{}: timestamps compared as the target stores them: {}.",
+                c(&table.table),
                 columns.join(", ")
             );
         }
@@ -217,28 +232,32 @@ impl<'a> Report<'a> {
         } else {
             let _ = writeln!(md, "| Table | Constraint | Violations | Result |");
             let _ = writeln!(md, "|---|---|---:|---|");
-            for c in &v.constraints {
-                let what = match &c.constraint {
-                    Constraint::NotNull { column } => format!("`{column}` not null"),
-                    Constraint::Unique { columns } => format!("unique ({})", columns.join(", ")),
+            let names = |columns: &[String]| -> String {
+                columns.iter().map(|s| t(s)).collect::<Vec<_>>().join(", ")
+            };
+            for constraint in &v.constraints {
+                let what = match &constraint.constraint {
+                    Constraint::NotNull { column } => format!("{} not null", cc(column)),
+                    Constraint::Unique { columns } => format!("unique ({})", names(columns)),
                     Constraint::ForeignKey {
                         columns,
                         references_table,
                         references_columns,
                     } => format!(
-                        "({}) references {references_table} ({})",
-                        columns.join(", "),
-                        references_columns.join(", ")
+                        "({}) references {} ({})",
+                        names(columns),
+                        t(references_table),
+                        names(references_columns)
                     ),
                 };
-                let violations = c
+                let violations = constraint
                     .violations
                     .map_or_else(|| "error".to_owned(), |n| n.to_string());
                 let _ = writeln!(
                     md,
                     "| {} | {what} | {violations} | {} |",
-                    c.table,
-                    pass(c.passed)
+                    t(&constraint.table),
+                    pass(constraint.passed)
                 );
             }
         }
@@ -251,16 +270,16 @@ impl<'a> Report<'a> {
             let _ = writeln!(md, "|---|---|---|---|---|");
             for a in &v.assertions {
                 let values = match (&a.outcome, &a.error) {
-                    (Some(o), _) => format!("{} {} {}", o.left, o.op, o.right),
-                    (None, Some(e)) => format!("error: {e}"),
+                    (Some(o), _) => t(&format!("{} {} {}", o.left, o.op, o.right)),
+                    (None, Some(e)) => format!("error: {}", t(e)),
                     (None, None) => String::new(),
                 };
                 let _ = writeln!(
                     md,
-                    "| {} | {} | `{}` | {values} | {} |",
-                    a.flow,
-                    a.name,
-                    a.expression,
+                    "| {} | {} | {} | {values} | {} |",
+                    t(&a.flow),
+                    t(&a.name),
+                    cc(&a.expression),
                     pass(a.passed)
                 );
             }
@@ -277,13 +296,16 @@ impl<'a> Report<'a> {
             let _ = writeln!(md, "|---|---|---|---|---|");
             for f in &v.finalize {
                 let orphans = match f.orphans {
-                    Some(n) => format!("{n}: {}", f.orphan_keys.join("; ")),
+                    Some(n) => format!("{n}: {}", t(&f.orphan_keys.join("; "))),
                     None => String::new(),
                 };
                 let _ = writeln!(
                     md,
                     "| {} | {} | {} | {} | {orphans} |",
-                    f.flow, f.table, f.object, f.message
+                    t(&f.flow),
+                    t(&f.table),
+                    t(&f.object),
+                    t(&f.message)
                 );
             }
         }
@@ -300,7 +322,7 @@ impl<'a> Report<'a> {
             pass(d.passed)
         );
         if let Some(e) = &d.error {
-            let _ = writeln!(md, "\nCouldn't read them: {e}");
+            let _ = writeln!(md, "\nCouldn't read them: {}", t(e));
         }
         if !d.reasons.is_empty() {
             let _ = writeln!(
@@ -311,12 +333,12 @@ impl<'a> Report<'a> {
             for r in &d.reasons {
                 let _ = writeln!(
                     md,
-                    "| {} | {} | {} | {} | `{}` |",
-                    r.flow,
-                    r.target.as_deref().unwrap_or(""),
-                    r.error,
+                    "| {} | {} | {} | {} | {} |",
+                    t(&r.flow),
+                    t(r.target.as_deref().unwrap_or("")),
+                    t(&r.error),
                     r.count,
-                    r.example
+                    cc(&r.example)
                 );
             }
         }
@@ -330,11 +352,99 @@ impl<'a> Report<'a> {
             .map_err(|e| verifier_error(format!("{}: {e}", dir.display())))?;
         let json = dir.join("report.json");
         let md = dir.join("report.md");
-        for (path, text) in [(&json, self.to_json()), (&md, self.to_markdown())] {
+        let markdown = self.to_markdown_redacted(&|text| redactor.redact(text).into_owned());
+        for (path, text) in [(&json, self.to_json()), (&md, markdown)] {
             std::fs::write(path, redactor.redact(&text).as_bytes())
                 .map_err(|e| verifier_error(format!("{}: {e}", path.display())))?;
         }
         Ok((json, md))
+    }
+}
+
+/// The most characters of one value `report.md` shows; `report.json` has
+/// it whole. Dead-letter errors and examples, orphan keys and finalize
+/// messages hold what the source or the target held.
+const SHOWN: usize = 200;
+
+/// `s`, cut to [`SHOWN`] characters with an ellipsis.
+fn shorten(s: &str) -> std::borrow::Cow<'_, str> {
+    match s.char_indices().nth(SHOWN - 1) {
+        Some((end, _)) if s[end..].chars().nth(1).is_some() => format!("{}…", &s[..end]).into(),
+        _ => s.into(),
+    }
+}
+
+/// `s` as inline Markdown that reads as `s`, shortened: it can't end a
+/// table cell or a line, or become a link, HTML, code or emphasis.
+/// Newlines become `<br>`.
+fn text(s: &str) -> String {
+    let s = shorten(s);
+    let chars: Vec<char> = s.chars().collect();
+    let mut out = String::with_capacity(s.len());
+    let mut i = 0;
+    while let Some(&ch) = chars.get(i) {
+        let next = chars.get(i + 1).copied();
+        match ch {
+            '\r' | '\n' => {
+                out.push_str("<br>");
+                if (ch, next) == ('\r', Some('\n')) {
+                    i += 1;
+                }
+            }
+            '\\' | '`' | '|' | '*' | '~' | '<' | '>' | '&' => {
+                out.push('\\');
+                out.push(ch);
+            }
+            // Between two letters or digits `_` can't open or close
+            // emphasis, so `order_total` stays as it reads.
+            '_' if !(i > 0
+                && chars[i - 1].is_alphanumeric()
+                && next.is_some_and(char::is_alphanumeric)) =>
+            {
+                out.push_str("\\_");
+            }
+            // `](` and `][` close a link or an image.
+            ']' if matches!(next, Some('(' | '[')) => out.push_str("\\]"),
+            _ => out.push(ch),
+        }
+        i += 1;
+    }
+    out
+}
+
+/// `s` as a code span, shortened and on one line. In a table cell, `|`
+/// is escaped as GFM requires even inside code.
+fn code(s: &str, in_table: bool) -> String {
+    let s = shorten(s).replace("\r\n", " ").replace(['\r', '\n'], " ");
+    if s.is_empty() {
+        return String::new();
+    }
+    let s = match in_table {
+        true => s.replace('|', "\\|"),
+        false => s,
+    };
+    // A fence longer than any run of backticks inside, padded when the
+    // code starts or ends with one (or with a space, which is stripped).
+    let longest = s.split(|c| c != '`').map(str::len).max().unwrap_or(0);
+    let fence = "`".repeat(longest + 1);
+    let pad = s.starts_with(['`', ' ']) || s.ends_with(['`', ' ']);
+    let pad = if pad { " " } else { "" };
+    format!("{fence}{pad}{s}{pad}{fence}")
+}
+
+/// `text` (already escaped) made safe after a list marker: it can't
+/// start a nested list, a heading, a code block, an HTML block (a leading
+/// `<br>`) or a link reference definition.
+fn list_item(text: &str) -> String {
+    let mut text = text.trim_start();
+    while let Some(rest) = text.strip_prefix("<br>") {
+        text = rest.trim_start();
+    }
+    let digits = text.len() - text.trim_start_matches(|c: char| c.is_ascii_digit()).len();
+    match text[digits..].chars().next() {
+        Some('-' | '+' | '#' | '=' | '[') if digits == 0 => format!("\\{text}"),
+        Some('.' | ')') if digits > 0 => format!("{}\\{}", &text[..digits], &text[digits..]),
+        _ => text.to_owned(),
     }
 }
 
@@ -384,6 +494,9 @@ pub(crate) fn rfc3339(t: SystemTime) -> String {
         since.subsec_millis()
     )
 }
+
+#[cfg(test)]
+mod markdown_tests;
 
 #[cfg(test)]
 mod tests {
