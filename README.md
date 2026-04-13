@@ -280,7 +280,8 @@ is a complete third-party binary, used by the tests.
 A connector counts as certified once it passes the conformance suite,
 `ferry_runtime::testkit::conformance` (`ferry-runtime`'s `testkit`
 feature), against real databases through your binary: a golden migration
-with a green report, then 50 runs killed with SIGKILL mid-partition and
+with a green report (which takes at least one `expect:` assertion in the
+pair's config), then 50 runs killed with SIGKILL mid-partition and
 resumed, each ending with the expected rows and the uninterrupted run's
 checksums. Its module docs show the `Pair` to implement;
 [`crates/ferry-cli/tests/conformance.rs`](crates/ferry-cli/tests/conformance.rs)

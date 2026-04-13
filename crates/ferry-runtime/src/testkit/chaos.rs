@@ -420,7 +420,7 @@ fn killed(status: std::process::ExitStatus) -> bool {
 }
 
 /// `f`, given as long as a child: no step of the harness waits for ever.
-async fn bounded<T>(
+pub(crate) async fn bounded<T>(
     config: &Config,
     what: &str,
     f: impl std::future::Future<Output = Result<T, String>>,

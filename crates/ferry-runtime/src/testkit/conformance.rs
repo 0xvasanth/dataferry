@@ -7,7 +7,10 @@
 //!    config, uninterrupted: each exits 0, the target holds exactly the
 //!    expected rows, and the run report (A8) is green: verification
 //!    passed, every table's checksum read back equals the one taken at
-//!    write time, and every `expect:` assertion holds.
+//!    write time, and every `expect:` assertion holds. The pair's config
+//!    must have at least one: verification proves the rows landed as
+//!    computed, and only an assertion checks that they were computed
+//!    right, so a report with none is refused.
 //! 2. **Chaos.** [`chaos::run`]: `runs` runs, each killed with SIGKILL at
 //!    points drawn from its progress, `ferry resume <run-id>` after every
 //!    kill, and left to finish. Each must end exactly like the golden run:
@@ -83,6 +86,11 @@ use super::chaos::{self, Progress, Scenario};
 /// doesn't wait out the default 30 seconds for the dead process's leases.
 pub const LEASE_TTL_ENV: &str = "FERRY_LEASE_TTL_MS";
 
+/// The leases [`LEASE_TTL_ENV`] may ask `ferry-cli` for: its
+/// `LEASE_TTL_MIN..=LEASE_TTL_MAX`, which a test there keeps equal.
+pub const LEASE_TTL_RANGE: std::ops::RangeInclusive<Duration> =
+    Duration::from_secs(1)..=Duration::from_secs(600);
+
 /// One connector pair, with its databases and its config.
 #[async_trait]
 pub trait Pair: Send + Sync {
@@ -117,10 +125,12 @@ pub trait Pair: Send + Sync {
 
 #[derive(Debug, Clone)]
 pub struct Config {
-    /// The chaos runs. `in_flight` must be the config's `workers`.
+    /// The chaos runs. `in_flight` must be the config's `workers`. Its
+    /// `timeout` bounds each step of the golden run too.
     pub chaos: chaos::Config,
     /// The lease the binary runs with: a resumed run waits at most this
-    /// long for the partitions a killed process held.
+    /// long for the partitions a killed process held. Within
+    /// [`LEASE_TTL_RANGE`], or `certify` refuses it.
     pub lease_ttl: Duration,
 }
 
@@ -163,6 +173,14 @@ pub struct Checked {
 /// Runs the whole suite on `pair`. `work` holds a directory per run.
 pub async fn certify(pair: &dyn Pair, config: &Config, work: &Path) -> Result<Certificate, String> {
     let fail = |e: String| format!("{}: {e}", pair.name());
+    if !LEASE_TTL_RANGE.contains(&config.lease_ttl) {
+        return Err(fail(format!(
+            "a lease of {:?} isn't one `ferry` takes: {:?} to {:?}",
+            config.lease_ttl,
+            LEASE_TTL_RANGE.start(),
+            LEASE_TTL_RANGE.end()
+        )));
+    }
     let golden = golden(pair, config, &work.join("golden"))
         .await
         .map_err(|e| fail(format!("golden run: {e}")))?;
@@ -178,32 +196,48 @@ pub async fn certify(pair: &dyn Pair, config: &Config, work: &Path) -> Result<Ce
 }
 
 /// `validate`, `plan` and an uninterrupted `run`, each exiting 0, then the
-/// target and the report.
+/// target and the report. Each step is given as long as a chaos child
+/// (`config.chaos.timeout`), so a pair that hangs fails instead. Each
+/// command's output goes to `<step>.{out,err}` in `dir`, and is shown when
+/// it fails or runs out of time.
 async fn golden(pair: &dyn Pair, config: &Config, dir: &Path) -> Result<Checked, String> {
     fresh_dir(dir)?;
-    pair.reset().await?;
-    for args in [&["validate"][..], &["plan"], &["run"]] {
-        let out = command(pair, config, dir)
-            .args(args)
-            .output()
-            .await
-            .map_err(|e| format!("running `{}`: {e}", args[0]))?;
-        if !out.status.success() {
-            return Err(format!(
-                "`{}` exited with {}\n--- stdout\n{}\n--- stderr\n{}",
-                args[0],
-                out.status,
-                String::from_utf8_lossy(&out.stdout),
-                String::from_utf8_lossy(&out.stderr)
-            ));
+    chaos::bounded(&config.chaos, "reset", pair.reset()).await?;
+    for step in ["validate", "plan", "run"] {
+        let path = |ext: &str| dir.join(format!("{step}.{ext}"));
+        let file = |ext: &str| {
+            std::fs::File::create(path(ext))
+                .map(Stdio::from)
+                .map_err(|e| format!("{}: {e}", path(ext).display()))
+        };
+        let read = |ext: &str| std::fs::read_to_string(path(ext)).unwrap_or_default();
+        let output = || format!("\n--- stdout\n{}\n--- stderr\n{}", read("out"), read("err"));
+        // Killed when dropped, so a step that runs out of time ends too.
+        let mut child = command(pair, config, dir)
+            .arg(step)
+            .stdin(Stdio::null())
+            .stdout(file("out")?)
+            .stderr(file("err")?)
+            .spawn()
+            .map_err(|e| format!("running `{step}`: {e}"))?;
+        let status = chaos::bounded(&config.chaos, &format!("`{step}`"), async {
+            child
+                .wait()
+                .await
+                .map_err(|e| format!("running `{step}`: {e}"))
+        })
+        .await
+        .map_err(|e| format!("{e}{}", output()))?;
+        if !status.success() {
+            return Err(format!("`{step}` exited with {status}{}", output()));
         }
-        if args[0] == "run" {
-            let stdout = String::from_utf8_lossy(&out.stdout);
+        if step == "run" {
+            let stdout = read("out");
             let run = run_id(&stdout).ok_or_else(|| format!("no run id in: {stdout}"))?;
             chaos::record_run(dir, &RunId(run)).map_err(|e| e.to_string())?;
         }
     }
-    pair.verify().await?;
+    chaos::bounded(&config.chaos, "verifying the target", pair.verify()).await?;
     let run = chaos::recorded_run(dir).expect("recorded above");
     check_report(&work_dir(dir), &run.0)
 }
@@ -332,8 +366,8 @@ fn run_id(stdout: &str) -> Option<String> {
 
 /// Reads `<work>/runs/<run>/report.json` and checks it is green: the run
 /// is complete, verification passed, every table's checksum read back is
-/// the one taken at write time, and every assertion and the dead-letter
-/// count hold.
+/// the one taken at write time, there is at least one `expect:` assertion
+/// and every one holds, and so does the dead-letter count.
 pub fn check_report(work: &Path, run: &str) -> Result<Checked, String> {
     let path = work.join("runs").join(report_dir(run)).join("report.json");
     let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -377,8 +411,19 @@ pub fn check_report(work: &Path, run: &str) -> Result<Checked, String> {
     if tables.is_empty() {
         return bad("no tables were checked".into());
     }
+    // Without one, nothing checks that the mapping computed the right
+    // values: verification alone proves only that they landed.
+    let checked = match report["assertions"].as_array() {
+        Some(checked) if !checked.is_empty() => checked,
+        _ => {
+            return bad(format!(
+                "no `expect:` assertion was checked ({}): certifying a pair takes at least one",
+                report["assertions"]
+            ));
+        }
+    };
     let mut assertions = Vec::new();
-    for a in report["assertions"].as_array().into_iter().flatten() {
+    for a in checked {
         if a["passed"] != true {
             return bad(format!("assertion {a}"));
         }
@@ -464,7 +509,7 @@ mod tests {
 
     #[test]
     fn anything_short_of_green_is_refused() {
-        let cases: [Case; 11] = [
+        let cases: [Case; 14] = [
             (
                 "failed",
                 |r| r["status"] = "failed".into(),
@@ -515,6 +560,23 @@ mod tests {
                 "no checksum",
             ),
             (
+                "no assertions",
+                |r| r["assertions"] = json!([]),
+                "no `expect:` assertion was checked ([])",
+            ),
+            (
+                "assertions missing",
+                |r| {
+                    r.as_object_mut().unwrap().remove("assertions");
+                },
+                "no `expect:` assertion was checked (null)",
+            ),
+            (
+                "assertions not a list",
+                |r| r["assertions"] = json!({ "name": "order_count", "passed": true }),
+                "no `expect:` assertion was checked",
+            ),
+            (
                 "unnamed assertion",
                 |r| r["assertions"][0]["name"] = Value::Null,
                 "without a name",
@@ -525,6 +587,132 @@ mod tests {
             edit(&mut report);
             let e = check(&report).expect_err(case);
             assert!(e.contains(says), "{case}: {e}");
+        }
+    }
+
+    /// A pair whose binary prints a run id and exits 0, and whose `reset`,
+    /// binary or `verify` can be made to hang.
+    #[cfg(unix)]
+    #[derive(Default)]
+    struct Hangs {
+        reset: bool,
+        /// The binary writes its pid here, then hangs.
+        binary: Option<PathBuf>,
+        verify: bool,
+    }
+
+    #[cfg(unix)]
+    #[async_trait]
+    impl Pair for Hangs {
+        fn name(&self) -> String {
+            "hangs".into()
+        }
+        fn command(&self) -> Command {
+            // The harness's arguments land in `$@`, unused.
+            let mut cmd = Command::new("sh");
+            match &self.binary {
+                Some(pid) => cmd
+                    .args([
+                        "-c",
+                        "echo started; echo $$ > \"$PID\"; exec sleep 60",
+                        "sh",
+                    ])
+                    .env("PID", pid),
+                None => cmd.args(["-c", "echo run r1", "sh"]),
+            };
+            cmd
+        }
+        async fn reset(&self) -> Result<(), String> {
+            if self.reset {
+                std::future::pending::<()>().await;
+            }
+            Ok(())
+        }
+        async fn progress(&self, _: &RunId, _: &Path) -> Result<Progress, String> {
+            Ok(Progress::default())
+        }
+        async fn verify(&self) -> Result<(), String> {
+            if self.verify {
+                std::future::pending::<()>().await;
+            }
+            Ok(())
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_golden_step_that_hangs_fails_the_pair_instead_of_blocking() {
+        let mut config = Config::new(1);
+        config.chaos.timeout = Duration::from_secs(1);
+        let work = tempfile::tempdir().unwrap();
+        let pid = work.path().join("pid");
+        let cases = [
+            (
+                Hangs {
+                    reset: true,
+                    ..Hangs::default()
+                },
+                "hangs: golden run: reset didn't finish within 1s",
+            ),
+            (
+                Hangs {
+                    binary: Some(pid.clone()),
+                    ..Hangs::default()
+                },
+                // With what it printed before it hung.
+                "hangs: golden run: `validate` didn't finish within 1s\n--- stdout\nstarted\n",
+            ),
+            (
+                Hangs {
+                    verify: true,
+                    ..Hangs::default()
+                },
+                "hangs: golden run: verifying the target didn't finish within 1s",
+            ),
+        ];
+        for (pair, says) in cases {
+            let started = std::time::Instant::now();
+            let e = certify(&pair, &config, &work.path().join("run"))
+                .await
+                .unwrap_err();
+            assert!(e.starts_with(says), "{e}");
+            assert!(started.elapsed() < Duration::from_secs(10), "{says}");
+        }
+        // The hung binary was killed, not left running: gone, or a zombie
+        // waiting to be reaped.
+        let pid = std::fs::read_to_string(&pid).unwrap();
+        let deadline = std::time::Instant::now() + Duration::from_secs(10);
+        loop {
+            let ps = std::process::Command::new("ps")
+                .args(["-o", "stat=", "-p", pid.trim()])
+                .output()
+                .unwrap();
+            let stat = String::from_utf8_lossy(&ps.stdout);
+            if stat.trim().is_empty() || stat.trim().starts_with('Z') {
+                break;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "pid {pid} still runs: {stat}"
+            );
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_lease_ferry_would_refuse_is_refused_before_anything_runs() {
+        let work = tempfile::tempdir().unwrap();
+        for ms in [999, 600_001] {
+            let mut config = Config::new(1);
+            config.lease_ttl = Duration::from_millis(ms);
+            let pair = Hangs {
+                reset: true,
+                ..Hangs::default()
+            };
+            let e = certify(&pair, &config, work.path()).await.unwrap_err();
+            assert!(e.starts_with("hangs: a lease of "), "{e}");
+            assert!(e.ends_with("isn't one `ferry` takes: 1s to 600s"), "{e}");
         }
     }
 
