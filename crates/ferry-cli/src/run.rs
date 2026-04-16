@@ -61,7 +61,14 @@ const HEARTBEAT: Duration = Duration::from_secs(10);
 
 /// Overrides [`LEASE_TTL`], in milliseconds, with a heartbeat a third as
 /// long: the chaos and conformance suites kill runs and resume them at once.
+/// For tests only: a lease shorter than a slow commit or a stall expires
+/// under a live worker, which loses its partition and its work.
 const LEASE_TTL_ENV: &str = "FERRY_LEASE_TTL_MS";
+/// The range [`LEASE_TTL_ENV`] may set. Under a second the heartbeat
+/// (a third of it) is closer to a round trip than a renewal can count on;
+/// over ten minutes it is no shorter than the default by any use.
+const LEASE_TTL_MIN: Duration = Duration::from_secs(1);
+const LEASE_TTL_MAX: Duration = Duration::from_secs(600);
 
 /// Which command is running.
 #[derive(Debug, Clone)]
@@ -72,19 +79,26 @@ pub(crate) enum Start {
 }
 
 pub(crate) async fn run(ferry: &Ferry, cli: &Cli, printer: &mut Printer<'_>, start: Start) -> Exit {
-    let lease = match std::env::var(LEASE_TTL_ENV) {
-        Err(std::env::VarError::NotPresent) => (LEASE_TTL, HEARTBEAT),
-        ms => match ms.ok().and_then(|ms| ms.parse::<u64>().ok()) {
-            Some(ms) if ms >= 3 => (Duration::from_millis(ms), Duration::from_millis(ms / 3)),
-            _ => {
-                let d = Diagnostic::error(
-                    code::RUN,
-                    format!("{LEASE_TTL_ENV} must be a whole number of milliseconds, at least 3"),
-                );
-                let _ = printer.diagnostics(&[d], &cli.config);
-                return Exit::Usage;
-            }
-        },
+    let lease = match lease_override(std::env::var(LEASE_TTL_ENV)) {
+        Ok(None) => (LEASE_TTL, HEARTBEAT),
+        Ok(Some(ttl)) => {
+            // Shown even under `-q`: the run isn't safe outside a test.
+            let d = Diagnostic::warning(
+                code::LEASE_OVERRIDE,
+                format!(
+                    "{LEASE_TTL_ENV} is set: leases last {} ms instead of {} s. \
+                     For tests only, not safe in production",
+                    ttl.as_millis(),
+                    LEASE_TTL.as_secs()
+                ),
+            );
+            let _ = printer.diagnostics(&[d], &cli.config);
+            (ttl, ttl / 3)
+        }
+        Err(d) => {
+            let _ = printer.diagnostics(&[d], &cli.config);
+            return Exit::Usage;
+        }
     };
     let planned = plan::plan(
         ferry,
@@ -110,6 +124,34 @@ pub(crate) async fn run(ferry: &Ferry, cli: &Cli, printer: &mut Printer<'_>, sta
             let _ = printer.diagnostics(&[d], &cli.config);
             Exit::Internal
         }
+    }
+}
+
+/// The lease [`LEASE_TTL_ENV`] asks for, `None` when it isn't set.
+fn lease_override(var: Result<String, std::env::VarError>) -> Result<Option<Duration>, Diagnostic> {
+    let ms = match var {
+        Err(std::env::VarError::NotPresent) => return Ok(None),
+        // Digits only: `parse` would take `+1000` too.
+        ms => ms
+            .ok()
+            .filter(|ms| ms.bytes().all(|b| b.is_ascii_digit()))
+            .and_then(|ms| ms.parse::<u64>().ok()),
+    };
+    let range = LEASE_TTL_MIN..=LEASE_TTL_MAX;
+    match ms.map(Duration::from_millis) {
+        Some(ttl) if range.contains(&ttl) => Ok(Some(ttl)),
+        _ => Err(Diagnostic::error(
+            code::RUN,
+            format!(
+                "{LEASE_TTL_ENV} must be a whole number of milliseconds from {} to {}",
+                LEASE_TTL_MIN.as_millis(),
+                LEASE_TTL_MAX.as_millis()
+            ),
+        )
+        .help(format!(
+            "it shortens leases for tests; unset it to use the default {} s",
+            LEASE_TTL.as_secs()
+        ))),
     }
 }
 
@@ -680,5 +722,49 @@ impl Interrupt {
         self.signal.recv().await;
         #[cfg(not(unix))]
         let _ = tokio::signal::ctrl_c().await;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::env::VarError;
+
+    use super::*;
+
+    fn lease(ms: &str) -> Result<Option<Duration>, String> {
+        lease_override(Ok(ms.to_owned())).map_err(|d| d.message)
+    }
+
+    #[test]
+    fn the_lease_override_takes_exactly_one_second_to_ten_minutes() {
+        assert_eq!(lease_override(Err(VarError::NotPresent)).unwrap(), None);
+        assert_eq!(lease("1000"), Ok(Some(Duration::from_secs(1))));
+        assert_eq!(lease("1500"), Ok(Some(Duration::from_millis(1_500))));
+        assert_eq!(lease("600000"), Ok(Some(Duration::from_secs(600))));
+        for bad in [
+            "999",
+            "600001",
+            "0",
+            "18446744073709551615",
+            " 1000",
+            "1e3",
+            "+1000",
+        ] {
+            let e = lease(bad).expect_err(bad);
+            assert_eq!(
+                e, "FERRY_LEASE_TTL_MS must be a whole number of milliseconds from 1000 to 600000",
+                "{bad:?}"
+            );
+        }
+        let e = lease_override(Err(VarError::NotUnicode("\u{fffd}".into()))).unwrap_err();
+        assert_eq!(e.code, code::RUN);
+    }
+
+    #[test]
+    fn the_conformance_suite_asks_for_the_leases_ferry_takes() {
+        assert_eq!(
+            LEASE_TTL_MIN..=LEASE_TTL_MAX,
+            ferry_runtime::testkit::conformance::LEASE_TTL_RANGE
+        );
     }
 }

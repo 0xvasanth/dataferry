@@ -196,3 +196,16 @@ settings that only change how fast a run goes are left out, so a run can be
 resumed with more memory: `workers`, `memory_budget`, `partition_rows`,
 `source_max_connections` and `source_rows_per_sec`, in `runtime.yaml` and in
 a flow's `runtime:` (0003 §10).
+
+## Test only: `FERRY_LEASE_TTL_MS`
+
+Not a config key, and not for production. Leases last 30 seconds without
+a heartbeat (every 10), set by the binary, not the config. The
+`FERRY_LEASE_TTL_MS` environment variable overrides that, in milliseconds
+from 1000 to 600000, with the heartbeat at a third of it, so the chaos and
+conformance suites can resume at once after a kill. Any other value is a
+usage error (exit 2, F0601), and `run`, `resume` and `retry` warn (W0601)
+whenever it is set. A short lease expires under a live worker on a slow
+commit, a database pause or a network stall: the worker loses its
+partition (fenced, so nothing is written twice) and the run redoes or
+fails work it had done.

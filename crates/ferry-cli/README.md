@@ -45,9 +45,14 @@ output goes to stdout, diagnostics to stderr.
 
 A run's leases last 30 seconds without a heartbeat (every 10), so a resume
 after a process was killed waits at most that long for the partitions it
-held. `FERRY_LEASE_TTL_MS` sets the lease in milliseconds (the heartbeat is
-a third of it); anything but a whole number of at least 3 is a usage
-error. The chaos and conformance suites use it to resume at once.
+held. `FERRY_LEASE_TTL_MS` sets the lease in milliseconds, from 1000 to
+600000 (the heartbeat is a third of it); anything else is a usage error
+(exit 2, F0601). It is for tests only: the chaos and conformance suites use
+it to resume at once after a kill. It is not safe in production: a lease
+shorter than a slow commit, a database pause or a network stall expires
+under a live worker, which then loses its partition (fenced, so nothing is
+written twice) and the run redoes or fails work it had done. `run`,
+`resume` and `retry` warn (W0601) whenever it is set, even under `-q`.
 
 The work directory (default: `.ferry` next to the config directory) holds
 what a run keeps outside the state store: the write-time records the
@@ -123,6 +128,7 @@ connection field, is replaced with `***` in everything printed.
 | F0601 | The runner couldn't run the flows at all |
 | F0602 | A partition failed, or a flow didn't start because one it waits for failed |
 | F0603 | Interrupted (Ctrl-C) |
+| W0601 | `FERRY_LEASE_TTL_MS` is set: leases are shortened for a test |
 | F0701 | Verification failed, or couldn't run |
 | W0701 | A sink this binary can't read back: its flows are not verified |
 | F0801 | `resume`/`retry`: no such run, or it is pinned to another config or engine version |

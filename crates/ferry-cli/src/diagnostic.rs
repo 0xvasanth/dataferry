@@ -72,6 +72,8 @@ pub(crate) mod code {
     pub const PARTITION_FAILED: &str = "F0602";
     /// Ctrl-C.
     pub const INTERRUPTED: &str = "F0603";
+    /// `FERRY_LEASE_TTL_MS` overrides the lease: for tests only.
+    pub const LEASE_OVERRIDE: &str = "W0601";
 
     /// Verification found a problem, or couldn't run (A8).
     pub const VERIFY_FAILED: &str = "F0701";
