@@ -1,0 +1,45 @@
+crates/ferry-state/src/lib.rs
+  s_1e65eff5270b29::t_b83163b5e58585 1
+Cargo.toml
+  s_1e65eff5270b29::t_8465a0d8ffab01 1-30
+crates/ferry-core/Cargo.toml
+  s_1e65eff5270b29::t_dbcfc4f9579707 1-13
+crates/ferry-dsl/Cargo.toml
+  s_1e65eff5270b29::t_dbcfc4f9579707 1-13
+.gitignore
+  s_1e65eff5270b29::t_dbcfc4f9579707 1
+crates/ferry-dsl/src/lib.rs
+  s_1e65eff5270b29::t_b83163b5e58585 1
+crates/ferry-cli/src/main.rs
+  s_1e65eff5270b29::t_dbcfc4f9579707 1
+crates/ferry-cli/Cargo.toml
+  s_1e65eff5270b29::t_dbcfc4f9579707 1-17
+crates/ferry-connectors/postgres/Cargo.toml
+  s_1e65eff5270b29::t_dbcfc4f9579707 1-14
+crates/ferry-connectors/mongo/Cargo.toml
+  s_1e65eff5270b29::t_dbcfc4f9579707 1-14
+crates/ferry-connectors/mongo/src/lib.rs
+  s_1e65eff5270b29::t_b83163b5e58585 1
+crates/ferry-core/src/lib.rs
+  s_1e65eff5270b29::t_b83163b5e58585 1
+crates/ferry-state/Cargo.toml
+  s_1e65eff5270b29::t_dbcfc4f9579707 1-13
+crates/ferry-connectors/postgres/src/lib.rs
+  s_1e65eff5270b29::t_b83163b5e58585 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "adbdef96fe1a7c22cf4c8474f3e82991eca9162e",
+  "prompts": {},
+  "sessions": {
+    "s_1e65eff5270b29": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "406034ca-a047-44e6-9462-d6f342bb5d0c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
