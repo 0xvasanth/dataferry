@@ -1,0 +1,89 @@
+crates/ferry-cli/src/exit.rs
+  s_d2d61f41e571fc::t_b40d4f40da1a3e 71-97
+  s_d2d61f41e571fc::t_8b235c18e73432 1-70
+crates/ferry-cli/src/cli.rs
+  s_d2d61f41e571fc::t_f3890904a6e34e 1-71
+crates/ferry-cli/Cargo.toml
+  s_d2d61f41e571fc::t_259e81ce204429 13-19,21-32
+crates/ferry-cli/src/validate.rs
+  s_d2d61f41e571fc::t_a004fb9dbe9518 123-125,308-310,337-341,355-357
+  s_d2d61f41e571fc::t_3be60d08675450 13-16,218-222,427-478
+  s_d2d61f41e571fc::t_e84c4e1e67c210 11,380-382,387-391,480-494
+  s_d2d61f41e571fc::t_76034265484a40 1-10,12,17-122,126-217,223-247,257-307,311-336,342-354,358-379,383-386,392-422,424-426,479,495-522
+  s_d2d61f41e571fc::t_799c5d71e07006 248-256
+  s_d2d61f41e571fc::t_8b2a3dad2f67a6 423
+crates/ferry-cli/tests/acme-ferry/src/lib.rs
+  s_d2d61f41e571fc::t_7f779ad6c1c14a 149-153
+  s_d2d61f41e571fc::t_b8f628d7b55877 1-90,92-148,154-324
+  s_d2d61f41e571fc::t_30a27440d94c7e 91
+crates/ferry-cli/tests/acme-ferry/tests/common/mod.rs
+  s_d2d61f41e571fc::t_709346fefaeec6 1-38,43-49,53-67,72-134
+  s_d2d61f41e571fc::t_a004fb9dbe9518 39-42,50-52,68-71
+crates/ferry-cli/README.md
+  s_d2d61f41e571fc::t_4b8f77374ccc19 1-73,75-87
+  s_d2d61f41e571fc::t_b40d4f40da1a3e 74
+crates/ferry-cli/src/lib.rs
+  s_d2d61f41e571fc::t_c5d23111fcb344 1-324,329-380,385-397
+  s_d2d61f41e571fc::t_f85cf2398078e1 325-328
+  s_d2d61f41e571fc::t_a004fb9dbe9518 381-384
+crates/ferry-cli/tests/fixtures/fake/ferry/flows/items.yaml
+  s_d2d61f41e571fc::t_ac4021accd932f 1-9
+crates/ferry-cli/src/main.rs
+  s_d2d61f41e571fc::t_f85cf2398078e1 1-7
+crates/ferry-cli/src/diagnostic.rs
+  s_d2d61f41e571fc::t_b7eac478b93f7a 1-188,196-343,349-388
+  s_d2d61f41e571fc::t_f85cf2398078e1 189-195
+  s_d2d61f41e571fc::t_a004fb9dbe9518 344-348
+crates/ferry-cli/tests/stock.rs
+  s_d2d61f41e571fc::t_d510f0ca29a08a 1-54,59-68,76-88,91-97,105-135,141-147,153-167,172-179,184-191,194-233
+  s_d2d61f41e571fc::t_a004fb9dbe9518 55-58,69-75,89-90,98-104,136-140,148-152,168-171,180-183,192-193
+crates/ferry-cli/tests/acme-ferry/Cargo.toml
+  s_d2d61f41e571fc::t_ac4021accd932f 1-32
+crates/ferry-cli/tests/acme-ferry/tests/library.rs
+  s_d2d61f41e571fc::t_a004fb9dbe9518 60-64,94-99,109,118-121,138,151-154,172-175,215-218,220-221,234-237
+  s_d2d61f41e571fc::t_73f9ef3970ae66 9
+  s_d2d61f41e571fc::t_82d7f69841a449 1-8,10-59,65-93,100-108,110-117,122-137,139-150,155-171,176-214,219,222-233,238
+crates/ferry-cli/src/builtins.rs
+  s_d2d61f41e571fc::t_550b06e17a6916 1-25
+crates/ferry-cli/tests/acme-ferry/tests/validate.rs
+  s_d2d61f41e571fc::t_cacf4b55de90d8 1-66,72-73,79-117,119-135,141-159,172-182,210-264,270-276,281-292,298-340,348-360
+  s_d2d61f41e571fc::t_a004fb9dbe9518 67-71,74-78,118,160-171,265-269,277-280,293-297,341-347
+  s_d2d61f41e571fc::t_e84c4e1e67c210 136-140
+  s_d2d61f41e571fc::t_3be60d08675450 183-209
+crates/ferry-cli/tests/acme-ferry/src/main.rs
+  s_d2d61f41e571fc::t_725988c61c8b29 1-5
+crates/ferry-cli/src/schema.rs
+  s_d2d61f41e571fc::t_3518920dbaed91 1-100
+Cargo.toml
+  s_d2d61f41e571fc::t_ac4021accd932f 12
+crates/ferry-cli/tests/fixtures/fake/ferry/connections.yaml
+  s_d2d61f41e571fc::t_ac4021accd932f 1-4
+crates/ferry-cli/tests/fixtures/fake/ferry/ferry.yaml
+  s_d2d61f41e571fc::t_ac4021accd932f 1-4
+Cargo.lock
+  s_d2d61f41e571fc::t_156e865af65602 5-22,62-111,238-252,529-539,603-642,649-654,938-943,1091-1102,1881-1886,2364-2369,2559-2585,3421-3426,3964-3969,4004-4012
+crates/ferry-cli/tests/acme-ferry/tests/snapshots/stderr@missing-env.snap
+  s_d2d61f41e571fc::t_9ba0f86ae56096 1-11
+crates/ferry-cli/tests/acme-ferry/tests/snapshots/stderr@state-not-state-capable.snap
+  s_d2d61f41e571fc::t_182275bcd7fae5 1-11
+crates/ferry-cli/tests/acme-ferry/tests/snapshots/stderr@unknown-connection-type.snap
+  s_d2d61f41e571fc::t_041e8fae7f6375 1-11
+crates/ferry-cli/tests/acme-ferry/tests/snapshots/stderr@yaml-syntax.snap
+  s_d2d61f41e571fc::t_314d3924594299 1-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ef726fa4752fde8a62593e00a1170242e7e43773",
+  "prompts": {},
+  "sessions": {
+    "s_d2d61f41e571fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7aeedc3-952b-40ba-9962-4d39a664bd7c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
