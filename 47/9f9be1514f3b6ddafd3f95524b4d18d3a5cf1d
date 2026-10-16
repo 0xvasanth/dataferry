@@ -1,0 +1,52 @@
+crates/ferry-dsl/src/config/validate.rs
+  s_ea0dfaba8d6bfd::t_8bae38e514ae30 38
+crates/ferry-dsl/tests/hash.rs
+  s_ea0dfaba8d6bfd::t_8bae38e514ae30 1-81,83-90,95-120,136-158,164-187,193-199,205,211-227,248-251,257-272,279-282,289-292,305-309,316-319,332-335,348-354,361,368,375,412,419-420,427-436,444-445,450
+  s_ea0dfaba8d6bfd::t_5a0c6cb579cc53 91-94,121-135,159-163,188-192,200-204,206-210,228-247,252-256,273-278,283-288,293-304,310-315,320-331,336-347,355-360,362-367,369-374,376-411,413-418,421-426,437-443,446-449
+  s_ea0dfaba8d6bfd::t_ee68a568219a65 82
+crates/ferry-dsl/src/config/hash.rs
+  s_ea0dfaba8d6bfd::t_8bae38e514ae30 1-242
+crates/ferry-dsl/tests/env.rs
+  s_ea0dfaba8d6bfd::t_5a0c6cb579cc53 31-34,52-59,64-67,69-72,94-99,112-115,118-121,130-133,135-139,149-152,156-159,190-197,204-211,214-220,230-233,241-244
+  s_ea0dfaba8d6bfd::t_170938821e9ee3 165-166
+  s_ea0dfaba8d6bfd::t_8bae38e514ae30 1-30,35-51,60-63,68,73-93,100-111,116-117,122-129,134,140-148,153-155,160-164,167-189,198-203,212-213,221-229,234-240,245-264
+crates/ferry-dsl/src/config/env.rs
+  s_ea0dfaba8d6bfd::t_8bae38e514ae30 1-327,332-344,349-387,391-457,461-484,489-494,498-514,519-538,543-554
+  s_ea0dfaba8d6bfd::t_5a0c6cb579cc53 328-331,345-348,388-390,458-460,485-488,495-497,515-518,539-542
+crates/ferry-dsl/src/config/load.rs
+  s_ea0dfaba8d6bfd::t_03bd89699c756e 396,420,422-429,444-447,453,468,665
+  s_ea0dfaba8d6bfd::t_8bae38e514ae30 467,469-500
+crates/ferry-dsl/src/config/yaml.rs
+  s_ea0dfaba8d6bfd::t_8bae38e514ae30 57-76
+crates/ferry-dsl/src/config/mod.rs
+  s_ea0dfaba8d6bfd::t_8bae38e514ae30 5,7,15,17
+crates/ferry-dsl/Cargo.toml
+  s_ea0dfaba8d6bfd::t_13ddabbf529d6a 21
+crates/ferry-dsl/tests/bad_configs.rs
+  s_ea0dfaba8d6bfd::t_01bd1aebd7d045 15-20,22-29,67-69
+  s_ea0dfaba8d6bfd::t_06d235bba6b063 13
+Cargo.lock
+  s_ea0dfaba8d6bfd::t_7121bacd077e47 903
+crates/ferry-dsl/tests/snapshots/bad@env-file-reference.snap
+  s_ea0dfaba8d6bfd::t_3d78fc1cd42b8f 1-5
+crates/ferry-dsl/tests/snapshots/bad@env-in-flow.snap
+  s_ea0dfaba8d6bfd::t_10ca94b190547e 1-6
+crates/ferry-dsl/tests/snapshots/bad@missing-env.snap
+  s_ea0dfaba8d6bfd::t_ad89f5911b00bd 1-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "479f9be1514f3b6ddafd3f95524b4d18d3a5cf1d",
+  "prompts": {},
+  "sessions": {
+    "s_ea0dfaba8d6bfd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c046b4e-45fc-45ee-83e7-38d7811ffd1e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
