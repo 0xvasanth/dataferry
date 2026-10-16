@@ -1,0 +1,34 @@
+crates/ferry-state/src/lib.rs
+  s_da8e54094ebc9f::t_0eb58550f0fee3 6-9,17-18,21-22,31-32
+crates/ferry-state/tests/common/mod.rs
+  s_da8e54094ebc9f::t_0e49c1e1e3431e 290-299
+  s_da8e54094ebc9f::t_c15e5437f0c0ac 1-289,300-426,431-432
+  s_da8e54094ebc9f::t_a7e10ec173ba4b 427-430
+crates/ferry-state/tests/postgres.rs
+  s_da8e54094ebc9f::t_a7e10ec173ba4b 36-39,128-133,170-178,209-214,280-288,320-323,327-330
+  s_da8e54094ebc9f::t_dcda519f942f06 1-35,40-127,134-169,179-208,215-279,289-309,312-319,324-326,331-451
+  s_da8e54094ebc9f::t_5850dd316a5add 310-311
+crates/ferry-state/src/postgres.rs
+  s_da8e54094ebc9f::t_a7e10ec173ba4b 20,173-175,247-250
+  s_da8e54094ebc9f::t_42692f2675be25 1-19,21-172,176-246,251-557
+crates/ferry-state/Cargo.toml
+  s_da8e54094ebc9f::t_0eb58550f0fee3 14-16,28-30,33,35,37-39,42
+Cargo.lock
+  s_da8e54094ebc9f::t_40306d8b13ed5f 706-738,1080,1082,1087-1088,1092,1095,1291,1295,2417-2418
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a234c22dda3eb491cdc16af52d109f398c42d5f",
+  "prompts": {},
+  "sessions": {
+    "s_da8e54094ebc9f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3090e84d-a062-4210-a67a-2ac0960baf29",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
