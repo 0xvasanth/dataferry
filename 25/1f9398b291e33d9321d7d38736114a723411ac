@@ -1,0 +1,32 @@
+fixtures/golden/expected/order_items.json
+  s_1e65eff5270b29::t_ba2fd4a8732b81 1-9
+crates/ferry-core/tests/golden_fixture.rs
+  s_1e65eff5270b29::t_90fbd8d73a2f89 11-13,24-29,34-37,53-57,65-68,85-88,93-96,98-101,103-107,115-118
+  s_1e65eff5270b29::t_ba2fd4a8732b81 1-10,14-23,30-33,38-52,58-64,69-84,89-92,97,102,108-114,119-120
+fixtures/golden/expected/orders.json
+  s_1e65eff5270b29::t_ba2fd4a8732b81 1-10
+fixtures/golden/expected/dead_letter.json
+  s_1e65eff5270b29::t_ba2fd4a8732b81 1-3
+fixtures/golden/source/orders.json
+  s_1e65eff5270b29::t_ba2fd4a8732b81 1-100
+fixtures/golden/expected/filtered.json
+  s_1e65eff5270b29::t_ba2fd4a8732b81 1-3
+fixtures/golden/README.md
+  s_1e65eff5270b29::t_ba2fd4a8732b81 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "251f9398b291e33d9321d7d38736114a723411ac",
+  "prompts": {},
+  "sessions": {
+    "s_1e65eff5270b29": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "406034ca-a047-44e6-9462-d6f342bb5d0c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
