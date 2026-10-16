@@ -1,0 +1,25 @@
+crates/ferry-registry/src/secret.rs
+  s_64a9df50c0db25::t_c6cbd429ed418e 200-201,203-214,218,220
+  s_64a9df50c0db25::t_eb2974e090b3a8 169-175,197-199,202,215-217,219
+  s_64a9df50c0db25::t_97c80fc2cecf1d 221
+crates/ferry-registry/tests/secrets.rs
+  s_64a9df50c0db25::t_eb2974e090b3a8 353-355,357-364,366-383,394-401,403-404
+  s_64a9df50c0db25::t_a97e54ebe67491 356,365,402
+  s_64a9df50c0db25::t_66f5fd603b4919 384-393
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "622cbf4361a2a7031a20d2c8292b201ec0ebeffd",
+  "prompts": {},
+  "sessions": {
+    "s_64a9df50c0db25": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fe0b79ae-9ddd-4ca9-8ce7-f238cdcbb0d6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
