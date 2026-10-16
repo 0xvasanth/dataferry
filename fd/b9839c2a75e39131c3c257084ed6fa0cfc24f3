@@ -1,0 +1,29 @@
+crates/ferry-connectors/postgres/tests/container_smoke.rs
+  s_1e65eff5270b29::t_a1f108e89e05eb 1-9,14-23
+  s_1e65eff5270b29::t_b83163b5e58585 10-13
+crates/ferry-connectors/postgres/Cargo.toml
+  s_1e65eff5270b29::t_dbcfc4f9579707 15-18
+Cargo.toml
+  s_1e65eff5270b29::t_8465a0d8ffab01 26-28
+crates/ferry-connectors/mongo/tests/container_smoke.rs
+  s_1e65eff5270b29::t_b83163b5e58585 11-14,20-22,24-28
+  s_1e65eff5270b29::t_a1f108e89e05eb 1-10,15-19,23,29-30
+crates/ferry-connectors/mongo/Cargo.toml
+  s_1e65eff5270b29::t_dbcfc4f9579707 15-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fdb9839c2a75e39131c3c257084ed6fa0cfc24f3",
+  "prompts": {},
+  "sessions": {
+    "s_1e65eff5270b29": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "406034ca-a047-44e6-9462-d6f342bb5d0c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
