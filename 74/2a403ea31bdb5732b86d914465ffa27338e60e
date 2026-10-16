@@ -1,0 +1,262 @@
+examples/edge/layout/ferry/shared/products.yaml
+  s_ea0dfaba8d6bfd::t_b342fa011faa04 1-10
+crates/ferry-dsl/tests/examples.rs
+  s_ea0dfaba8d6bfd::t_554c9cfcb750e1 43-47
+  s_ea0dfaba8d6bfd::t_850c4e03628c1b 1-42,48-187
+examples/edge/layout/ferry/flows/README.md
+  s_ea0dfaba8d6bfd::t_b342fa011faa04 1
+examples/bad/version-unsupported/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-4
+examples/bad/README.md
+  s_ea0dfaba8d6bfd::t_8d5dac3f277a04 1-58
+examples/edge/layout/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_b342fa011faa04 1-8
+examples/edge/layout/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_b342fa011faa04 1-4
+examples/bad/flows-in-ferry-yaml/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-5
+examples/bad/wrong-value-type/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-16
+examples/bad/duplicate-connection-name/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-15
+examples/bad/duplicate-flow-name/ferry/flows/archive/orders_copy.yml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-8
+examples/edge/layout/ferry/shared/catalog/categories.yaml
+  s_ea0dfaba8d6bfd::t_b342fa011faa04 1-8
+examples/bad/depends-on-self/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-47
+examples/bad/include-missing/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-6
+examples/bad/flow-runtime-not-overridable/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-47
+examples/bad/missing-env/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-11
+examples/edge/layout/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_b342fa011faa04 1-10
+examples/bad/depends-on-cycle/ferry/flows/audit.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-17
+examples/bad/upsert-without-key/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-45
+examples/edge/layout/ferry/flows/customers.yaml
+  s_ea0dfaba8d6bfd::t_b342fa011faa04 1-8
+examples/bad/include-outside-ferry-yaml/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-47
+fixtures/golden/expected/filtered.json
+  s_ea0dfaba8d6bfd::t_3ff493ceb6d779 2
+examples/README.md
+  s_ea0dfaba8d6bfd::t_6251914a497d72 3,7,13-35
+crates/ferry-dsl/Cargo.toml
+  s_ea0dfaba8d6bfd::t_850c4e03628c1b 14-16
+examples/bad/version-missing/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-3
+fixtures/golden/README.md
+  s_ea0dfaba8d6bfd::t_da9b9c13d9f32c 10-13,15-28,37,52
+examples/bad/empty-flow-file/ferry/flows/returns.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1
+examples/bad/duplicate-key/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-47
+examples/bad/state-not-state-capable/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-16
+examples/bad/undefined-connection/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-46
+examples/bad/unknown-connection-type/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-11
+examples/bad/unknown-runtime-key/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-16
+examples/bad/env-in-flow/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-47
+examples/bad/depends-on-unknown/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-47
+examples/bad/connection-description/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-12
+examples/edge/layout/ferry/flows/sales/orders.yml
+  s_ea0dfaba8d6bfd::t_b342fa011faa04 1-9
+examples/bad/join-without-cardinality/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-50
+examples/bad/yaml-syntax/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-46
+examples/bad/entity-without-connection/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-46
+examples/bad/env-file-reference/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_ba19489c644c23 1-11
+Cargo.lock
+  s_ea0dfaba8d6bfd::t_30e47c34040315 43-48,818-820,2295-2304
+examples/bad/connection-description/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_bf7e9f0a38e6be 1-4
+examples/bad/connection-description/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_31e50e563c586c 1-46
+examples/bad/connection-description/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_4698f7ffab9f0e 1-16
+examples/bad/depends-on-cycle/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_38e7af1e8f4bee 1-11
+examples/bad/depends-on-cycle/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_c7768ad1ce2142 1-4
+examples/bad/depends-on-cycle/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_b232a3ac7dfe4c 1-46
+examples/bad/depends-on-cycle/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_6c7fc4ff092b39 1-16
+examples/bad/depends-on-self/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_84ad520792ba56 1-11
+examples/bad/depends-on-self/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_971cafd0557a38 1-4
+examples/bad/depends-on-self/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_2501affb46a53f 1-16
+examples/bad/depends-on-unknown/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_65a398fa614a07 1-11
+examples/bad/depends-on-unknown/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_1880d5cda358ec 1-4
+examples/bad/depends-on-unknown/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_4afeff4b0d50d5 1-16
+examples/bad/duplicate-connection-name/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_46ef15c8246322 1-4
+examples/bad/duplicate-connection-name/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_024e5939e2a363 1-46
+examples/bad/duplicate-connection-name/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_24e1ec91ff76eb 1-16
+examples/bad/duplicate-flow-name/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_67a6a22497af99 1-11
+examples/bad/duplicate-flow-name/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_1fabb0da4f0633 1-4
+examples/bad/duplicate-flow-name/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_65efa685545db0 1-46
+examples/bad/duplicate-flow-name/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_8fba8976e12065 1-16
+examples/bad/duplicate-key/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_6f8c82c2bca6da 1-11
+examples/bad/duplicate-key/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_97cd755adda1ce 1-4
+examples/bad/duplicate-key/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_976c38ebd4f31c 1-16
+examples/bad/empty-flow-file/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_e12d97749fca4b 1-11
+examples/bad/empty-flow-file/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_a38890e62392f2 1-4
+examples/bad/empty-flow-file/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_95cbcd5e25c824 1-46
+examples/bad/empty-flow-file/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_d23bf01a910325 1-16
+examples/bad/entity-without-connection/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_2628171ef86744 1-11
+examples/bad/entity-without-connection/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_49779b32fd4391 1-4
+examples/bad/entity-without-connection/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_6f4c2e6410f4fd 1-16
+examples/bad/env-file-reference/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_cfa47beedf3290 1-4
+examples/bad/env-file-reference/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_d0dbca236551ef 1-46
+examples/bad/env-file-reference/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_772ef0904fdec9 1-16
+examples/bad/env-in-flow/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_e828be8462a1c1 1-11
+examples/bad/env-in-flow/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_4456aa40ee6465 1-4
+examples/bad/env-in-flow/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_6645476adcb115 1-16
+examples/bad/flow-runtime-not-overridable/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_bbe482e0e6f05b 1-11
+examples/bad/flow-runtime-not-overridable/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_6dd32bb0250e07 1-4
+examples/bad/flow-runtime-not-overridable/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_c90aad69ba6763 1-16
+examples/bad/flows-in-ferry-yaml/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_871e8d89a60b0b 1-11
+examples/bad/flows-in-ferry-yaml/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_5065d081869716 1-46
+examples/bad/flows-in-ferry-yaml/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_1e1f427249cafc 1-16
+examples/bad/include-missing/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_0fee4ce9951024 1-11
+examples/bad/include-missing/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_8c687889c08a91 1-46
+examples/bad/include-missing/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_fb35ac46e851fb 1-16
+examples/bad/include-outside-ferry-yaml/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_e9d15e6987c76b 1-11
+examples/bad/include-outside-ferry-yaml/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_7c535918bc8654 1-4
+examples/bad/include-outside-ferry-yaml/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_8d4316bf907678 1-16
+examples/bad/join-without-cardinality/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_b0cfd360d57fb4 1-11
+examples/bad/join-without-cardinality/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_afdbb261552170 1-4
+examples/bad/join-without-cardinality/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_2d316bcb485556 1-16
+examples/bad/missing-env/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_2a2cc122da0558 1-4
+examples/bad/missing-env/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_90887b91f21c22 1-46
+examples/bad/missing-env/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_ea021edc2e00d3 1-16
+examples/bad/state-not-state-capable/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_7f18134725d26f 1-11
+examples/bad/state-not-state-capable/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_4ab13a0d141ba9 1-4
+examples/bad/state-not-state-capable/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_40704f467c227e 1-46
+examples/bad/undefined-connection/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_99c2fd264631da 1-11
+examples/bad/undefined-connection/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_980b8eff49d08b 1-4
+examples/bad/undefined-connection/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_85a36561bf27a9 1-16
+examples/bad/unknown-connection-type/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_51cc5048a1e006 1-4
+examples/bad/unknown-connection-type/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_40c96bf9cb38be 1-46
+examples/bad/unknown-connection-type/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_ba987a191892a0 1-16
+examples/bad/unknown-runtime-key/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_98366f41ae294e 1-11
+examples/bad/unknown-runtime-key/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_816902177e3bab 1-4
+examples/bad/unknown-runtime-key/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_dce4f1b1ead1c5 1-46
+examples/bad/upsert-without-key/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_d1b8cd8201807e 1-11
+examples/bad/upsert-without-key/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_85b74c539e1eb7 1-4
+examples/bad/upsert-without-key/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_74ff06199526db 1-16
+examples/bad/version-missing/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_f227bb912ffdcc 1-11
+examples/bad/version-missing/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_ed054b3e5b6fd4 1-46
+examples/bad/version-missing/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_8c93b2e864bc53 1-16
+examples/bad/version-unsupported/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_30f9dca259dd3f 1-11
+examples/bad/version-unsupported/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_54984800fa8fdd 1-46
+examples/bad/version-unsupported/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_f8256a461ef46f 1-16
+examples/bad/wrong-value-type/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_6227a61b4a1050 1-11
+examples/bad/wrong-value-type/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_8d6bd2f7cbf586 1-4
+examples/bad/wrong-value-type/ferry/flows/orders.yaml
+  s_ea0dfaba8d6bfd::t_2e65cdf3737291 1-46
+examples/bad/yaml-syntax/ferry/connections.yaml
+  s_ea0dfaba8d6bfd::t_a58e030488db5d 1-11
+examples/bad/yaml-syntax/ferry/ferry.yaml
+  s_ea0dfaba8d6bfd::t_5b92c658e9dbe9 1-4
+examples/bad/yaml-syntax/ferry/runtime.yaml
+  s_ea0dfaba8d6bfd::t_824d65b18384cc 1-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "742a403ea31bdb5732b86d914465ffa27338e60e",
+  "prompts": {},
+  "sessions": {
+    "s_ea0dfaba8d6bfd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c046b4e-45fc-45ee-83e7-38d7811ffd1e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
