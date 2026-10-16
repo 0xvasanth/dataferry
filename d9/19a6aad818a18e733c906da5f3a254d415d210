@@ -1,0 +1,97 @@
+schemas/README.md
+  s_ea0dfaba8d6bfd::t_705d09d0d37800 1-55
+schemas/v1/flows.schema.json
+  s_ea0dfaba8d6bfd::t_5de2a185520084 1-368
+crates/ferry-dsl/tests/schema.rs
+  s_ea0dfaba8d6bfd::t_02f79ff5e1e9e4 30-39,71-78,91-94,97-100,186-189
+  s_ea0dfaba8d6bfd::t_9968f9d321bfa8 1-29,40-70,79-90,95-96,101-185,190-227
+crates/ferry-dsl/tests/validate.rs
+  s_ea0dfaba8d6bfd::t_1b0d41e6c9c40b 1-36,42-100,102-163,168-169,174-177,180-186,189-194,200-205,208-217,225-231,236,257-260,266,281-287,292-296
+  s_ea0dfaba8d6bfd::t_02f79ff5e1e9e4 37-41,164-167,170-173,178-179,187-188,195-199,206-207,218-224,232-235,237-256,261-265,267-280,288-291
+  s_ea0dfaba8d6bfd::t_705d09d0d37800 101
+crates/ferry-dsl/src/config/validate.rs
+  s_ea0dfaba8d6bfd::t_02f79ff5e1e9e4 66-68,179-190,254-255,269-286,376-377
+  s_ea0dfaba8d6bfd::t_9968f9d321bfa8 1-5,8-10,32-37,64-65,69-178,191-253,256-268,287-375,378-409
+crates/ferry-dsl/src/config/mod.rs
+  s_ea0dfaba8d6bfd::t_9968f9d321bfa8 8,14
+crates/ferry-dsl/Cargo.toml
+  s_ea0dfaba8d6bfd::t_ede0dba8fd560a 24-25
+  s_ea0dfaba8d6bfd::t_282c4c5a97d21c 26-27
+schemas/v1/connections.schema.json
+  s_ea0dfaba8d6bfd::t_5de2a185520084 1-47
+schemas/v1/runtime.schema.json
+  s_ea0dfaba8d6bfd::t_5de2a185520084 1-145
+crates/ferry-dsl/src/config/load.rs
+  s_ea0dfaba8d6bfd::t_b409e36ff83680 234-238
+  s_ea0dfaba8d6bfd::t_02f79ff5e1e9e4 426,636-639
+  s_ea0dfaba8d6bfd::t_5de2a185520084 436,602-635,640-646
+  s_ea0dfaba8d6bfd::t_ede0dba8fd560a 31-42,413-425,427-435
+  s_ea0dfaba8d6bfd::t_a37efa0f791a92 437
+schemas/v1/ferry.schema.json
+  s_ea0dfaba8d6bfd::t_5de2a185520084 1-40
+crates/ferry-dsl/tests/bad_configs.rs
+  s_ea0dfaba8d6bfd::t_51d6eb27e28e17 2-3,13,49-71
+crates/ferry-dsl/src/config/schema.rs
+  s_ea0dfaba8d6bfd::t_02f79ff5e1e9e4 19-27,81-86
+  s_ea0dfaba8d6bfd::t_9968f9d321bfa8 1-18,28-80,87-98
+crates/ferry-dsl/src/config/yaml.rs
+  s_ea0dfaba8d6bfd::t_5de2a185520084 82
+  s_ea0dfaba8d6bfd::t_9968f9d321bfa8 57-81,83-114
+crates/ferry-dsl/src/config/de.rs
+  s_ea0dfaba8d6bfd::t_b409e36ff83680 63,67,95-104
+  s_ea0dfaba8d6bfd::t_970100a9ae6641 105-107
+Cargo.lock
+  s_ea0dfaba8d6bfd::t_3cf24d7b402783 15,29-34,247-261,372-377,407-412,470-480,767-781,826-836,897-898,916-926,948-957,1149-1153,1549-1560,1606-1658,1787-1792,1937-1942,2032-2037,2348-2364,2771-2776,2851-2871,3293-3298,3402-3411,3418-3423
+crates/ferry-dsl/tests/snapshots/bad@connection-description.snap
+  s_ea0dfaba8d6bfd::t_d502e6aa95ae6b 1-5
+crates/ferry-dsl/tests/snapshots/bad@duplicate-connection-name.snap
+  s_ea0dfaba8d6bfd::t_da500039ae953d 1-5
+crates/ferry-dsl/tests/snapshots/bad@duplicate-flow-name.snap
+  s_ea0dfaba8d6bfd::t_5946833fd58a33 1-5
+crates/ferry-dsl/tests/snapshots/bad@duplicate-key.snap
+  s_ea0dfaba8d6bfd::t_8024705e284b76 1-5
+crates/ferry-dsl/tests/snapshots/bad@empty-flow-file.snap
+  s_ea0dfaba8d6bfd::t_d1e8aca2c89ceb 1-6
+crates/ferry-dsl/tests/snapshots/bad@entity-without-connection.snap
+  s_ea0dfaba8d6bfd::t_1a814ceabddbba 1-5
+crates/ferry-dsl/tests/snapshots/bad@flow-runtime-not-overridable.snap
+  s_ea0dfaba8d6bfd::t_82d66f9698342f 1-6
+crates/ferry-dsl/tests/snapshots/bad@flows-in-ferry-yaml.snap
+  s_ea0dfaba8d6bfd::t_3e3a361a737d4a 1-6
+crates/ferry-dsl/tests/snapshots/bad@include-missing.snap
+  s_ea0dfaba8d6bfd::t_0907b822f60bcd 1-5
+crates/ferry-dsl/tests/snapshots/bad@include-outside-ferry-yaml.snap
+  s_ea0dfaba8d6bfd::t_69df0906e2d5c0 1-6
+crates/ferry-dsl/tests/snapshots/bad@join-without-cardinality.snap
+  s_ea0dfaba8d6bfd::t_7298b63a3b7752 1-5
+crates/ferry-dsl/tests/snapshots/bad@undefined-connection.snap
+  s_ea0dfaba8d6bfd::t_de7035953764c2 1-6
+crates/ferry-dsl/tests/snapshots/bad@unknown-runtime-key.snap
+  s_ea0dfaba8d6bfd::t_67e6995c258b0d 1-6
+crates/ferry-dsl/tests/snapshots/bad@upsert-without-key.snap
+  s_ea0dfaba8d6bfd::t_bc63dee3ab6481 1-6
+crates/ferry-dsl/tests/snapshots/bad@version-missing.snap
+  s_ea0dfaba8d6bfd::t_ff38e423c86052 1-5
+crates/ferry-dsl/tests/snapshots/bad@version-unsupported.snap
+  s_ea0dfaba8d6bfd::t_11de4bfde15af2 1-5
+crates/ferry-dsl/tests/snapshots/bad@wrong-value-type.snap
+  s_ea0dfaba8d6bfd::t_a2a24e0dbcf254 1-5
+crates/ferry-dsl/tests/snapshots/bad@yaml-syntax.snap
+  s_ea0dfaba8d6bfd::t_d4bc54ed50859c 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d919a6aad818a18e733c906da5f3a254d415d210",
+  "prompts": {},
+  "sessions": {
+    "s_ea0dfaba8d6bfd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c046b4e-45fc-45ee-83e7-38d7811ffd1e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
