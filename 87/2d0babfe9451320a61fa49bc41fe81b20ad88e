@@ -1,0 +1,30 @@
+crates/ferry-registry/Cargo.toml
+  s_64a9df50c0db25::t_549055a09ad97b 13-16,27
+crates/ferry-registry/tests/contract_suite.rs
+  s_64a9df50c0db25::t_e2cd8c1bafe07e 1-118,123-136,141-145,150-154,159-172,181-221,230-238,243,248
+  s_64a9df50c0db25::t_5c2d6c277f9354 119-122,137-140,146-149,155-158,173-180,222-229,239-242,244-247
+crates/ferry-registry/src/lib.rs
+  s_64a9df50c0db25::t_549055a09ad97b 15-16
+crates/ferry-registry/src/testkit.rs
+  s_64a9df50c0db25::t_5c2d6c277f9354 129-131,134-136,208-213,333-335,341-343,347-349,367-369
+  s_64a9df50c0db25::t_c30887bf9cc205 1-48,52,60-61,64,73-84,89-91,93,95,101-104,107,111,113-115,119-122,132-133,138,140-141,145-146,157,161-207,214-320,322-324,331-332,336-340,344-346,350-353,355-357,362-366,370-398
+  s_64a9df50c0db25::t_b79fdac3837c17 49-51,53-59,62-63,65-72,85-88,92,94,96-100,105-106,108-110,112,116-118,123,125,137,139,142-144,147-156,158-160
+  s_64a9df50c0db25::t_549055a09ad97b 124,126-128
+  s_64a9df50c0db25::t_de507cab632fc0 321,325-330,354,358-361
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "872d0babfe9451320a61fa49bc41fe81b20ad88e",
+  "prompts": {},
+  "sessions": {
+    "s_64a9df50c0db25": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fe0b79ae-9ddd-4ca9-8ce7-f238cdcbb0d6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
