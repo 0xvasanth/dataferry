@@ -1,0 +1,26 @@
+crates/ferry-dsl/src/config/env.rs
+  s_ea0dfaba8d6bfd::t_42be3e1f649e09 208-209,213-214,216-219,222,349-350,353-362,407-409
+crates/ferry-dsl/src/config/model.rs
+  s_ea0dfaba8d6bfd::t_42be3e1f649e09 506,517-531
+  s_ea0dfaba8d6bfd::t_642b1bf3217ad8 532-533
+crates/ferry-dsl/tests/env.rs
+  s_ea0dfaba8d6bfd::t_42be3e1f649e09 265-290
+crates/ferry-dsl/tests/loader.rs
+  s_ea0dfaba8d6bfd::t_42be3e1f649e09 522-538
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "887c931ea4545bc65a464f47fd51f05a3a0d6b25",
+  "prompts": {},
+  "sessions": {
+    "s_ea0dfaba8d6bfd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c046b4e-45fc-45ee-83e7-38d7811ffd1e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
