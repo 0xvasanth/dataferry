@@ -1,0 +1,38 @@
+crates/ferry-core/src/partition.rs
+  s_1e65eff5270b29::t_81b8470f4547db 23-28
+  s_1e65eff5270b29::t_b3aa2c16b06398 29-30
+crates/ferry-core/tests/sink_strategy.rs
+  s_1e65eff5270b29::t_34750b345ab5c6 15-18,23-26,37-42,50-53,62-65
+  s_1e65eff5270b29::t_81b8470f4547db 1-14,19-22,27-36,43-49,54-61,66-78
+crates/ferry-core/src/sink.rs
+  s_1e65eff5270b29::t_81b8470f4547db 1-60,69-82,86-123
+  s_1e65eff5270b29::t_34750b345ab5c6 61-68,83-85
+crates/ferry-core/src/error.rs
+  s_1e65eff5270b29::t_81b8470f4547db 28-37
+crates/ferry-core/Cargo.toml
+  s_1e65eff5270b29::t_ca8831a76e54b3 16-17
+crates/ferry-core/src/lease.rs
+  s_1e65eff5270b29::t_81b8470f4547db 1-18
+crates/ferry-core/src/lib.rs
+  s_1e65eff5270b29::t_81b8470f4547db 6,9-10,17-19
+  s_1e65eff5270b29::t_e47d9087bb8990 20
+crates/ferry-core/src/source.rs
+  s_1e65eff5270b29::t_81b8470f4547db 1-32,38-45
+  s_1e65eff5270b29::t_34750b345ab5c6 33-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a8023a0b49977ccf799f5efff396ecd6bf646a5d",
+  "prompts": {},
+  "sessions": {
+    "s_1e65eff5270b29": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "406034ca-a047-44e6-9462-d6f342bb5d0c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
