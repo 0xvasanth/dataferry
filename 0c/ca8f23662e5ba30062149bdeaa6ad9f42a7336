@@ -1,0 +1,27 @@
+crates/ferry-core/src/lib.rs
+  s_1e65eff5270b29::t_da4671090254b2 4
+crates/ferry-core/Cargo.toml
+  s_1e65eff5270b29::t_750ea4f64af2c2 15
+crates/ferry-core/src/missing.rs
+  s_1e65eff5270b29::t_da4671090254b2 1-20,26-32,44-50,55-57,59-63,78
+  s_1e65eff5270b29::t_425bc3c576fa9a 21-25,33-43,51-54,58,64-77
+crates/ferry-core/tests/missing.rs
+  s_1e65eff5270b29::t_15e5d5a2cd710c 39-46
+  s_1e65eff5270b29::t_4885997996f821 1-38,47-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0cca8f23662e5ba30062149bdeaa6ad9f42a7336",
+  "prompts": {},
+  "sessions": {
+    "s_1e65eff5270b29": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "406034ca-a047-44e6-9462-d6f342bb5d0c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
