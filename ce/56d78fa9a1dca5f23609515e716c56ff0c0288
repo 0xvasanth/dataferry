@@ -1,0 +1,21 @@
+crates/ferry-registry/tests/common/mod.rs
+  s_da8e54094ebc9f::t_ac26246b1f52e7 24,47,308-313,336-349
+crates/ferry-registry/src/state.rs
+  s_da8e54094ebc9f::t_ee90be462e857f 13,57-74,120-125,130-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ce56d78fa9a1dca5f23609515e716c56ff0c0288",
+  "prompts": {},
+  "sessions": {
+    "s_da8e54094ebc9f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3090e84d-a062-4210-a67a-2ac0960baf29",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
