@@ -1,0 +1,61 @@
+crates/ferry-connectors/postgres/src/decode.rs
+  s_033fe7f8d5ab89::t_e2c73bd3298093 1-202
+crates/ferry-connectors/mongo/tests/mongo_tls.rs
+  s_033fe7f8d5ab89::t_e2c73bd3298093 1-176
+crates/ferry-connectors/mongo/src/infer.rs
+  s_033fe7f8d5ab89::t_e2c73bd3298093 1-425
+crates/ferry-connectors/postgres/src/pg_type.rs
+  s_033fe7f8d5ab89::t_e2c73bd3298093 1-213
+crates/ferry-connectors/postgres/src/columns.rs
+  s_033fe7f8d5ab89::t_e2c73bd3298093 1-210
+crates/ferry-connectors/mongo/src/source.rs
+  s_033fe7f8d5ab89::t_e2c73bd3298093 1-558
+crates/ferry-connectors/mongo/tests/mongo_source.rs
+  s_033fe7f8d5ab89::t_e2c73bd3298093 1-661
+crates/ferry-connectors/mongo/Cargo.toml
+  s_033fe7f8d5ab89::t_e2c73bd3298093 14-23,26,29
+crates/ferry-connectors/postgres/tests/pg_source.rs
+  s_033fe7f8d5ab89::t_e2c73bd3298093 1-386
+crates/ferry-connectors/postgres/src/lib.rs
+  s_033fe7f8d5ab89::t_e2c73bd3298093 1,3-9
+crates/ferry-connectors/postgres/Cargo.toml
+  s_033fe7f8d5ab89::t_e2c73bd3298093 14-24,27,30
+crates/ferry-connectors/postgres/tests/pg_tls.rs
+  s_033fe7f8d5ab89::t_e2c73bd3298093 1-265
+Cargo.toml
+  s_033fe7f8d5ab89::t_e2c73bd3298093 7,26
+crates/ferry-connectors/tls/src/lib.rs
+  s_033fe7f8d5ab89::t_e2c73bd3298093 1-218
+crates/ferry-connectors/mongo/src/convert.rs
+  s_033fe7f8d5ab89::t_e2c73bd3298093 1-587
+crates/ferry-connectors/postgres/src/tls.rs
+  s_033fe7f8d5ab89::t_e2c73bd3298093 1-435
+crates/ferry-connectors/postgres/src/source.rs
+  s_033fe7f8d5ab89::t_e2c73bd3298093 1-504
+crates/ferry-connectors/tls/Cargo.toml
+  s_033fe7f8d5ab89::t_e2c73bd3298093 1-16
+crates/ferry-connectors/mongo/src/decimal.rs
+  s_033fe7f8d5ab89::t_e2c73bd3298093 1-171
+crates/ferry-connectors/mongo/src/lib.rs
+  s_033fe7f8d5ab89::t_e2c73bd3298093 1,3-9
+crates/ferry-connectors/mongo/src/tls.rs
+  s_033fe7f8d5ab89::t_e2c73bd3298093 1-190
+Cargo.lock
+  s_033fe7f8d5ab89::t_239e77c0b0e0f5 131-169,286-291,526-531,706-742,816,950-956,958-959,968-976,980-989,1053-1058,1802-1807,1948-1953,2058-2067,2181-2189,2269-2278,2503-2516,2637-2645,3045-3054,3156-3166,3340-3360,3414-3427,4149-4178,4189-4197,4218,4259,4267-4280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ea55e7f8717f029cb1aba353e240f7c7e86f86a1",
+  "prompts": {},
+  "sessions": {
+    "s_033fe7f8d5ab89": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b0c57f4-a31d-4f7b-987c-44bd6cdcd34c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
