@@ -1,0 +1,31 @@
+crates/ferry-core/src/lib.rs
+  s_1e65eff5270b29::t_220446a06bdebf 21-22
+  s_1e65eff5270b29::t_5ec59c4dc30410 23
+crates/ferry-core/src/partition.rs
+  s_1e65eff5270b29::t_b3aa2c16b06398 33-61,76-81,118-129,145-151
+  s_1e65eff5270b29::t_90fbd8d73a2f89 131-136
+  s_1e65eff5270b29::t_ed9db9bb640a5f 62-75,82-117,130,137-144,152-183
+crates/ferry-core/src/error.rs
+  s_1e65eff5270b29::t_b3aa2c16b06398 39-41
+crates/ferry-core/tests/co_partition.rs
+  s_1e65eff5270b29::t_90fbd8d73a2f89 17-23,36-41,45-48,67-70,81-84,123-126,135-140,186-189,202-205,210-213,219-221,233-239
+  s_1e65eff5270b29::t_b3aa2c16b06398 1-16,24-35,42-44,49-66,71-80,85-122,127-134,141-185,190-201,206-209,214-218,222-232,240-248
+crates/ferry-core/src/testkit/mem_source.rs
+  s_1e65eff5270b29::t_ed9db9bb640a5f 89-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dbd1a5583595320a8f4327221ba34438269476fd",
+  "prompts": {},
+  "sessions": {
+    "s_1e65eff5270b29": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "406034ca-a047-44e6-9462-d6f342bb5d0c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
