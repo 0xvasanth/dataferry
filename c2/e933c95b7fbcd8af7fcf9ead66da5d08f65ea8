@@ -1,0 +1,19 @@
+docs/decisions/0002-co-partitioning.md
+  s_1e65eff5270b29::t_90fbd8d73a2f89 1-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c2e933c95b7fbcd8af7fcf9ead66da5d08f65ea8",
+  "prompts": {},
+  "sessions": {
+    "s_1e65eff5270b29": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "406034ca-a047-44e6-9462-d6f342bb5d0c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
