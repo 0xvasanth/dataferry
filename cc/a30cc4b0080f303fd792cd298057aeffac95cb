@@ -1,0 +1,14 @@
+crates/ferry-registry/src/finalize.rs
+  h_7bb0b8336911f0 72-84,89-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cca30cc4b0080f303fd792cd298057aeffac95cb",
+  "prompts": {},
+  "humans": {
+    "h_7bb0b8336911f0": {
+      "author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
