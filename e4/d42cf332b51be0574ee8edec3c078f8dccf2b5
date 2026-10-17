@@ -1,0 +1,52 @@
+Cargo.lock
+  h_7bb0b8336911f0 1826,1833
+crates/ferry-connectors/mongo/src/convert.rs
+  h_7bb0b8336911f0 6-10,35,42-69,71-130
+crates/ferry-connectors/mongo/src/source.rs
+  h_7bb0b8336911f0 20,30-34,496,498,501
+crates/ferry-connectors/mongo/tests/mongo_source.rs
+  h_7bb0b8336911f0 18,316,323,327-332,334-339,342-366
+crates/ferry-runtime/Cargo.toml
+  h_7bb0b8336911f0 22-25,29
+crates/ferry-runtime/src/dlq.rs
+  h_7bb0b8336911f0 1-300
+crates/ferry-runtime/src/lib.rs
+  h_7bb0b8336911f0 15-21,47,59,64
+crates/ferry-runtime/src/runner.rs
+  h_7bb0b8336911f0 7-11,18,22,122-126,218-228,239-240,258-267,269
+crates/ferry-runtime/src/settings.rs
+  h_7bb0b8336911f0 28-36,46-58,70-71
+crates/ferry-runtime/src/work.rs
+  h_7bb0b8336911f0 6,10-12,15,23,26,37-44,161-173,182-199,201-207,291-292,310-316,322-327,331,336-337,339,341,355,359-518
+crates/ferry-runtime/tests/dead_letter.rs
+  h_7bb0b8336911f0 1-383
+crates/ferry-verify/Cargo.toml
+  h_7bb0b8336911f0 30,35
+crates/ferry-verify/src/lib.rs
+  h_7bb0b8336911f0 18-19,44,46-47
+crates/ferry-verify/src/postgres.rs
+  h_7bb0b8336911f0 16,187-220
+crates/ferry-verify/src/report.rs
+  h_7bb0b8336911f0 291,295-300,302-322,346,348,350-353
+crates/ferry-verify/src/target.rs
+  h_7bb0b8336911f0 38-41,52-63
+crates/ferry-verify/src/verify.rs
+  h_7bb0b8336911f0 20,64,195-206,310,338,571-600
+crates/ferry-verify/tests/dead_letter.rs
+  h_7bb0b8336911f0 1-538
+crates/ferry-verify/tests/observer.rs
+  h_7bb0b8336911f0 20-21,51-53
+crates/ferry-verify/tests/postgres.rs
+  h_7bb0b8336911f0 223-226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e4d42cf332b51be0574ee8edec3c078f8dccf2b5",
+  "prompts": {},
+  "humans": {
+    "h_7bb0b8336911f0": {
+      "author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
