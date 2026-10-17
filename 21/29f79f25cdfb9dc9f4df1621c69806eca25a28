@@ -1,0 +1,25 @@
+examples/ci.env
+  s_2077fe5405e6ac::t_55f29346fe3ac2 1-10
+scripts/check-examples.sh
+  s_2077fe5405e6ac::t_55f29346fe3ac2 1-19,24-38,40-58,60-86
+  s_2077fe5405e6ac::t_576888d8e1aec2 20-23,39,59
+examples/README.md
+  s_2077fe5405e6ac::t_747d149ea246ac 7-10,37-38
+  s_2077fe5405e6ac::t_e803f28dbd8a72 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2129f79f25cdfb9dc9f4df1621c69806eca25a28",
+  "prompts": {},
+  "sessions": {
+    "s_2077fe5405e6ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0bf34333-4a71-4353-9309-c8667a790256",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
