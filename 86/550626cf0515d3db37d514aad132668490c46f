@@ -1,0 +1,103 @@
+Cargo.lock
+  s_033fe7f8d5ab89::t_39beb8ba76d838 1639,1642,1644-1646,1650,1652,1746,1757
+crates/ferry-cli/Cargo.toml
+  s_033fe7f8d5ab89::t_67ab65b4bfb627 18,22,25-28,34-35,43-45,47-49
+crates/ferry-cli/README.md
+  s_033fe7f8d5ab89::t_1307734786423f 36-39,43-50,61,63,68,70-73,98,101-103,111-118
+crates/ferry-cli/src/builtins.rs
+  s_033fe7f8d5ab89::t_cadeb07c6dd515 9-10,13-20
+crates/ferry-cli/src/cli.rs
+  s_033fe7f8d5ab89::t_3f95fa1fc3bb2b 33-37
+crates/ferry-cli/src/diagnostic.rs
+  s_033fe7f8d5ab89::t_7348b5909ddf1a 22-24,39-45,59-83,164-166
+crates/ferry-cli/src/exit.rs
+  s_033fe7f8d5ab89::t_21be8206c3e423 15-16,21-22,32
+crates/ferry-cli/src/lib.rs
+  s_033fe7f8d5ab89::t_a149f39cab616d 34-35,37,57-58,76,258-296
+crates/ferry-cli/src/plan.rs
+  s_033fe7f8d5ab89::t_ef1834205d9821 1-380
+crates/ferry-cli/src/run.rs
+  s_033fe7f8d5ab89::t_a653ae7ca7d3e0 1-580
+crates/ferry-cli/src/targets.rs
+  s_033fe7f8d5ab89::t_584d498a9a90c3 1-57
+crates/ferry-cli/src/validate.rs
+  s_033fe7f8d5ab89::t_5af7aecdb03eef 10,15-17,51-64,138-140,142,146,149-150,165-169,174-188,236-237,245,301,306-307,310,315-319
+crates/ferry-cli/tests/acme-ferry/src/lib.rs
+  s_033fe7f8d5ab89::t_9869f1cb40e55e 93
+crates/ferry-cli/tests/common/mod.rs
+  s_033fe7f8d5ab89::t_51d3f386d659a0 1-279
+crates/ferry-cli/tests/plan.rs
+  s_033fe7f8d5ab89::t_d0689930f31767 1-235
+crates/ferry-cli/tests/run.rs
+  s_033fe7f8d5ab89::t_49ef892eb101c7 1-383
+crates/ferry-cli/tests/snapshots/plan__golden_plan.snap
+  s_033fe7f8d5ab89::t_723fe2f59736ad 1-72
+crates/ferry-cli/tests/stock.rs
+  s_033fe7f8d5ab89::t_4a9e237bfb018b 2-4,331,333-337,340,343,347-350
+crates/ferry-connectors/mongo/src/connector.rs
+  s_033fe7f8d5ab89::t_93885e36aa879a 57
+crates/ferry-connectors/postgres/src/connector.rs
+  s_033fe7f8d5ab89::t_9c6f35ce11478f 89-90,103
+crates/ferry-connectors/postgres/src/deferred.rs
+  s_033fe7f8d5ab89::t_13948bed1e6290 399-421,462
+crates/ferry-connectors/postgres/src/sink.rs
+  s_033fe7f8d5ab89::t_dd916d1894d8e2 60,373-396
+crates/ferry-connectors/postgres/tests/pg_sink.rs
+  s_033fe7f8d5ab89::t_1941a44f52f4ae 18,23,81-169
+crates/ferry-dsl/Cargo.toml
+  s_033fe7f8d5ab89::t_48b8480bf05032 49-51
+crates/ferry-dsl/src/config/error.rs
+  s_033fe7f8d5ab89::t_033e3938a3b445 38-41
+crates/ferry-dsl/src/expr/functions.rs
+  s_033fe7f8d5ab89::t_cd2ee215960f4d 224-231
+crates/ferry-dsl/src/expr/mod.rs
+  s_033fe7f8d5ab89::t_50828227ec8e6d 330
+crates/ferry-dsl/src/lib.rs
+  s_033fe7f8d5ab89::t_0d2cd18b4c8c1e 7
+crates/ferry-dsl/src/plan.rs
+  s_033fe7f8d5ab89::t_0ead02a192a278 1-612
+crates/ferry-dsl/tests/compile.rs
+  s_033fe7f8d5ab89::t_17e8adddb26a28 113-116
+crates/ferry-dsl/tests/dead_letter.rs
+  s_033fe7f8d5ab89::t_df282b779fdace 1-251
+crates/ferry-dsl/tests/plan.rs
+  s_033fe7f8d5ab89::t_98ccbe72412a29 1-596
+crates/ferry-dsl/tests/run.rs
+  s_033fe7f8d5ab89::t_1de9ae070d4930 127-128
+crates/ferry-registry/src/connector.rs
+  s_033fe7f8d5ab89::t_5456edff77c04f 12,120-123,141
+crates/ferry-registry/src/ddl.rs
+  s_033fe7f8d5ab89::t_479990e205a075 1-20
+crates/ferry-registry/src/lib.rs
+  s_033fe7f8d5ab89::t_6c55cf8607785c 6-7,15,28
+crates/ferry-registry/src/registry.rs
+  s_033fe7f8d5ab89::t_b2ac305c3c705e 326-332,336
+crates/ferry-registry/tests/common/mod.rs
+  s_033fe7f8d5ab89::t_e0d7116d8996ed 418
+crates/ferry-registry/tests/contract_suite.rs
+  s_033fe7f8d5ab89::t_e4c08bd767d140 61
+crates/ferry-registry/tests/schema.rs
+  s_033fe7f8d5ab89::t_d5e09467de52ca 58,94,149
+crates/ferry-registry/tests/secrets.rs
+  s_033fe7f8d5ab89::t_28f95cbd42a52e 94
+crates/ferry-registry/tests/third_party.rs
+  s_033fe7f8d5ab89::t_78922fe7c97b35 17,120,147,160-193,218,364-377,538,679
+crates/ferry-state/tests/common/mod.rs
+  s_033fe7f8d5ab89::t_f655d1dc028156 121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "86550626cf0515d3db37d514aad132668490c46f",
+  "prompts": {},
+  "sessions": {
+    "s_033fe7f8d5ab89": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b0c57f4-a31d-4f7b-987c-44bd6cdcd34c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
