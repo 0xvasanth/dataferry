@@ -1,0 +1,71 @@
+crates/ferry-connectors/postgres/tests/pg_connector.rs
+  s_4b0f9078fd86fa::t_d9d7b79f975f32 1-160,162-179,185,187-195,197
+  s_4b0f9078fd86fa::t_3ebe1ff7a96b66 180-184,186,196
+  s_4b0f9078fd86fa::t_0bb4bb4b4a5658 161
+crates/ferry-connectors/postgres/src/connector.rs
+  s_4b0f9078fd86fa::t_88f153560633a6 1-213,215-221
+  s_4b0f9078fd86fa::t_68f67e77e1b2a1 214
+crates/ferry-connectors/postgres/src/pool.rs
+  s_4b0f9078fd86fa::t_05eef1548e2658 1-38
+crates/ferry-connectors/postgres/src/sink.rs
+  s_4b0f9078fd86fa::t_6381d5c084e4e3 1-8,11,22,24-38,40-150,152-426,433-460,463,468-471,473-476,478-573,579-582
+  s_4b0f9078fd86fa::t_a9a5c4755a27f1 427-432
+  s_4b0f9078fd86fa::t_c0f5ff269227f1 39,464-467,472,574-578
+  s_4b0f9078fd86fa::t_3ebe1ff7a96b66 151
+  s_4b0f9078fd86fa::t_3a269fa5d28285 9-10,12-21,23,461-462
+  s_4b0f9078fd86fa::t_eaa9af7481b830 477
+crates/ferry-connectors/postgres/tests/pg_sink_recovery.rs
+  s_4b0f9078fd86fa::t_034d4a671b74f8 162-166
+  s_4b0f9078fd86fa::t_52056edfc25aca 1-9,11-43,48-76,78-112,114-161,167-174,176-349,351-400
+  s_4b0f9078fd86fa::t_71dad79d5ce970 10,44-47,77,113,175,350
+crates/ferry-connectors/postgres/src/json.rs
+  s_4b0f9078fd86fa::t_4c185b7b436aef 1-323
+crates/ferry-connectors/postgres/src/ddl.rs
+  s_4b0f9078fd86fa::t_bab9b534f4ce11 69,88-106,115,251
+  s_4b0f9078fd86fa::t_bff7367ec421e9 1-54,56-68,70-87,107-114,116-250,252-253
+  s_4b0f9078fd86fa::t_43de4fe87dd16d 55
+crates/ferry-connectors/postgres/tests/common/mod.rs
+  s_4b0f9078fd86fa::t_57415e70664bb1 1-27,29-72,74-82,84-513
+  s_4b0f9078fd86fa::t_60716e62152224 83
+  s_4b0f9078fd86fa::t_121c440d0ff0ac 28,73
+crates/ferry-connectors/postgres/src/decode.rs
+  s_4b0f9078fd86fa::t_0567b6df106fd0 6,8
+crates/ferry-connectors/postgres/src/lib.rs
+  s_4b0f9078fd86fa::t_c0f5ff269227f1 1-2,5-6,8-9,11-12,16-17
+crates/ferry-connectors/postgres/src/encode.rs
+  s_4b0f9078fd86fa::t_8731834c09687e 1-37,39-42,44-47,49-76,78,80-223,225,227-341,343-397,399-410
+  s_4b0f9078fd86fa::t_bfaeba34836f94 342
+  s_4b0f9078fd86fa::t_e8ed85dc9b9236 398
+  s_4b0f9078fd86fa::t_4c4ee467843b1d 38,43,48,77,79,224,226
+crates/ferry-connectors/postgres/src/source.rs
+  s_4b0f9078fd86fa::t_cd2a633f2e9c30 47-56,61
+  s_4b0f9078fd86fa::t_05eef1548e2658 105,126
+crates/ferry-connectors/postgres/tests/pg_sink.rs
+  s_4b0f9078fd86fa::t_33cec947b8a1c8 36-40
+  s_4b0f9078fd86fa::t_3cc75dc34e080a 1-21,23-35,41-81,83-232,234-265,268-274,276-509,511-564,566-595
+  s_4b0f9078fd86fa::t_60716e62152224 266-267
+  s_4b0f9078fd86fa::t_0af6f9ef3e956b 22,82,233,275,510,565
+crates/ferry-connectors/postgres/Cargo.toml
+  s_4b0f9078fd86fa::t_0567b6df106fd0 16,21-22,25-27,34
+crates/ferry-connectors/postgres/src/tls.rs
+  s_4b0f9078fd86fa::t_e1fbc3fd449bb0 92
+  s_4b0f9078fd86fa::t_58120299f5884e 17,19,23,26,49-91,93-96
+Cargo.lock
+  s_4b0f9078fd86fa::t_1fb6c421d6591c 706-738,1005-1006,1009,1013-1015,1278,1282
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1bfef93d4e597a694d49cf6995059053537f6053",
+  "prompts": {},
+  "sessions": {
+    "s_4b0f9078fd86fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5c42e67-e7cf-4959-b815-b4f908493251",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
