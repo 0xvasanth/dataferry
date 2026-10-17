@@ -1,0 +1,30 @@
+crates/ferry-connectors/postgres/tests/common/mod.rs
+  s_cce7221f28499c::t_257eace8f3445e 2-4,9,19,21-23,105,107-108,128-131,134-136,142,144-150,303,305-309,312-320,322-327,329,332-337,340,343-345,347
+crates/ferry-connectors/postgres/Cargo.toml
+  s_cce7221f28499c::t_6ece896bbd317d 35-37
+crates/ferry-connectors/postgres/tests/pg_connector.rs
+  s_cce7221f28499c::t_aa7ab0992dacf2 7,12,72-75,77,79-94
+crates/ferry-connectors/postgres/tests/pg_sink_recovery.rs
+  s_cce7221f28499c::t_b7ac6e0347ddde 229,240-244
+  s_cce7221f28499c::t_4387d2bad84f44 4-5,10,12,14,36,39,68-71,84,90-91,93,98-101,104,126-135,140-144,175-181,206-208,210-228,230-239,245-270,272-277,279-284,307-314,316,347,393-394,396,400-401,407,410,424,457,461,463-467,474-475,480,483,486,490,494-504
+crates/ferry-connectors/postgres/tests/pg_sink.rs
+  s_cce7221f28499c::t_90a668172976aa 18,25-28,30,32-36,38-42,60,247,260,264,272
+Cargo.lock
+  s_cce7221f28499c::t_996b386d14628f 1681
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c6393f3921b312e1316a7fff4449701c548ad515",
+  "prompts": {},
+  "sessions": {
+    "s_cce7221f28499c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c7a3f5c-320a-45a0-944b-faa164790860",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
