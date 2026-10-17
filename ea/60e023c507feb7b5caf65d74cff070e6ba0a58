@@ -1,0 +1,31 @@
+crates/ferry-cli/tests/golden_demo.rs
+  s_eee2af054b6d5f::t_efe53950656a84 128
+  s_eee2af054b6d5f::t_c50f9f4a773e02 1-65,77-87,92-108,113-127,129-130,139-153,161,164-222
+  s_eee2af054b6d5f::t_b74b6a9a65830a 66-69,71-73,88-91,109-112,131-138,154-160,162-163
+  s_eee2af054b6d5f::t_d7a122927d2578 70,74-76
+examples/golden/README.md
+  s_eee2af054b6d5f::t_073bca726f71da 1-68
+examples/golden/demo.sh
+  s_eee2af054b6d5f::t_458b5c0a11fab0 1-12,14-24,30,32-35,56-69,74-83,85-86,88-90,92,95,100-103
+  s_eee2af054b6d5f::t_5559a2a38072e4 13,26,36-55,70-73,91,93-94,96-99
+  s_eee2af054b6d5f::t_a3b94e03dc15ac 25,27-29,84,87
+  s_eee2af054b6d5f::t_6e07dfb2e9f68f 31
+examples/README.md
+  s_eee2af054b6d5f::t_0187976590ea10 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ea60e023c507feb7b5caf65d74cff070e6ba0a58",
+  "prompts": {},
+  "sessions": {
+    "s_eee2af054b6d5f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85df28ec-9b87-4292-9efb-12494ff4df09",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
