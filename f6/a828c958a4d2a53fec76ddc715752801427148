@@ -1,0 +1,23 @@
+crates/ferry-cli/README.md
+  s_eee2af054b6d5f::t_af7c078d4cdfc4 46-51
+README.md
+  s_eee2af054b6d5f::t_af7c078d4cdfc4 280-288,326-327
+examples/README.md
+  s_eee2af054b6d5f::t_b35c369a474aa0 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f6a828c958a4d2a53fec76ddc715752801427148",
+  "prompts": {},
+  "sessions": {
+    "s_eee2af054b6d5f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85df28ec-9b87-4292-9efb-12494ff4df09",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
