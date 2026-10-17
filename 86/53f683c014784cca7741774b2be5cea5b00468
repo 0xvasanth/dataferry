@@ -1,0 +1,23 @@
+crates/ferry-dsl/tests/compile.rs
+  s_6c03b9d846b6b8::t_9ba0723fab5d8a 113-116
+crates/ferry-dsl/src/expr/functions.rs
+  s_6c03b9d846b6b8::t_9ba0723fab5d8a 224-231
+crates/ferry-dsl/src/expr/mod.rs
+  s_6c03b9d846b6b8::t_9ba0723fab5d8a 330
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8653f683c014784cca7741774b2be5cea5b00468",
+  "prompts": {},
+  "sessions": {
+    "s_6c03b9d846b6b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d03879d-ca9a-43c2-be60-8e4534c840d0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
