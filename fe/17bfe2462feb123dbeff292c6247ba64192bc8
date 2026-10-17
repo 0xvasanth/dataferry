@@ -1,0 +1,56 @@
+crates/ferry-cli/src/validate.rs
+  s_6c03b9d846b6b8::t_d5e2289eb15c09 10,16,51-52,54-55,57-58,60-64,139-140,142,146,150,165,168-169,174-188,236-237,245,301,306-307,310,318
+crates/ferry-cli/src/diagnostic.rs
+  s_6c03b9d846b6b8::t_d5e2289eb15c09 22-24,65,67-83
+crates/ferry-cli/src/lib.rs
+  s_6c03b9d846b6b8::t_d5e2289eb15c09 35,37,57-58,76,259-271
+crates/ferry-cli/src/run.rs
+  s_6c03b9d846b6b8::t_1a5ce3b81968af 325-328
+  s_6c03b9d846b6b8::t_cff9ae166b6efd 12-20,106-108,113-119,128-135,137-139,141,146,148-149,151,158,167-168,206,216,218-222,232-233,340-347,352-359,361-368,370,378-444,473,476
+  s_6c03b9d846b6b8::t_d5e2289eb15c09 120-127,136,140,142-145,147,150,152-157,208-209
+  s_6c03b9d846b6b8::t_66435a8a4add1a 239-248,305,558-578
+  s_6c03b9d846b6b8::t_c685f4e4838b29 1-11,21-24,26-32,35-105,159-166,169-205,207,210-215,217,223-231,234-238,249-304,306-324,329-339,360,369,371-377,445-472,474-475,477-509,511-513,515-557,579-580
+  s_6c03b9d846b6b8::t_963fa97a961899 25,33-34,109-112,348-351
+  s_6c03b9d846b6b8::t_cac50abf172304 510,514
+crates/ferry-cli/src/exit.rs
+  s_6c03b9d846b6b8::t_d5e2289eb15c09 15-16,32
+crates/ferry-cli/src/builtins.rs
+  s_6c03b9d846b6b8::t_d5e2289eb15c09 9-10,13-20
+crates/ferry-cli/README.md
+  s_6c03b9d846b6b8::t_d5e2289eb15c09 37-39,43-50,61,68,70-73,98,112-118
+crates/ferry-cli/tests/stock.rs
+  s_6c03b9d846b6b8::t_d5e2289eb15c09 2-4,331,333-337,340,343,347-350
+crates/ferry-cli/src/targets.rs
+  s_6c03b9d846b6b8::t_91bc51ff1bb022 1-57
+crates/ferry-cli/Cargo.toml
+  s_6c03b9d846b6b8::t_d5e2289eb15c09 18,25,27-28,34-35,44
+crates/ferry-cli/tests/run.rs
+  s_6c03b9d846b6b8::t_77ad3813a67f85 34-36,40-43,46-47,51-52,56
+  s_6c03b9d846b6b8::t_937093a57c0946 1-26,31-33,37,44-45,48-50,53-55,58-92,98-100,106-129,135-139,145-164,170-186,191-196,201-213,224-247,250-267,273-292,298-302
+  s_6c03b9d846b6b8::t_3a8f4c20673103 343-383
+  s_6c03b9d846b6b8::t_b3aa0c5faf719f 57
+  s_6c03b9d846b6b8::t_1a5ce3b81968af 27-30,93-97,101-105,130-134,165-169,187-190,197-200,214-223,248-249,268-272,293-297
+  s_6c03b9d846b6b8::t_44cefa97b257ed 38-39
+  s_6c03b9d846b6b8::t_8664893762df17 303-342
+  s_6c03b9d846b6b8::t_e1ae6c2f675e71 140-144
+crates/ferry-cli/src/cli.rs
+  s_6c03b9d846b6b8::t_d5e2289eb15c09 33-37
+Cargo.lock
+  s_6c03b9d846b6b8::t_fbefb26f732dd1 1644
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fe17bfe2462feb123dbeff292c6247ba64192bc8",
+  "prompts": {},
+  "sessions": {
+    "s_6c03b9d846b6b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d03879d-ca9a-43c2-be60-8e4534c840d0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
