@@ -1,0 +1,24 @@
+crates/ferry-dsl/tests/run.rs
+  s_3f149e83c27506::t_ae5b37e562cbe9 1-130,132-164,169-192,198-222
+  s_3f149e83c27506::t_2efce1da487bdc 131,165-168,193-197
+Cargo.lock
+  s_3f149e83c27506::t_3b16e60e19893e 1728,1737-1739,1751
+crates/ferry-dsl/Cargo.toml
+  s_3f149e83c27506::t_3aca22b10b14bd 42-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ddaa0b138adc0d648a92ab429bb8cf1c646cf45d",
+  "prompts": {},
+  "sessions": {
+    "s_3f149e83c27506": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4485b714-59e0-4bee-ac0b-6edbe45f708a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
