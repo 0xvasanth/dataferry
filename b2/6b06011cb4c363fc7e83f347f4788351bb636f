@@ -1,0 +1,127 @@
+crates/ferry-connectors/postgres/src/deferred.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 1-626
+crates/ferry-registry/src/connector.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 12,115-118,135
+crates/ferry-dsl/tests/pg/mod.rs
+  s_033fe7f8d5ab89::t_b49c273fde4b75 218
+crates/ferry-connectors/mongo/src/source.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 20,30-34,496,498,501
+crates/ferry-runtime/src/flow.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 10,25-27
+crates/ferry-runtime/tests/postgres.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 494,855
+crates/ferry-verify/src/postgres.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 16,187-218
+  s_033fe7f8d5ab89::t_dfe955d30e9a39 219-220
+crates/ferry-verify/tests/dead_letter.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 1-538
+crates/ferry-verify/tests/common/mod.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 212,257
+crates/ferry-verify/tests/postgres.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 223-226
+crates/ferry-runtime/src/lib.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 16-26,45,48,60,65
+crates/ferry-runtime/tests/observer.rs
+  s_033fe7f8d5ab89::t_406d365d623cf5 345
+crates/ferry-registry/src/finalize.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 1-125
+crates/ferry-cli/tests/acme-ferry/src/lib.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 92
+crates/ferry-verify/src/lib.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 16-19,44,46-47
+crates/ferry-connectors/postgres/src/connector.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 23,46-56,89-96,101-102,207-208
+crates/ferry-connectors/mongo/tests/mongo_source.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 18,316,323,327-332,334-339,342-366
+crates/ferry-registry/tests/contract_suite.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 60
+crates/ferry-verify/tests/observer.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 20-21,51-53,101
+crates/ferry-registry/tests/secrets.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 93
+crates/ferry-runtime/src/dlq.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 1-300
+crates/ferry-connectors/postgres/src/ddl.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 7-10
+crates/ferry-registry/src/rejected.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 1-184
+crates/ferry-connectors/postgres/src/sink.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 31-38,60,65,80,110-117,127,216,223-225,286-287,357-361
+  s_033fe7f8d5ab89::t_f72f70e67fba2b 362-364
+crates/ferry-runtime/tests/dead_letter.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 1-383
+crates/ferry-registry/tests/common/mod.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 417
+crates/ferry-runtime/tests/common/mod.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 9,112,301,309-320,331-355,357-359,390,393,396,399,402,414,424,429,434,439,442,445,448,451
+crates/ferry-registry/src/lib.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 5-8,14,16,26
+crates/ferry-verify/Cargo.toml
+  s_033fe7f8d5ab89::t_030faa8904131f 30,35
+crates/ferry-runtime/src/work.rs
+  s_033fe7f8d5ab89::t_ac5cfd06bd1a08 421,444
+  s_033fe7f8d5ab89::t_aa7fe679b34ade 344,347
+  s_033fe7f8d5ab89::t_030faa8904131f 6,10-12,15,23,26,37-44,162-174,183-200,202-208,294-295,318-324,330-335,339,345,349,363,367-420,422-443,445-525
+  s_033fe7f8d5ab89::t_e7e54f8d32412e 526
+crates/ferry-verify/src/verify.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 11-12,20,33,61-64,178-206,235,239-250,309-310,337-338,550-599
+  s_033fe7f8d5ab89::t_4246b632a44343 600
+crates/ferry-dsl/tests/expect.rs
+  s_033fe7f8d5ab89::t_25ebb9ff1015d2 419
+crates/ferry-runtime/src/settings.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 28-36,46-58,70-71
+crates/ferry-registry/tests/third_party.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 16-17,119,145,154-189,313-326,486,626
+crates/ferry-runtime/tests/runner.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 17,268-269,585,695,942-1051
+crates/ferry-registry/tests/schema.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 57,92,146
+crates/ferry-runtime/Cargo.toml
+  s_033fe7f8d5ab89::t_030faa8904131f 22-25,29
+crates/ferry-state/tests/common/mod.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 120
+crates/ferry-connectors/mongo/src/connector.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 56
+crates/ferry-registry/Cargo.toml
+  s_033fe7f8d5ab89::t_030faa8904131f 19-20
+crates/ferry-connectors/mongo/src/convert.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 6-10,35,42-69,71-130
+crates/ferry-connectors/postgres/src/lib.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 8,18
+crates/ferry-verify/src/report.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 94,269-291,295-300,302-322,346,348,350-353
+crates/ferry-registry/src/registry.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 326-334
+crates/ferry-runtime/tests/memory.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 197
+crates/ferry-verify/tests/finalize.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 1-413
+crates/ferry-verify/src/target.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 38-41,52-61
+  s_033fe7f8d5ab89::t_2f69d0f3c96ed8 62-63
+crates/ferry-dsl/tests/run.rs
+  s_033fe7f8d5ab89::t_25ebb9ff1015d2 113
+crates/ferry-runtime/src/runner.rs
+  s_033fe7f8d5ab89::t_030faa8904131f 7-11,13,18,22,54-57,65-72,122-126,221-231,242-243,261-270,272,439,455,459-484
+  s_033fe7f8d5ab89::t_e4ed97ca54719d 485
+Cargo.lock
+  s_033fe7f8d5ab89::t_ce6682c9a82520 1767,1842,1849
+crates/ferry-connectors/postgres/tests/pg_sink.rs
+  s_033fe7f8d5ab89::t_e45256a267cf83 18,26,28-45,47-52,70,257-258,274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b26b06011cb4c363fc7e83f347f4788351bb636f",
+  "prompts": {},
+  "sessions": {
+    "s_033fe7f8d5ab89": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b0c57f4-a31d-4f7b-987c-44bd6cdcd34c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
