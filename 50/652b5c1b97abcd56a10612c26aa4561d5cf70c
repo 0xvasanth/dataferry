@@ -1,0 +1,126 @@
+crates/ferry-cli/src/namespaces.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 1-45
+crates/ferry-cli/src/plan.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 4-14,21-22,24,27,46,51,71-75,119-120,123-134,137-196,201-209,212,349,438-506
+  s_eee2af054b6d5f::t_59c4a0bbc8b3a6 507
+crates/ferry-cli/README.md
+  s_eee2af054b6d5f::t_20a32e16e0f42c 36-37,49-52,70,72-75
+crates/ferry-dsl/src/compile/side.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 18-22,75-133,529-530,539-545,552-558,561,645-646,764-765,814-815
+crates/ferry-cli/src/run.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 15-26,31,51,90,131-141,147-149,154-184,192-193,197,210,221-222,227,238-246,248,254,258-272,279,283,354-374,442-443,453-524,527,542-544,547,553,556-562,567,569,571-577,582-584,586
+crates/ferry-dsl/tests/plan.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 12,17-18,20,22-24,344-351,587-594,606-1079
+crates/ferry-cli/tests/config_reference.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 1-307
+crates/ferry-connectors/tls/Cargo.toml
+  s_eee2af054b6d5f::t_20a32e16e0f42c 9-12
+.github/workflows/ci.yml
+  s_eee2af054b6d5f::t_20a32e16e0f42c 24-26,28-59
+crates/ferry-verify/Cargo.toml
+  s_eee2af054b6d5f::t_20a32e16e0f42c 9-12
+crates/ferry-connectors/mongo/src/source.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 417
+crates/ferry-dsl/src/plan.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 16-30,48,54-55,58-59,77-97,101-237,294-300,351-365,368,371-398,400-418,430-470,473,576-578,582,591-592,599,608,614-617,756-759,770,773-776
+examples/ci.env
+  s_eee2af054b6d5f::t_b35c369a474aa0 7
+  s_eee2af054b6d5f::t_20a32e16e0f42c 1-6,8-11
+crates/ferry-core/Cargo.toml
+  s_eee2af054b6d5f::t_20a32e16e0f42c 9-12
+crates/ferry-registry/Cargo.toml
+  s_eee2af054b6d5f::t_20a32e16e0f42c 9-12
+docs/config-reference.md
+  s_eee2af054b6d5f::t_20a32e16e0f42c 1-198
+examples/README.md
+  s_eee2af054b6d5f::t_20a32e16e0f42c 7-10,39
+  s_eee2af054b6d5f::t_db5fa4a8d2e07f 40-41
+crates/ferry-verify/src/postgres.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 5,10,21,34,40-52,107-132
+crates/ferry-cli/tests/readme.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 1-474
+crates/ferry-cli/tests/pg_merge.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 1-247
+crates/ferry-connectors/mongo/Cargo.toml
+  s_eee2af054b6d5f::t_20a32e16e0f42c 9-12
+crates/ferry-dsl/tests/common/plan.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 40-43,49,59,71,82-99
+crates/ferry-verify/src/observer.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 20-26,29-31,38,42-54,80-88
+crates/ferry-cli/src/builtins.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 10-11,21-22
+  s_eee2af054b6d5f::t_68539609446034 23
+crates/ferry-verify/src/checksum.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 24-34,249-260,438-547,549-595,656-801
+  s_eee2af054b6d5f::t_4b88d7f55ce0c7 548
+  s_eee2af054b6d5f::t_2546d3b7d53209 802
+crates/ferry-cli/tests/unverified.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 1-123
+schemas/README.md
+  s_eee2af054b6d5f::t_20a32e16e0f42c 14-17
+README.md
+  s_eee2af054b6d5f::t_20a32e16e0f42c 3-6,8-278,282,284-293,302-304,315-331
+  s_eee2af054b6d5f::t_62ffd576a1aa25 332-333
+docs/decisions/0003-config-shape.md
+  s_eee2af054b6d5f::t_20a32e16e0f42c 144-150,485-493
+  s_eee2af054b6d5f::t_30a2ee9f49e5c4 494
+crates/ferry-cli/src/targets.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 35-39,43,45,47-67
+crates/ferry-cli/src/lib.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 34-35,61-63,82,252-260,294
+crates/ferry-cli/Cargo.toml
+  s_eee2af054b6d5f::t_20a32e16e0f42c 9-12,35,37,40-42,46-47,59
+  s_eee2af054b6d5f::t_73249fccaab992 57-58
+crates/ferry-cli/tests/readme_connector.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 1-122
+crates/ferry-connectors/postgres/Cargo.toml
+  s_eee2af054b6d5f::t_20a32e16e0f42c 9-12
+crates/ferry-runtime/Cargo.toml
+  s_eee2af054b6d5f::t_20a32e16e0f42c 9-12
+crates/ferry-verify/tests/scoped.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 1-210
+crates/ferry-dsl/Cargo.toml
+  s_eee2af054b6d5f::t_20a32e16e0f42c 6,9-12,50-51,73
+Cargo.toml
+  s_eee2af054b6d5f::t_20a32e16e0f42c 20-22,25-28,31-39
+crates/ferry-cli/tests/packaging.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 1-196
+crates/ferry-verify/src/verify.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 10,27-33,39-40,243,249-260,262-265,269,290-304,324-325,333-357,399-421,731-764
+  s_eee2af054b6d5f::t_3cf10e72e4f5d5 765-767
+crates/ferry-cli/src/leases.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 1-186
+scripts/check-examples.sh
+  s_eee2af054b6d5f::t_20a32e16e0f42c 1-86
+.gitignore
+  s_eee2af054b6d5f::t_20a32e16e0f42c 2-3
+crates/ferry-dsl/tests/dead_letter.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 125-132
+crates/ferry-dsl/src/compile/mod.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 445-447,449-459,585-590,1374-1538
+  s_eee2af054b6d5f::t_8f4af7d8f18467 1539
+crates/ferry-state/Cargo.toml
+  s_eee2af054b6d5f::t_20a32e16e0f42c 9-12,42-44
+crates/ferry-cli/tests/run.rs
+  s_eee2af054b6d5f::t_20a32e16e0f42c 345,356,362,372-410,412-426,432-548
+Cargo.lock
+  s_eee2af054b6d5f::t_3d3cf6ef3b1cd9 1646,1650
+crates/ferry-cli/tests/snapshots/pg_merge__pg_merge_plan.snap
+  s_eee2af054b6d5f::t_1e192c98f8bc52 1-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "50652b5c1b97abcd56a10612c26aa4561d5cf70c",
+  "prompts": {},
+  "sessions": {
+    "s_eee2af054b6d5f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85df28ec-9b87-4292-9efb-12494ff4df09",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
