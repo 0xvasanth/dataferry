@@ -1,0 +1,32 @@
+crates/ferry-runtime/src/testkit/conformance.rs
+  s_22ce1f60c7022e::t_d48f8017ea189e 205,240
+  s_22ce1f60c7022e::t_25f1facc5ba052 10-13
+  s_22ce1f60c7022e::t_302513b091c0f9 91-93,132-133,176-183,200-202,206-214,216-217,219-225,227,229-232,234-235,599-600,613-614,620-622,646-648,655,659,662-663,670,675-678,680-701,703-717
+  s_22ce1f60c7022e::t_bdcde52226452d 128-129
+  s_22ce1f60c7022e::t_79ffa3b1e4f1f1 615-619
+  s_22ce1f60c7022e::t_fdf78ac2aa2736 199,215,226,228
+  s_22ce1f60c7022e::t_93422c07cf4b76 89-90,218
+  s_22ce1f60c7022e::t_66fcddb966f3fd 702
+  s_22ce1f60c7022e::t_5015e0d4224e05 369-370,414-424,426,512,562-578,593-598,601-612,623-645,649-654,656-658,660-661,664-669,671-674,679
+  s_22ce1f60c7022e::t_c3ee06b9c5ff03 718
+crates/ferry-runtime/src/testkit/chaos.rs
+  s_22ce1f60c7022e::t_fdf78ac2aa2736 423
+README.md
+  s_22ce1f60c7022e::t_25f1facc5ba052 283-284
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fd0fc1eb9a0ec41ea74c7a8e0c5c4112a9f911af",
+  "prompts": {},
+  "sessions": {
+    "s_22ce1f60c7022e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2451dbb-fc35-4178-a780-6cef5390a7c2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
