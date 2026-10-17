@@ -1,0 +1,40 @@
+.gitignore
+  s_2077fe5405e6ac::t_ff1c16e10a2164 2-3
+crates/ferry-cli/tests/packaging.rs
+  s_2077fe5405e6ac::t_2a2e47114d6345 135-138,166-169
+  s_2077fe5405e6ac::t_b89ebacdd6a11b 1-134,139-165,170-196
+crates/ferry-cli/tests/readme.rs
+  s_2077fe5405e6ac::t_3dff8e19eff103 122-124,169-173,181-182,465-466
+  s_2077fe5405e6ac::t_0423844f3ed511 331,336
+  s_2077fe5405e6ac::t_ccad888385bf83 1-4,12,14-15,110-121,125-168,174-180,183-216,346-353
+  s_2077fe5405e6ac::t_35d72595d3cae3 5-11,13,16-109,217-282,286-322,329-330,332-335,337-345,354-378,382-396,404-430
+  s_2077fe5405e6ac::t_c54622d22a4d21 431-464,467-474
+  s_2077fe5405e6ac::t_2a2e47114d6345 283-285,323-328,379-381,397-403
+crates/ferry-cli/tests/readme_connector.rs
+  s_2077fe5405e6ac::t_fe5590ed7b1201 36-40
+  s_2077fe5405e6ac::t_2d88a4d1e31379 1-35,41-122
+README.md
+  s_2077fe5405e6ac::t_fe5590ed7b1201 249-253
+  s_2077fe5405e6ac::t_c54622d22a4d21 215-218,222-224,228-237,241,254-258
+  s_2077fe5405e6ac::t_7dadaf8055b106 3-6,8-46,49-51,55-60,62-91,93-94,98-212,219-221,225-227,238-240,242-248,259-278,282,284-293,302-304,315-332
+  s_2077fe5405e6ac::t_2ab9f333c30fa2 47-48
+  s_2077fe5405e6ac::t_3dff8e19eff103 95-97,213-214
+  s_2077fe5405e6ac::t_ff1c16e10a2164 52-54,61,92
+  s_2077fe5405e6ac::t_11a9fe78babd9a 333
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8933d83f7cd509677917a090c4bda3afb59cc442",
+  "prompts": {},
+  "sessions": {
+    "s_2077fe5405e6ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0bf34333-4a71-4353-9309-c8667a790256",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
