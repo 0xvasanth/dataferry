@@ -1,0 +1,63 @@
+Cargo.lock
+  s_033fe7f8d5ab89::t_138501ad0864ef 1738-1739,1744,1756,1758
+crates/ferry-dsl/Cargo.toml
+  s_033fe7f8d5ab89::t_5494ce017fac12 20,29-31,48-52,59
+crates/ferry-dsl/src/config/validate.rs
+  s_033fe7f8d5ab89::t_2b631f8687c2d8 49-51,74-80
+crates/ferry-dsl/src/expect/assertion.rs
+  s_033fe7f8d5ab89::t_5866d4835d6549 1-185
+crates/ferry-dsl/src/expect/check.rs
+  s_033fe7f8d5ab89::t_3db582877dff19 1-477
+crates/ferry-dsl/src/expect/log.rs
+  s_033fe7f8d5ab89::t_59ffc04c8479ae 1-179
+crates/ferry-dsl/src/expect/mod.rs
+  s_033fe7f8d5ab89::t_7799feecf64064 1-141
+crates/ferry-dsl/src/expect/observer.rs
+  s_033fe7f8d5ab89::t_f2bf96fbf4ac68 1-286
+crates/ferry-dsl/src/expect/parse.rs
+  s_033fe7f8d5ab89::t_b7d6495e36eb85 1-685
+crates/ferry-dsl/src/expect/value.rs
+  s_033fe7f8d5ab89::t_c833aaaa9f4175 1-599
+crates/ferry-dsl/src/expr/mod.rs
+  s_033fe7f8d5ab89::t_990de61a7331a2 241,272,284
+crates/ferry-dsl/src/lib.rs
+  s_033fe7f8d5ab89::t_b29c8cd453dd4d 5
+crates/ferry-dsl/src/typecheck/mod.rs
+  s_033fe7f8d5ab89::t_0c2ba07762c959 14-16,42,89-90,196-198,280-295,300,309,312-313,332,363,777
+crates/ferry-dsl/tests/expect.rs
+  s_033fe7f8d5ab89::t_20d803a47d6705 1-698
+crates/ferry-dsl/tests/expect_pg.rs
+  s_033fe7f8d5ab89::t_48e556e3b47a38 1-428
+crates/ferry-dsl/tests/pg/mod.rs
+  s_033fe7f8d5ab89::t_ac24fa0aa628c3 1-539
+crates/ferry-runtime/src/lib.rs
+  s_033fe7f8d5ab89::t_e44e0db0cb8b2a 12-14,49
+crates/ferry-runtime/src/observe.rs
+  s_033fe7f8d5ab89::t_5f474cac545905 1-2,8-10,12,19,37-42,56-66
+crates/ferry-runtime/src/runner.rs
+  s_033fe7f8d5ab89::t_329b322e0369b7 31,136,140-143,145,208,230
+crates/ferry-runtime/src/work.rs
+  s_033fe7f8d5ab89::t_b49b3b9b9f498f 22,33,100-104,107,138,241,246-247,263-267,294,325-326,331,343-349
+crates/ferry-runtime/tests/observer.rs
+  s_033fe7f8d5ab89::t_9fd14e9a469094 1-3,10-12,15-16,18,203-492
+crates/ferry-verify/src/assertion.rs
+  s_033fe7f8d5ab89::t_5ac6b53c6868f6 10,13-16,25-27,47,49,60-72
+crates/ferry-verify/src/verify.rs
+  s_033fe7f8d5ab89::t_3b714833926d99 261,501,507,509,513,515
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "acb3e6faafb3fd4b1e2ff6024ed7a7c4cb62732f",
+  "prompts": {},
+  "sessions": {
+    "s_033fe7f8d5ab89": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b0c57f4-a31d-4f7b-987c-44bd6cdcd34c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
