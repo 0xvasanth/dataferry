@@ -1,0 +1,18 @@
+crates/ferry-runtime/tests/common/mod.rs
+  h_7bb0b8336911f0 9,300,308-319,330-354,356-358,389,392,395,398,401,413,423,428,433,438,441,444,447,450
+crates/ferry-runtime/tests/postgres.rs
+  h_7bb0b8336911f0 738
+crates/ferry-runtime/tests/runner.rs
+  h_7bb0b8336911f0 268-269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dc41c51ef6f0fbb81453ab7d01af882d83abe177",
+  "prompts": {},
+  "humans": {
+    "h_7bb0b8336911f0": {
+      "author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
