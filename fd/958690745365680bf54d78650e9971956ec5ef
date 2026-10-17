@@ -1,0 +1,53 @@
+crates/ferry-cli/src/exit.rs
+  s_6c03b9d846b6b8::t_edf32ffd136d90 20-21
+crates/ferry-cli/src/diagnostic.rs
+  s_6c03b9d846b6b8::t_edf32ffd136d90 37-43,57-64,145-147
+crates/ferry-dsl/src/plan.rs
+  s_6c03b9d846b6b8::t_cff9ae166b6efd 27-29
+crates/ferry-cli/src/validate.rs
+  s_6c03b9d846b6b8::t_edf32ffd136d90 14-16,51-56,130,135,138,153-154,206-207,215,289-292
+crates/ferry-cli/tests/plan.rs
+  s_6c03b9d846b6b8::t_e1ae6c2f675e71 130-134,136-137
+  s_6c03b9d846b6b8::t_937093a57c0946 1-7,9-20,26-114,120,126-129,135,138-165,167-187,194-203,210-211,215-229,235
+  s_6c03b9d846b6b8::t_1d6f12ee90f676 166
+  s_6c03b9d846b6b8::t_1a5ce3b81968af 8,21-25,115-119,121-125,188-193,204-209,212-214,230-234
+crates/ferry-cli/Cargo.toml
+  s_6c03b9d846b6b8::t_edf32ffd136d90 22,25-26,41-43,45-47
+crates/ferry-cli/src/lib.rs
+  s_6c03b9d846b6b8::t_edf32ffd136d90 34,253,260-281,283
+  s_6c03b9d846b6b8::t_745bb1c7a06107 282,284
+crates/ferry-cli/src/plan.rs
+  s_6c03b9d846b6b8::t_bc40ebb51cd255 12,280
+  s_6c03b9d846b6b8::t_1a5ce3b81968af 163-168,174-175,232-234
+  s_6c03b9d846b6b8::t_58b68cd4b1bf99 1-11,13-151,154-162,169-173,176-231,235-279,281-380
+  s_6c03b9d846b6b8::t_3d388626cd0ff6 152-153
+crates/ferry-cli/tests/common/mod.rs
+  s_6c03b9d846b6b8::t_1d6f12ee90f676 161-164,167
+  s_6c03b9d846b6b8::t_937093a57c0946 1-160,165-166,168-279
+crates/ferry-cli/tests/stock.rs
+  s_6c03b9d846b6b8::t_7cc01b263e2797 365-366
+  s_6c03b9d846b6b8::t_edf32ffd136d90 2-4,334,359-364,367-370
+  s_6c03b9d846b6b8::t_6f01cb8a108c50 371-372
+crates/ferry-cli/README.md
+  s_6c03b9d846b6b8::t_edf32ffd136d90 36,57,64-65,93-95,103-104
+Cargo.lock
+  s_6c03b9d846b6b8::t_1cbdf43e19a8eb 1639,1642,1644-1645,1649,1651
+crates/ferry-cli/tests/snapshots/plan__golden_plan.snap
+  s_6c03b9d846b6b8::t_f7500769bea88d 1-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fd958690745365680bf54d78650e9971956ec5ef",
+  "prompts": {},
+  "sessions": {
+    "s_6c03b9d846b6b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d03879d-ca9a-43c2-be60-8e4534c840d0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
