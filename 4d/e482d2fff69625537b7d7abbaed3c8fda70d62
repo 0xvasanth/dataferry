@@ -1,0 +1,45 @@
+crates/ferry-verify/src/report.rs
+  s_22ce1f60c7022e::t_8ad588ee9ee784 499-500
+  s_22ce1f60c7022e::t_9e05370bedecc7 103-110,112-118,125,129-130,132-134,162,182
+  s_22ce1f60c7022e::t_5aa048679232c0 197-198,201-202,209-212,215-216,219,223-224,235-241,247-250,253,259-260,273-274,279-282,299,305-308,325,336-339,341,355-356
+  s_22ce1f60c7022e::t_c5ab6acc152133 364-399,402-427,429-435,438,443-444,446-450
+  s_22ce1f60c7022e::t_bdcde52226452d 400-401,428
+  s_22ce1f60c7022e::t_d1e8a320bda274 436-437,439-442,445
+  s_22ce1f60c7022e::t_41caa146c8a5b0 498
+crates/ferry-cli/tests/golden_demo.rs
+  s_22ce1f60c7022e::t_a41be359ee7067 129-130,133-136
+crates/ferry-verify/src/report/markdown_tests.rs
+  s_22ce1f60c7022e::t_499a8c59109662 38
+  s_22ce1f60c7022e::t_bdcde52226452d 219-225,281-291,322-328,340-346
+  s_22ce1f60c7022e::t_79ffa3b1e4f1f1 24-28,30-31,33-37,41-43,108,110,116,123,138-139,155-160,162,181-188,240,242,261,298-304,350-372
+  s_22ce1f60c7022e::t_8ad588ee9ee784 1-23,29,44-107,109,111-115,117-122,124-137,140-154,161,163-180,189-218,226-239,241,243-260,262-280,292-297,305-321,329-339,347-349,373-390
+  s_22ce1f60c7022e::t_70e267b413968b 32,39-40
+crates/ferry-verify/tests/postgres.rs
+  s_22ce1f60c7022e::t_9ca69601df3ca5 261-262,266
+crates/ferry-dsl/tests/dead_letter.rs
+  s_22ce1f60c7022e::t_a41be359ee7067 250-251
+crates/ferry-verify/Cargo.toml
+  s_22ce1f60c7022e::t_bc31413b7eb2bf 40
+Cargo.lock
+  s_22ce1f60c7022e::t_81ffd770267978 1866,3531-3541,4851-4856
+crates/ferry-cli/README.md
+  s_22ce1f60c7022e::t_1f4be642ef1f0f 56-58
+crates/ferry-cli/src/run.rs
+  s_22ce1f60c7022e::t_d3d947c7b1979b 582-584,587
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4de482d2fff69625537b7d7abbaed3c8fda70d62",
+  "prompts": {},
+  "sessions": {
+    "s_22ce1f60c7022e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2451dbb-fc35-4178-a780-6cef5390a7c2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
