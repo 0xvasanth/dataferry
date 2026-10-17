@@ -1,0 +1,25 @@
+crates/ferry-runtime/tests/postgres.rs
+  s_cce7221f28499c::t_85a8243e9ef011 9-11,18-21,34,42,398-400,408,416,422,426-429,432,436,439,442-451,456-457,461-465,471-473,484,516-550,554-568,570,645,701,705-709,711,744-748,755,868
+  s_cce7221f28499c::t_3ba1501e477c66 769,791-808
+  s_cce7221f28499c::t_f32c60b5062904 809-811
+crates/ferry-runtime/Cargo.toml
+  s_cce7221f28499c::t_85a8243e9ef011 33-34
+Cargo.lock
+  s_cce7221f28499c::t_4c162188f863b7 1779
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "35bcadad3a6511419f6f913cbd6ab1616165045d",
+  "prompts": {},
+  "sessions": {
+    "s_cce7221f28499c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c7a3f5c-320a-45a0-944b-faa164790860",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
