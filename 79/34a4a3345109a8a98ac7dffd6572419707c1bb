@@ -1,0 +1,36 @@
+crates/ferry-cli/README.md
+  s_22ce1f60c7022e::t_247d2608f197df 51-55
+  s_22ce1f60c7022e::t_8e90337466c7dd 48-50,131
+crates/ferry-cli/src/diagnostic.rs
+  s_22ce1f60c7022e::t_8e90337466c7dd 75-76
+crates/ferry-cli/tests/lease_ttl.rs
+  s_22ce1f60c7022e::t_a08f90a946054c 13-14,38
+  s_22ce1f60c7022e::t_5aa882cd74106d 15,17,19-33,36,42-47,59,63-92,97-116,178-184
+  s_22ce1f60c7022e::t_2d2dfc8e194c6d 93-96
+crates/ferry-cli/src/run.rs
+  s_22ce1f60c7022e::t_a08f90a946054c 131
+  s_22ce1f60c7022e::t_d1e8a320bda274 134-138,744-752
+  s_22ce1f60c7022e::t_93422c07cf4b76 762-768
+  s_22ce1f60c7022e::t_247d2608f197df 64-65
+  s_22ce1f60c7022e::t_e5888ebd8e717a 67-71,82-101,130,132-133,139-154
+  s_22ce1f60c7022e::t_1dfbae4188f790 155,727-743,753-761,769
+  s_22ce1f60c7022e::t_49b61db62f5f72 156-157,770
+docs/config-reference.md
+  s_22ce1f60c7022e::t_25f1facc5ba052 199-211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7934a4a3345109a8a98ac7dffd6572419707c1bb",
+  "prompts": {},
+  "sessions": {
+    "s_22ce1f60c7022e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2451dbb-fc35-4178-a780-6cef5390a7c2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
