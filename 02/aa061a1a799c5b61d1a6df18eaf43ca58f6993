@@ -1,0 +1,22 @@
+crates/ferry-verify/src/verify.rs
+  s_cfea20816d1184::t_fc6ca8d60d7cb0 261,501,507,509,513,515
+crates/ferry-verify/src/assertion.rs
+  s_cfea20816d1184::t_fc6ca8d60d7cb0 10,13-16,25-27,47,49,60-71
+  s_cfea20816d1184::t_b46d8fdb79a13a 72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "02aa061a1a799c5b61d1a6df18eaf43ca58f6993",
+  "prompts": {},
+  "sessions": {
+    "s_cfea20816d1184": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a23f9e1-baa4-49f2-b996-0d3058253cf7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
