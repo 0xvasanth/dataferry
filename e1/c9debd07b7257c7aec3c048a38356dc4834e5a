@@ -1,0 +1,19 @@
+crates/ferry-runtime/tests/postgres.rs
+  s_3f149e83c27506::t_a8ab2213464277 76-78,91-94,104-107,114,121,125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e1c9debd07b7257c7aec3c048a38356dc4834e5a",
+  "prompts": {},
+  "sessions": {
+    "s_3f149e83c27506": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4485b714-59e0-4bee-ac0b-6edbe45f708a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
