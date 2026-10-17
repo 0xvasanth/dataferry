@@ -1,0 +1,19 @@
+crates/ferry-dsl/src/expect/value.rs
+  s_cfea20816d1184::t_59256e2dcc39ee 181-183,272-277,279-280,493-508,527-541
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "01f4006e2bff9e5c8b8a3f19b8219f85bb5909c2",
+  "prompts": {},
+  "sessions": {
+    "s_cfea20816d1184": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a23f9e1-baa4-49f2-b996-0d3058253cf7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
