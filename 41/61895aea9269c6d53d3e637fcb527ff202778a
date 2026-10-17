@@ -1,0 +1,53 @@
+crates/ferry-dsl/tests/schema.rs
+  s_e5d90444d7f505::t_7e9e35bf05967e 155-157
+crates/ferry-dsl/src/config/model.rs
+  s_e5d90444d7f505::t_7e9e35bf05967e 1139-1140,1215-1219,1290,1293
+crates/ferry-dsl/src/lib.rs
+  s_e5d90444d7f505::t_349d8ad572bb45 5
+crates/ferry-dsl/src/typecheck/cast.rs
+  s_e5d90444d7f505::t_203d61ff2c9c8e 1-42,138-197,203-209,215-261,267-319,321-385,390-394,401-406,410-412
+  s_e5d90444d7f505::t_d9a2334a2501e5 43-137,198-202,210-214,262-266,320,386-389,395-400,407-409
+crates/ferry-dsl/src/typecheck/mod.rs
+  s_e5d90444d7f505::t_d157f3cbdb69d2 1-188,190-191,198-205,213-221,228-283,289-299,305-307,314,318-323,329-334,342-357,362-377,387,391-445,447-467,473-477,484,487-489,495-512,521-536,542,545-578,589-630,633-640,643-646,667-678,680,682-700,703-719,726-750,762-766,773-804,809-817
+  s_e5d90444d7f505::t_fb662428d5d48c 446,541,543-544
+  s_e5d90444d7f505::t_4b0cb4802cb36f 361,751-761
+  s_e5d90444d7f505::t_d9a2334a2501e5 189,192-197,206-212,222-227,284-288,300-304,308-313,315-317,324-328,335-341,358-360,378-386,388-390,468-472,478-483,485-486,490-494,513-520,537-540,579-588,631-632,641-642,647-666,679,681,701-702,720-725,767-772,805-808
+schemas/v1/flows.schema.json
+  s_e5d90444d7f505::t_7e9e35bf05967e 20-24,27
+docs/decisions/0003-config-shape.md
+  s_e5d90444d7f505::t_5bb5b79507a5da 276,661-718
+  s_e5d90444d7f505::t_b78943d7744b97 719
+crates/ferry-dsl/tests/typecheck.rs
+  s_e5d90444d7f505::t_d9a2334a2501e5 83-89,93-95,145-146,150-151,155-164,169-171,215-219,232-240,246-249,297-299,306-309,319-321,333-337,345-352,359-360,363-367,369-376,381-386,391-395,397-398,414-421,426-429,440-454,473-480,489-492,500-503,511-514,559-562
+  s_e5d90444d7f505::t_22112f9df767ba 470
+  s_e5d90444d7f505::t_9c15ba9b99875a 589,592-596
+  s_e5d90444d7f505::t_4b0cb4802cb36f 283,323-324
+  s_e5d90444d7f505::t_f7a1497e8972c8 598-647
+  s_e5d90444d7f505::t_cec1cf831374e9 1-82,90-92,96-144,147-149,152-154,165-168,172-214,220-231,241-245,250-282,284-296,300-305,310-318,322,325-332,338-344,353-358,361-362,368,377-380,387-390,396,399-413,422-425,430-439,455-469,471-472,481-488,493-499,504-510,515-558,563-588,590-591,597
+crates/ferry-dsl/tests/snapshots/typecheck__mistake_lossy_narrowing_without_opt_in.snap
+  s_e5d90444d7f505::t_bac21a0f377f8c 1-6
+crates/ferry-dsl/tests/snapshots/typecheck__mistake_misspelled_field.snap
+  s_e5d90444d7f505::t_1a7c1c88d970c3 1-8
+crates/ferry-dsl/tests/snapshots/typecheck__mistake_reserved_name_without_its_sigil.snap
+  s_e5d90444d7f505::t_1c8e10b83e03e8 1-8
+crates/ferry-dsl/tests/snapshots/typecheck__mistake_text_declared_as_a_number.snap
+  s_e5d90444d7f505::t_b5f2dea06b4df3 1-6
+crates/ferry-dsl/tests/snapshots/typecheck__mistake_where_that_is_not_a_condition.snap
+  s_e5d90444d7f505::t_2d2bb8877baefb 1-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4161895aea9269c6d53d3e637fcb527ff202778a",
+  "prompts": {},
+  "sessions": {
+    "s_e5d90444d7f505": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7bbd184d-317f-4463-8694-f4be6eefbffa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
