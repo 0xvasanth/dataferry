@@ -1,0 +1,19 @@
+crates/ferry-dsl/tests/run.rs
+  s_435864043a609f::t_a8544d87f286d1 124-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4dd8916d0dad47380f2e708de4fa15f186eb27cb",
+  "prompts": {},
+  "sessions": {
+    "s_435864043a609f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd36e871-c191-4e18-97d0-714b490356fe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
