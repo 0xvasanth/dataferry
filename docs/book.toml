@@ -11,8 +11,8 @@ build-dir = "book"
 create-missing = false
 
 [output.html]
-git-repository-url = "https://github.com/0xvasanth/ferry"
-edit-url-template = "https://github.com/0xvasanth/ferry/edit/main/docs/{path}"
+git-repository-url = "https://github.com/0xvasanth/dataferry"
+edit-url-template = "https://github.com/0xvasanth/dataferry/edit/main/docs/{path}"
 site-url = "/ferry/"
 no-section-label = false
 

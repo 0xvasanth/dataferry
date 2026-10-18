@@ -1,7 +1,7 @@
 # docs/
 
 - `src/`: the user guide, an [mdBook](https://rust-lang.github.io/mdBook/)
-  published at <https://0xvasanth.github.io/ferry/> by
+  published at <https://0xvasanth.github.io/dataferry/> by
   `.github/workflows/docs.yml`. `src/SUMMARY.md` is its table of contents.
 - `decisions/`: the architecture decision records. The guide includes
   them as they are (`src/reference/decisions/`).

@@ -3,8 +3,8 @@
 A data migration engine: a declarative `ferry/` directory says how data
 moves from MongoDB and Postgres into Postgres, and how it is reshaped on the
 way. Each partition commits on its own, so a stopped run resumes where it
-left off. The [user guide](https://0xvasanth.github.io/ferry/) and the
-[repository](https://github.com/0xvasanth/ferry) have the details.
+left off. The [user guide](https://0xvasanth.github.io/dataferry/) and the
+[repository](https://github.com/0xvasanth/dataferry) have the details.
 
 ```sh
 cargo install --locked dataferry --version 0.1.0-beta.1

@@ -22,9 +22,9 @@ edition = "2024"
 # one. CI builds the workspace with it.
 rust-version = "1.94"
 license = "Apache-2.0"
-repository = "https://github.com/0xvasanth/ferry"
+repository = "https://github.com/0xvasanth/dataferry"
 # The user guide.
-homepage = "https://0xvasanth.github.io/ferry/"
+homepage = "https://0xvasanth.github.io/dataferry/"
 readme = "README.md"
 keywords = ["migration", "etl", "postgres", "mongodb", "arrow"]
 categories = ["database"]

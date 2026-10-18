@@ -2,7 +2,7 @@ name: Docs
 
 # The user guide (docs/, an mdBook): built and link-checked on every pull
 # request, its examples run against the binary, and on main deployed to
-# GitHub Pages (https://0xvasanth.github.io/ferry/).
+# GitHub Pages (https://0xvasanth.github.io/dataferry/).
 on:
   push:
     branches: [main]

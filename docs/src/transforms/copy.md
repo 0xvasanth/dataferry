@@ -5,7 +5,7 @@ migration most tables are like this, and each takes a few lines.
 
 ## `columns: "*"`
 
-From the [`pg-merge` example](https://github.com/0xvasanth/ferry/tree/main/examples/pg-merge),
+From the [`pg-merge` example](https://github.com/0xvasanth/dataferry/tree/main/examples/pg-merge),
 which copies a Postgres `customers` table into a reporting database:
 
 ```yaml

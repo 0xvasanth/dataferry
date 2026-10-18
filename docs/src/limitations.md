@@ -86,5 +86,5 @@ promises, and their order may change:
 - **Release**: regular tagged releases, and editor completion from the
   JSON Schemas out of the box.
 
-The [issue tracker](https://github.com/0xvasanth/ferry/issues) is the place
+The [issue tracker](https://github.com/0xvasanth/dataferry/issues) is the place
 to ask for what you need, or to report what doesn't work.

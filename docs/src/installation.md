@@ -23,7 +23,7 @@ DataFusion and Arrow, which are large.
 ## Prebuilt binaries
 
 Each release on the
-[GitHub Releases page](https://github.com/0xvasanth/ferry/releases) has an
+[GitHub Releases page](https://github.com/0xvasanth/dataferry/releases) has an
 archive (`.tar.gz`) for each of:
 
 | Platform | Target |
@@ -61,7 +61,7 @@ To build the latest code on `main` (or any branch or tag) instead of a
 release:
 
 ```sh
-cargo install --git https://github.com/0xvasanth/ferry dataferry --locked
+cargo install --git https://github.com/0xvasanth/dataferry dataferry --locked
 ```
 
 Add `--tag v0.1.0-beta.1` to build exactly that release, or `--branch

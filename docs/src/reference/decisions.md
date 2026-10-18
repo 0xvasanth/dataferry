@@ -3,7 +3,7 @@
 The architecture decisions behind dataferry, each with its context, the
 decision, the alternatives rejected and the consequences. They are kept
 in the repository under
-[`docs/decisions/`](https://github.com/0xvasanth/ferry/tree/main/docs/decisions)
+[`docs/decisions/`](https://github.com/0xvasanth/dataferry/tree/main/docs/decisions)
 and included here as written, with their amendments.
 
 | Record | Decides |
