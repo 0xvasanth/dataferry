@@ -19,7 +19,7 @@ That writes `schemas/ferry.schema.json`, `connections.schema.json`,
 `dataferry schema` prints all four in one JSON object, keyed by file name.
 
 The repository also keeps the grammar's schemas in
-[`schemas/v1/`](https://github.com/0xvasanth/ferry/tree/main/schemas/v1),
+[`schemas/v1/`](https://github.com/0xvasanth/dataferry/tree/main/schemas/v1),
 generated from the config model and checked by its tests. They leave
 connection entries open (only `name` and `type` are checked), because the
 connector fields depend on the binary.

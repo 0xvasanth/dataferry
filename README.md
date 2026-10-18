@@ -10,7 +10,7 @@ CLI. Each partition commits on its own, so a run that stops halfway resumes
 where it left off and writes nothing twice
 ([decision 0001](docs/decisions/0001-commit-per-partition.md)).
 
-The [user guide](https://0xvasanth.github.io/ferry/) covers every config key,
+The [user guide](https://0xvasanth.github.io/dataferry/) covers every config key,
 the expression language and how runs resume. Each crate's API is on docs.rs
 ([`dataferry`](https://docs.rs/dataferry)).
 
@@ -18,7 +18,7 @@ the expression language and how runs resume. Each crate's API is on docs.rs
 
 **Prebuilt binaries** for Linux (x86_64, aarch64; glibc 2.35 or newer) and
 macOS (x86_64, arm64) are on every
-[GitHub release](https://github.com/0xvasanth/ferry/releases), each with a
+[GitHub release](https://github.com/0xvasanth/dataferry/releases), each with a
 SHA-256 checksum:
 
 ```sh
@@ -37,8 +37,8 @@ cargo install --locked dataferry --version 0.1.0-beta.1
 dataferry needs Rust 1.94 or newer.
 
 ```sh
-git clone https://github.com/0xvasanth/ferry
-cd ferry
+git clone https://github.com/0xvasanth/dataferry
+cd dataferry
 cargo install --locked --path crates/dataferry
 ```
 

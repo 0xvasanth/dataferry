@@ -86,7 +86,7 @@ surface in this release.
 
 ## The acme test connector
 
-[`crates/dataferry/tests/acme-dataferry`](https://github.com/0xvasanth/ferry/tree/main/crates/dataferry/tests/acme-dataferry)
+[`crates/dataferry/tests/acme-dataferry`](https://github.com/0xvasanth/dataferry/tree/main/crates/dataferry/tests/acme-dataferry)
 is a complete third-party binary, written against the public API only and
 used by the tests: it registers its own `postgres` and `mongo` (with the
 built-ins' options, and endpoints that panic when used, which proves

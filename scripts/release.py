@@ -108,7 +108,7 @@ def published(name, version):
     out = subprocess.run(
         [
             "curl", "--silent", "--show-error", "--location", "--max-time", "60",
-            "--retry", "3", "--user-agent", "dataferry-release (github.com/0xvasanth/ferry)",
+            "--retry", "3", "--user-agent", "dataferry-release (github.com/0xvasanth/dataferry)",
             "--write-out", "\n%{http_code}", f"{INDEX}/{index_path(name)}",
         ],
         capture_output=True,

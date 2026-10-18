@@ -8,7 +8,7 @@ rows instead.
 
 ## The worked example
 
-The [`pg-merge` example](https://github.com/0xvasanth/ferry/tree/main/examples/pg-merge)
+The [`pg-merge` example](https://github.com/0xvasanth/dataferry/tree/main/examples/pg-merge)
 builds one `order_summaries` row per order from three Postgres tables:
 
 ```sql
@@ -139,7 +139,7 @@ The column's type is `list(struct(...))`. PostgreSQL stores it as `jsonb`
 
 `unnest: <many alias>` writes one row per joined row: the relational
 version of unnesting an array. The
-[`golden-pg` example](https://github.com/0xvasanth/ferry/tree/main/examples/golden-pg)
+[`golden-pg` example](https://github.com/0xvasanth/dataferry/tree/main/examples/golden-pg)
 reads the quickstart's orders as two Postgres tables and writes the same
 `orders` and `order_items`:
 

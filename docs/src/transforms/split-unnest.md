@@ -19,7 +19,7 @@ The edge cases: `p-2` has an empty `tags` array and a variant marked
 all; the second variant of `p-1` is discontinued; `p-3`'s price has three
 decimal places.
 
-The flow, [`docs/src/examples/catalog/ferry/flows/products.yaml`](https://github.com/0xvasanth/ferry/blob/main/docs/src/examples/catalog/ferry/flows/products.yaml),
+The flow, [`docs/src/examples/catalog/ferry/flows/products.yaml`](https://github.com/0xvasanth/dataferry/blob/main/docs/src/examples/catalog/ferry/flows/products.yaml),
 writes five tables. Taken a target at a time:
 
 ### One row per record

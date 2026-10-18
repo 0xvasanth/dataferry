@@ -80,5 +80,5 @@ These are planned for v0.2.
 - Postgres is the only sink.
 - `LIKE` and `ILIKE` only take a backslash as the `ESCAPE` character.
 
-[Unreleased]: https://github.com/0xvasanth/ferry/compare/v0.1.0-beta.1...HEAD
-[0.1.0-beta.1]: https://github.com/0xvasanth/ferry/releases/tag/v0.1.0-beta.1
+[Unreleased]: https://github.com/0xvasanth/dataferry/compare/v0.1.0-beta.1...HEAD
+[0.1.0-beta.1]: https://github.com/0xvasanth/dataferry/releases/tag/v0.1.0-beta.1

@@ -20,8 +20,8 @@ The example lives in the repository: the config in
 `fixtures/golden/source/orders.json`.
 
 ```sh
-git clone --depth 1 https://github.com/0xvasanth/ferry
-cd ferry
+git clone --depth 1 https://github.com/0xvasanth/dataferry
+cd dataferry
 ```
 
 ## 2. Start the databases
