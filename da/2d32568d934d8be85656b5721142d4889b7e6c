@@ -1,0 +1,28 @@
+docs/src/installation.md
+  s_d80f506c72c404::t_269feb26e53961 8
+RELEASING.md
+  h_7bb0b8336911f0 30-32
+docs/src/extending.md
+  s_d80f506c72c404::t_c0f297abc984b2 99,106,115,172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "da2d32568d934d8be85656b5721142d4889b7e6c",
+  "prompts": {},
+  "humans": {
+    "h_7bb0b8336911f0": {
+      "author": "vasanth <itsparser@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_d80f506c72c404": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1d0a2ad-a08d-48d1-b9b4-3537641f44af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}

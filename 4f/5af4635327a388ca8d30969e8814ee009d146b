@@ -1,0 +1,905 @@
+crates/dataferry/tests/packaging.rs
+  s_d80f506c72c404::t_793f9c377df539 1-4,173-181,183-193,199-200,203-241
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-135,138-193,195-242
+  s_d80f506c72c404::t_6dd39b56686f2e 1-242
+Cargo.toml
+  s_d80f506c72c404::t_4ca307f8c945f1 47-53
+  s_d80f506c72c404::t_c55d34c6d81c71 23
+  s_d80f506c72c404::t_3279741d68ad49 21-22,43-46
+  s_d80f506c72c404::t_6dd39b56686f2e 4-14,20,32-40,42
+crates/dataferry-dsl/Cargo.toml
+  s_d80f506c72c404::t_4ca307f8c945f1 18-25,55
+  s_d80f506c72c404::t_453b7e19ee5c4d 1,4-33,38-56,59,61,63-68,70-73
+  s_d80f506c72c404::t_6dd39b56686f2e 1-73
+crates/dataferry-state/Cargo.toml
+  s_d80f506c72c404::t_4ca307f8c945f1 46
+  s_d80f506c72c404::t_56bffc4366af73 44
+  s_d80f506c72c404::t_453b7e19ee5c4d 1,4-25,28-38,44,46-51
+  s_d80f506c72c404::t_6dd39b56686f2e 1-51
+crates/dataferry-dsl/src/expr/resolve.rs
+  s_d80f506c72c404::t_f304d1a933ee9a 124-125
+  s_d80f506c72c404::t_4ca307f8c945f1 139
+  s_d80f506c72c404::t_453b7e19ee5c4d 2-73,75-306,310-720
+  s_d80f506c72c404::t_6dd39b56686f2e 1-720
+crates/dataferry-connectors/mongo/Cargo.toml
+  s_d80f506c72c404::t_4ca307f8c945f1 21-23
+  s_d80f506c72c404::t_453b7e19ee5c4d 1,4-17,21-32,35-37
+  s_d80f506c72c404::t_6dd39b56686f2e 1-37
+crates/dataferry-core/Cargo.toml
+  s_d80f506c72c404::t_4ca307f8c945f1 22-24
+  s_d80f506c72c404::t_453b7e19ee5c4d 1,4-30,32-33
+  s_d80f506c72c404::t_6dd39b56686f2e 1-33
+.github/workflows/ci.yml
+  s_d80f506c72c404::t_3279741d68ad49 97,100
+  s_d80f506c72c404::t_6dd39b56686f2e 50,63,74,78,88
+crates/dataferry-runtime/Cargo.toml
+  s_d80f506c72c404::t_4ca307f8c945f1 28-31
+  s_d80f506c72c404::t_453b7e19ee5c4d 1,4-23,27-39,42,45-50
+  s_d80f506c72c404::t_6dd39b56686f2e 1-50
+rust-toolchain.toml
+  s_d80f506c72c404::t_3279741d68ad49 3
+.github/dependabot.yml
+  s_d80f506c72c404::t_3279741d68ad49 12-17,19-20,22,30
+crates/dataferry-verify/Cargo.toml
+  s_d80f506c72c404::t_4ca307f8c945f1 22-24,38
+  s_d80f506c72c404::t_453b7e19ee5c4d 1,4-17,22-33,37-43
+  s_d80f506c72c404::t_6dd39b56686f2e 1-43
+crates/dataferry-connectors/postgres/Cargo.toml
+  s_d80f506c72c404::t_4ca307f8c945f1 21-23
+  s_d80f506c72c404::t_453b7e19ee5c4d 1,4-17,21-36,39,42-44
+  s_d80f506c72c404::t_6dd39b56686f2e 1-44
+deny.toml
+  s_d80f506c72c404::t_3279741d68ad49 43-44
+  s_d80f506c72c404::t_6dd39b56686f2e 12
+README.md
+  s_d80f506c72c404::t_56bffc4366af73 312,334,340-343
+  s_d80f506c72c404::t_66a96629aa0112 344
+  s_d80f506c72c404::t_6dd39b56686f2e 1,15,20,23-24,31,40,68-69,76,83,91-92,95-96,102,180-185,190,213-214,217,222,249,256,263,268,270,275,277,281,287,294-303,325,328,333,337
+crates/dataferry-registry/Cargo.toml
+  s_d80f506c72c404::t_4ca307f8c945f1 23-24
+  s_d80f506c72c404::t_453b7e19ee5c4d 1,4-18,20-21,23-32,35-39
+  s_d80f506c72c404::t_6dd39b56686f2e 1-39
+crates/dataferry-dsl/tests/expr.rs
+  s_d80f506c72c404::t_b8f82d4ca495d8 575,585,588,592,606,613-616
+  s_d80f506c72c404::t_057ef4081c5dff 573-574,576-584,586-587,589-591,593-594,601-605,607-612,617-624
+  s_d80f506c72c404::t_e67c180476a76c 595-600
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-14,18-624
+  s_d80f506c72c404::t_6dd39b56686f2e 1-624
+Cargo.lock
+  s_d80f506c72c404::t_35190035971d70 126,128,147,149,161,163,180,182,192,194,214,216,229,231,242,244,258,260,283,285,296,298,309,311,319,321,333,335,453,455,899,901,1377-1379,1401-1403,1407-1409,1433-1435,1456-1458,1468-1470,1496-1498,1517-1519,1529-1531,1554-1556,1564-1566,1575-1577,1594-1596,1616-1618,1633-1635,3225,3227,3237,4300,4302,4310,4312,4316,5691,5693,5700,5702
+  s_d80f506c72c404::t_ddc2846d3c63c2 6,11-14,1130-1374
+crates/dataferry-connectors/postgres/src/sink.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-24,26-53,56-58,61-199,201-214,218-648
+  s_d80f506c72c404::t_6dd39b56686f2e 1-199,201-648
+  s_d80f506c72c404::t_1a518e1f1f1a5c 200
+crates/dataferry-connectors/tls/src/lib.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 2-218
+  s_d80f506c72c404::t_6dd39b56686f2e 1-218
+crates/dataferry/src/lib.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 2-6,8,10,12,15-20,22-48,50-55,57-82,84-139,141-145,147-429
+  s_d80f506c72c404::t_6dd39b56686f2e 1-429
+crates/dataferry-registry/src/registry.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-7,9-539
+  s_d80f506c72c404::t_6dd39b56686f2e 1-539
+crates/dataferry/Cargo.toml
+  s_d80f506c72c404::t_453b7e19ee5c4d 1,4-18,20-21,24-25,29,35-46,48,52,54-65,67
+  s_d80f506c72c404::t_6dd39b56686f2e 1-67
+crates/dataferry-runtime/tests/runner.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-11,14-15,20-147,149-573,575-626,628-825,827-836,839-843,845-846,849-852,856-859,863-876,878-953,955-1051
+  s_d80f506c72c404::t_6dd39b56686f2e 1-1051
+crates/dataferry-dsl/tests/unnest.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-13,21-378
+  s_d80f506c72c404::t_6dd39b56686f2e 1-378
+crates/dataferry-runtime/tests/chaos_harness.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-15,17-271
+  s_d80f506c72c404::t_6dd39b56686f2e 1-271
+crates/dataferry-state/src/lib.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1,3-17,19-26,29-36,38-95
+  s_d80f506c72c404::t_6dd39b56686f2e 1-95
+crates/dataferry-core/tests/transform.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-3,7-215
+  s_d80f506c72c404::t_6dd39b56686f2e 1-215
+crates/dataferry-verify/tests/postgres.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1,3-20,24-30,36-47,49-66,71-91,96-120,122-455,459,461-647
+  s_d80f506c72c404::t_6dd39b56686f2e 1-647
+crates/dataferry-core/tests/target.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 3-95
+  s_d80f506c72c404::t_6dd39b56686f2e 1-95
+crates/dataferry-connectors/mongo/src/convert.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-6,8-11,13-22,26-113,115-456,459-674
+  s_d80f506c72c404::t_6dd39b56686f2e 1-674
+crates/dataferry-connectors/postgres/tests/pg_sink.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-18,24-82,84-114,116-118,120-695,697-706
+  s_d80f506c72c404::t_2ae876d18afa84 696
+  s_d80f506c72c404::t_6dd39b56686f2e 1-695,697-706
+crates/dataferry-dsl/tests/bad_configs.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-9,11-19,21-77,80-82,84-98
+  s_d80f506c72c404::t_6dd39b56686f2e 1-98
+crates/dataferry-registry/tests/common/mod.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-17,21-23,28-613
+  s_d80f506c72c404::t_6dd39b56686f2e 1-613
+crates/dataferry-runtime/tests/dead_letter.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-8,10-20,23-24,28-65,67-383
+  s_d80f506c72c404::t_6dd39b56686f2e 1-383
+crates/dataferry-dsl/src/config/model.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-31,33-46,48-54,56-62,64-96,98-494,496-1311
+  s_d80f506c72c404::t_6dd39b56686f2e 1-1311
+crates/dataferry-verify/src/verify.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-8,13-404,406-426,428-479,481-652,654-806
+  s_d80f506c72c404::t_6dd39b56686f2e 1-806
+crates/dataferry-dsl/src/expect/log.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-12,15-179
+  s_d80f506c72c404::t_6dd39b56686f2e 1-179
+crates/dataferry-connectors/tls/Cargo.toml
+  s_d80f506c72c404::t_453b7e19ee5c4d 1,4-20
+  s_d80f506c72c404::t_6dd39b56686f2e 1-20
+crates/dataferry-dsl/tests/merge_memory.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-4,6-25,28-31,37-324,327-375
+  s_d80f506c72c404::t_6dd39b56686f2e 1-375
+crates/dataferry-registry/src/connector.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-6,8-24,26-37,39-46,48-119,121-274
+  s_d80f506c72c404::t_6dd39b56686f2e 1-274
+crates/dataferry-core/tests/canonical_types.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-3,6-192
+  s_d80f506c72c404::t_6dd39b56686f2e 1-192
+crates/dataferry-dsl/tests/merge.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-22,32-256,258,260-280,282-288,290-828,830-841
+  s_d80f506c72c404::t_6dd39b56686f2e 1-841
+crates/dataferry-dsl/src/compile/key.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-27,30-101
+  s_d80f506c72c404::t_6dd39b56686f2e 1-101
+crates/dataferry-state/tests/postgres.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-14,23-310,312-453
+  s_d80f506c72c404::t_6dd39b56686f2e 1-453
+crates/dataferry-connectors/mongo/src/infer.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-14,16-425
+  s_d80f506c72c404::t_6dd39b56686f2e 1-425
+crates/dataferry-dsl/src/expr/convert.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-15,17-448
+  s_d80f506c72c404::t_6dd39b56686f2e 1-448
+crates/dataferry/src/plan.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 3-19,26-118,120-175,177-202,204-222,225,227-391,393-526
+  s_d80f506c72c404::t_6dd39b56686f2e 1-526
+crates/dataferry/tests/readme_connector.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-8,10-35,37-42,44-52,54,56-62,64-67,69,71-122
+  s_d80f506c72c404::t_6dd39b56686f2e 1-122
+crates/dataferry-dsl/tests/plan.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-2,4-13,17-19,23-24,27-255,257-455,457-1021,1023-1079
+  s_d80f506c72c404::t_6dd39b56686f2e 1-1079
+crates/dataferry-state/tests/common/mod.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-16,20-22,24-26,28-434
+  s_d80f506c72c404::t_6dd39b56686f2e 1-434
+crates/dataferry-verify/src/log.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-17,20-215
+  s_d80f506c72c404::t_6dd39b56686f2e 1-215
+crates/dataferry-dsl/src/config/env.rs
+  s_d80f506c72c404::t_facc3a01506101 1,3-506,508-565
+  s_d80f506c72c404::t_6dd39b56686f2e 1-565
+crates/dataferry-core/tests/key_value.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-6,8-73
+  s_d80f506c72c404::t_6dd39b56686f2e 1-73
+crates/dataferry/README.md
+  s_d80f506c72c404::t_453b7e19ee5c4d 2,4-8,10,12-15,17-23,25-33,40-79,81-82,84-114,116-134
+  s_d80f506c72c404::t_6dd39b56686f2e 1-134
+crates/dataferry/tests/acme-dataferry/tests/library.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 2-8,10,12-14,16-70,72-73,75-76,81-83,85-131,133-181,183-238
+  s_d80f506c72c404::t_6dd39b56686f2e 1-238
+crates/dataferry-verify/tests/write_log.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-5,9-135
+  s_d80f506c72c404::t_6dd39b56686f2e 1-135
+crates/dataferry-dsl/src/typecheck/cast.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-15,17-279,281-412
+  s_d80f506c72c404::t_6dd39b56686f2e 1-412
+crates/dataferry-state/src/postgres.rs
+  s_d80f506c72c404::t_9ef19b2553e7ba 23
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-17,24-591
+  s_d80f506c72c404::t_6dd39b56686f2e 1-591
+crates/dataferry-verify/tests/finalize.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-9,11-19,28-415
+  s_d80f506c72c404::t_6dd39b56686f2e 1-415
+crates/dataferry-verify/tests/common/mod.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-23,27-31,38-266,268-574,576-635
+  s_d80f506c72c404::t_6dd39b56686f2e 1-635
+crates/dataferry-runtime/src/runner.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-8,10-11,14-177,179-182,184-191,193-195,197-203,205-307,309-372,374-551,553-579,581-625
+  s_d80f506c72c404::t_6dd39b56686f2e 1-625
+crates/dataferry-verify/src/report/markdown_tests.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-8,10-390
+  s_d80f506c72c404::t_6dd39b56686f2e 1-390
+crates/dataferry-dsl/tests/merge_pg.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-17,27-297
+  s_d80f506c72c404::t_6dd39b56686f2e 1-297
+crates/dataferry-dsl/tests/validate.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-5,7-296
+  s_d80f506c72c404::t_6dd39b56686f2e 1-296
+crates/dataferry-verify/src/checksum.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-46,49-664,666-769,772-819
+  s_d80f506c72c404::t_6dd39b56686f2e 1-819
+crates/dataferry/tests/readme.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-2,4-62,64-79,81-185,187,189-269,271-287,292-366,368-382,387-401,403-431,433-471,473-480
+  s_d80f506c72c404::t_6dd39b56686f2e 1-480
+crates/dataferry-state/src/testkit.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-3,5-13,15-17,20-695
+  s_d80f506c72c404::t_6dd39b56686f2e 1-695
+crates/dataferry-registry/src/lib.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-10,12-33
+  s_d80f506c72c404::t_6dd39b56686f2e 1-33
+crates/dataferry/src/exit.rs
+  s_d80f506c72c404::t_facc3a01506101 1-6,8-98
+  s_d80f506c72c404::t_6dd39b56686f2e 1-98
+crates/dataferry-connectors/postgres/src/deferred.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-20,28-30,34-37,39-355,357-378,380-402,404-449,451-505,507-618,620-648
+  s_d80f506c72c404::t_1a518e1f1f1a5c 403
+  s_d80f506c72c404::t_6dd39b56686f2e 1-402,404-648
+crates/dataferry-state/src/resume.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-3,7-28,31-69
+  s_d80f506c72c404::t_6dd39b56686f2e 1-69
+crates/dataferry-dsl/src/lib.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 2-9
+  s_d80f506c72c404::t_6dd39b56686f2e 1-9
+crates/dataferry-runtime/src/flow.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-5,7-9,11-113
+  s_d80f506c72c404::t_6dd39b56686f2e 1-113
+crates/dataferry-dsl/tests/expr_purity.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-10,15-205
+  s_d80f506c72c404::t_6dd39b56686f2e 1-205
+crates/dataferry-dsl/src/config/span.rs
+  s_d80f506c72c404::t_facc3a01506101 1-133,135-141,143-242
+  s_d80f506c72c404::t_6dd39b56686f2e 1-242
+crates/dataferry-connectors/mongo/tests/mongo_tls.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-5,8-176
+  s_d80f506c72c404::t_6dd39b56686f2e 1-176
+crates/dataferry-verify/src/assertion.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-21,23-24,26-162
+  s_d80f506c72c404::t_6dd39b56686f2e 1-162
+crates/dataferry-state/src/file.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-23,29-178,180-322,324-326,328-333,335-602
+  s_d80f506c72c404::t_6dd39b56686f2e 1-602
+crates/dataferry/tests/conformance.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 3-5,7-20,27-35,37-211,213-222,224-495
+  s_d80f506c72c404::t_6dd39b56686f2e 1-495
+crates/dataferry-registry/src/state.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-17,19-80,82-135,137-194,196-202
+  s_d80f506c72c404::t_6dd39b56686f2e 1-202
+crates/dataferry-state/tests/file_store.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-7,15-345,347-348,350-396
+  s_d80f506c72c404::t_6dd39b56686f2e 1-396
+crates/dataferry-dsl/tests/dead_letter.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-6,8-18,31-87,89-153,155-217,219-255
+  s_d80f506c72c404::t_6dd39b56686f2e 1-255
+crates/dataferry-dsl/tests/env.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-8,10-290
+  s_d80f506c72c404::t_6dd39b56686f2e 1-290
+crates/dataferry/tests/run.rs
+  s_d80f506c72c404::t_facc3a01506101 2-137,139,141-248,250-312,314-337,339-487,489-548
+  s_d80f506c72c404::t_6dd39b56686f2e 1-548
+crates/dataferry-dsl/src/compile/merge.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-50,54-62,64-76,78-84,86-99,101-172,174-466,468-525,527-537,539-552,554-659,661-693,695-708,710-717
+  s_d80f506c72c404::t_6dd39b56686f2e 1-717
+crates/dataferry-core/tests/contract_suites.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-9,13-374,376-400,402-461
+  s_d80f506c72c404::t_6dd39b56686f2e 1-461
+crates/dataferry-dsl/tests/hash.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-7,9-77,79-450
+  s_d80f506c72c404::t_6dd39b56686f2e 1-450
+crates/dataferry-registry/tests/ui/matching_handles.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-6,8-9
+  s_d80f506c72c404::t_6dd39b56686f2e 1-9
+crates/dataferry-verify/tests/dead_letter.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-18,23-25,30-176,180-538
+  s_d80f506c72c404::t_6dd39b56686f2e 1-538
+crates/dataferry-runtime/tests/observer.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-14,20-273,275-493
+  s_d80f506c72c404::t_6dd39b56686f2e 1-493
+crates/dataferry-verify/src/lib.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-35,37-55
+  s_d80f506c72c404::t_6dd39b56686f2e 1-55
+crates/dataferry-dsl/tests/common/plan.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-9,15-92,94-235,237-264,266-270,272,274,278-303,305-314
+  s_d80f506c72c404::t_6dd39b56686f2e 1-314
+crates/dataferry-connectors/mongo/tests/mongo_connector.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-2,6-120
+  s_d80f506c72c404::t_6dd39b56686f2e 1-120
+crates/dataferry-dsl/tests/common/golden.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-16,20-231
+  s_d80f506c72c404::t_6dd39b56686f2e 1-231
+crates/dataferry/src/targets.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-11,14-41,44-64,66-68
+  s_d80f506c72c404::t_6dd39b56686f2e 1-68
+crates/dataferry-dsl/src/expr/scope.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-11,13-18,20-24,28-240
+  s_d80f506c72c404::t_6dd39b56686f2e 1-240
+crates/dataferry-dsl/src/plan.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-8,10-52,55-104,106-369,372,374-383,385-395,397-415,417-513,515,518-526,529-541,543-640,642-643,645-895
+  s_d80f506c72c404::t_6dd39b56686f2e 1-895
+crates/dataferry-connectors/postgres/src/pool.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-5,8-38
+  s_d80f506c72c404::t_9ef19b2553e7ba 7
+  s_d80f506c72c404::t_6dd39b56686f2e 1-38
+crates/dataferry-dsl/src/typecheck/mod.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-31,34-863
+  s_d80f506c72c404::t_6dd39b56686f2e 1-863
+crates/dataferry/tests/common/mod.rs
+  s_d80f506c72c404::t_facc3a01506101 2-18,20-201,203,205-210,212-279
+  s_d80f506c72c404::t_6dd39b56686f2e 1-279
+crates/dataferry-core/tests/sink_strategy.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 2-78
+  s_d80f506c72c404::t_6dd39b56686f2e 1-78
+crates/dataferry-dsl/tests/depends_on.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-4,6-216
+  s_d80f506c72c404::t_6dd39b56686f2e 1-216
+crates/dataferry-runtime/tests/postgres.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-9,11-32,36-39,48-992
+  s_d80f506c72c404::t_6dd39b56686f2e 1-992
+crates/dataferry-connectors/postgres/tests/pg_tls.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-9,12-265
+  s_d80f506c72c404::t_6dd39b56686f2e 1-265
+crates/dataferry-dsl/tests/expect_pg.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-11,18-46,48-428
+  s_d80f506c72c404::t_6dd39b56686f2e 1-428
+crates/dataferry-connectors/postgres/tests/pg_connector.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-7,13-71,73-204
+  s_d80f506c72c404::t_6dd39b56686f2e 1-204
+crates/dataferry/tests/builtins.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-10,15-57
+  s_d80f506c72c404::t_6dd39b56686f2e 1-57
+crates/dataferry/tests/acme-dataferry/Cargo.toml
+  s_d80f506c72c404::t_453b7e19ee5c4d 4,7-18,22-27,29-32
+  s_d80f506c72c404::t_6dd39b56686f2e 1-32
+crates/dataferry-dsl/src/expect/check.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-5,8-477
+  s_d80f506c72c404::t_6dd39b56686f2e 1-477
+crates/dataferry/tests/plan.rs
+  s_d80f506c72c404::t_facc3a01506101 2-235
+  s_d80f506c72c404::t_6dd39b56686f2e 1-235
+crates/dataferry-dsl/src/compile/side.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-43,45-79,82-191,193-201,203-225,227-238,240-259,261-277,279-284,286-297,304-317,319-328,330-502,504-506,508-510,512-539,541-568,570-639,641-673,675-708,710-794,796-989,992-1183
+  s_d80f506c72c404::t_6dd39b56686f2e 1-1183
+crates/dataferry-verify/tests/checksum.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-9,13-237
+  s_d80f506c72c404::t_6dd39b56686f2e 1-237
+crates/dataferry-state/tests/resume.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1,3-6,11-199
+  s_d80f506c72c404::t_6dd39b56686f2e 1-199
+crates/dataferry-dsl/src/expect/observer.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-16,20-286
+  s_d80f506c72c404::t_6dd39b56686f2e 1-286
+crates/dataferry-connectors/mongo/src/tls.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 2-15,18-190
+  s_d80f506c72c404::t_6dd39b56686f2e 1-190
+crates/dataferry/src/diagnostic.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-9,13-25,27-28,30-427
+  s_d80f506c72c404::t_6dd39b56686f2e 1-427
+crates/dataferry/tests/lease_ttl.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-72,74-128,130-193
+  s_d80f506c72c404::t_6dd39b56686f2e 1-193
+crates/dataferry-verify/src/observer.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-7,11-63,65-184
+  s_d80f506c72c404::t_6dd39b56686f2e 1-184
+crates/dataferry-connectors/mongo/src/lib.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 2-11
+  s_d80f506c72c404::t_6dd39b56686f2e 1-11
+crates/dataferry-connectors/postgres/src/pg_type.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-4,6-213
+  s_d80f506c72c404::t_6dd39b56686f2e 1-213
+crates/dataferry-connectors/postgres/src/source.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 2-12,15-42,44-513
+  s_d80f506c72c404::t_6dd39b56686f2e 1-513
+crates/dataferry-dsl/src/config/deps.rs
+  s_d80f506c72c404::t_facc3a01506101 2-230
+  s_d80f506c72c404::t_6dd39b56686f2e 1-230
+crates/dataferry-core/tests/missing.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-4,6-55
+  s_d80f506c72c404::t_6dd39b56686f2e 1-55
+crates/dataferry-dsl/tests/typecheck.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-14,22-545,547-604
+  s_d80f506c72c404::t_6dd39b56686f2e 1-604
+crates/dataferry-connectors/mongo/src/connector.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1,3-6,10-116
+  s_d80f506c72c404::t_6dd39b56686f2e 1-116
+crates/dataferry-dsl/src/config/hash.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-17,19-31,33-242
+  s_d80f506c72c404::t_6dd39b56686f2e 1-242
+crates/dataferry-registry/tests/secrets.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-5,10-406
+  s_d80f506c72c404::t_6dd39b56686f2e 1-406
+crates/dataferry-runtime/src/testkit/conformance.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1,4-14,16-22,24-28,30-33,35-43,45-68,70-78,80-84,86-88,90-177,179-343,345-444,446-468,470-714,719-738
+  s_d80f506c72c404::t_6dd39b56686f2e 1-738
+crates/dataferry-runtime/tests/common/mod.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-16,20-24,31-496,498-617,619-759
+  s_d80f506c72c404::t_6dd39b56686f2e 1-759
+crates/dataferry/src/namespaces.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-14,16-41,43-45
+  s_d80f506c72c404::t_6dd39b56686f2e 1-45
+crates/dataferry-core/src/lib.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 2-30
+  s_d80f506c72c404::t_6dd39b56686f2e 1-30
+crates/dataferry/src/leases.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 2-30,36-188
+  s_d80f506c72c404::t_6dd39b56686f2e 1-188
+crates/dataferry-connectors/mongo/tests/mongo_source.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-9,15-17,19-675
+  s_d80f506c72c404::t_6dd39b56686f2e 1-675
+crates/dataferry-connectors/postgres/tests/pg_source.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-11,16-386
+  s_d80f506c72c404::t_6dd39b56686f2e 1-386
+crates/dataferry-dsl/tests/expect.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-11,15-18,27-163,165-232,234-639,641-701
+  s_d80f506c72c404::t_6dd39b56686f2e 1-701
+crates/dataferry-connectors/postgres/tests/pg_sink_recovery.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-4,6-12,15-18,20-37,39-505
+  s_d80f506c72c404::t_6dd39b56686f2e 1-505
+crates/dataferry-dsl/src/expr/mod.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-31,33-77,79-91,92-473
+  s_d80f506c72c404::t_6dd39b56686f2e 1-473
+crates/dataferry-registry/tests/state_capable.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-11,13-14,17-342
+  s_d80f506c72c404::t_6dd39b56686f2e 1-342
+crates/dataferry/src/cli.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-5,7-76
+  s_d80f506c72c404::t_6dd39b56686f2e 1-76
+crates/dataferry-registry/src/finalize.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-13,15-18,20-125
+  s_d80f506c72c404::t_6dd39b56686f2e 1-125
+crates/dataferry-dsl/src/expect/assertion.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-6,9-185
+  s_d80f506c72c404::t_6dd39b56686f2e 1-185
+crates/dataferry-registry/tests/schema.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-9,13-373
+  s_d80f506c72c404::t_6dd39b56686f2e 1-373
+crates/dataferry/tests/pg_merge.rs
+  s_d80f506c72c404::t_facc3a01506101 2-21,23-247
+  s_d80f506c72c404::t_6dd39b56686f2e 1-247
+crates/dataferry-runtime/src/budget.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-8,10-121,123-179
+  s_d80f506c72c404::t_6dd39b56686f2e 1-179
+crates/dataferry-registry/src/rejected.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-18,20-26,28-118,121-184
+  s_d80f506c72c404::t_6dd39b56686f2e 1-184
+crates/dataferry-dsl/src/expr/functions.rs
+  s_d80f506c72c404::t_9d09703e45d9f9 1-29,31-371
+  s_d80f506c72c404::t_6dd39b56686f2e 1-371
+crates/dataferry/tests/acme-dataferry/tests/validate.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 2-136,138-356,358-360
+  s_d80f506c72c404::t_6dd39b56686f2e 1-360
+crates/dataferry-verify/tests/observer.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-9,13-16,20-314,316-318
+  s_d80f506c72c404::t_6dd39b56686f2e 1-318
+crates/dataferry-runtime/src/error.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 3-26,28-47
+  s_d80f506c72c404::t_6dd39b56686f2e 1-47
+crates/dataferry-registry/src/testkit.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-4,6-13,16-398
+  s_d80f506c72c404::t_6dd39b56686f2e 1-398
+crates/dataferry-registry/tests/ui/handles.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-5,7-93
+  s_d80f506c72c404::t_6dd39b56686f2e 1-93
+crates/dataferry-registry/tests/ui/mismatched_pool.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-3,5-6
+  s_d80f506c72c404::t_6dd39b56686f2e 1-6
+crates/dataferry-registry/tests/ui/mismatched_conn.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-3,5-6
+  s_d80f506c72c404::t_6dd39b56686f2e 1-6
+crates/dataferry-verify/tests/scoped.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-12,19-36,38-99,101-127,129-194,201-211
+  s_d80f506c72c404::t_6dd39b56686f2e 1-211
+crates/dataferry-registry/tests/contract_suite.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-10,15-250
+  s_d80f506c72c404::t_6dd39b56686f2e 1-250
+crates/dataferry-runtime/src/work.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-8,10-13,17-670
+  s_d80f506c72c404::t_6dd39b56686f2e 1-670
+crates/dataferry-core/tests/partition.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 2-111
+  s_d80f506c72c404::t_6dd39b56686f2e 1-111
+crates/dataferry-connectors/postgres/src/tls.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1,3-20,23-487
+  s_d80f506c72c404::t_6dd39b56686f2e 1-487
+crates/dataferry-dsl/tests/schema.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-9,11-213,215-230
+  s_d80f506c72c404::t_6dd39b56686f2e 1-230
+crates/dataferry-verify/src/target.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-8,10-218
+  s_d80f506c72c404::t_6dd39b56686f2e 1-218
+crates/dataferry-runtime/src/observe.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-13,16-66
+  s_d80f506c72c404::t_6dd39b56686f2e 1-66
+crates/dataferry-connectors/postgres/src/json.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-18,20-323
+  s_d80f506c72c404::t_6dd39b56686f2e 1-323
+crates/dataferry-dsl/src/expect/parse.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-4,6-12,13-686
+  s_d80f506c72c404::t_6dd39b56686f2e 1-686
+crates/dataferry/tests/acme-dataferry/src/main.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-3,5
+  s_d80f506c72c404::t_6dd39b56686f2e 1-5
+crates/dataferry-dsl/tests/loader.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-4,6-538
+  s_d80f506c72c404::t_6dd39b56686f2e 1-538
+crates/dataferry-verify/src/postgres.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-7,11-13,15-227,229-289
+  s_d80f506c72c404::t_6dd39b56686f2e 1-289
+crates/dataferry/tests/config_reference.rs
+  s_d80f506c72c404::t_facc3a01506101 2-207,209-223,225-307
+  s_d80f506c72c404::t_6dd39b56686f2e 1-307
+crates/dataferry-verify/src/report.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-13,16-81,83-319,321-457,459-514
+  s_d80f506c72c404::t_6dd39b56686f2e 1-514
+crates/dataferry/src/run.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 2-24,26-35,43-413,415-456,458-465,467-472,474-596,598-638,641-659,661-681,683-693,695-766,768-770
+  s_d80f506c72c404::t_6dd39b56686f2e 1-770
+crates/dataferry-registry/tests/third_party.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-2,4-8,12-14,16-197,199-710
+  s_d80f506c72c404::t_6dd39b56686f2e 1-710
+crates/dataferry/tests/golden_demo.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-46,48-61,72-77,79-80,82-234
+  s_d80f506c72c404::t_6dd39b56686f2e 1-234
+crates/dataferry-connectors/postgres/src/lib.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 2-20
+  s_d80f506c72c404::t_6dd39b56686f2e 1-20
+crates/dataferry/src/schema.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 2-8,11-87,89-100
+  s_d80f506c72c404::t_6dd39b56686f2e 1-100
+crates/dataferry/tests/unverified.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-11,16-39,41-123
+  s_d80f506c72c404::t_6dd39b56686f2e 1-123
+crates/dataferry-connectors/mongo/src/source.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 2-6,9-30,32-57,59-562
+  s_d80f506c72c404::t_6dd39b56686f2e 1-562
+crates/dataferry-core/tests/co_partition.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-4,8-248
+  s_d80f506c72c404::t_6dd39b56686f2e 1-248
+crates/dataferry-dsl/tests/compile.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-13,22-469,472-556
+  s_d80f506c72c404::t_6dd39b56686f2e 1-556
+crates/dataferry/tests/acme-dataferry/tests/common/mod.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 2-45,47-48,50-134
+  s_d80f506c72c404::t_6dd39b56686f2e 1-134
+crates/dataferry-registry/src/ddl.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-2,4-8,10,12-20
+  s_d80f506c72c404::t_6dd39b56686f2e 1-20
+crates/dataferry-dsl/src/config/schema.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-5,7-59,61-98
+  s_d80f506c72c404::t_6dd39b56686f2e 1-98
+crates/dataferry-dsl/tests/keys.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-2,6-136
+  s_d80f506c72c404::t_6dd39b56686f2e 1-136
+crates/dataferry-runtime/src/lib.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-36,38-41,46-65
+  s_d80f506c72c404::t_6dd39b56686f2e 1-65
+crates/dataferry-runtime/src/dlq.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-20,24-297,299-300
+  s_d80f506c72c404::t_6dd39b56686f2e 1-300
+crates/dataferry-dsl/tests/pg/mod.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-2,4-19,23-26,36-540
+  s_d80f506c72c404::t_6dd39b56686f2e 1-540
+crates/dataferry/src/main.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-2,4-7
+  s_d80f506c72c404::t_6dd39b56686f2e 1-7
+crates/dataferry/tests/stock.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 2-17,19-33,35-155,157-168,170-318,321-327,329-385
+  s_d80f506c72c404::t_6dd39b56686f2e 1-385
+crates/dataferry-dsl/src/expect/value.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-15,17-599
+  s_d80f506c72c404::t_6dd39b56686f2e 1-599
+crates/dataferry-dsl/src/expect/mod.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-71,74-141
+  s_d80f506c72c404::t_6dd39b56686f2e 1-141
+crates/dataferry-dsl/tests/run.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-13,16-18,23-226
+  s_d80f506c72c404::t_6dd39b56686f2e 1-226
+crates/dataferry-core/tests/entity.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1,5-92
+  s_d80f506c72c404::t_6dd39b56686f2e 1-92
+crates/dataferry/src/validate.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 2-11,18-567
+  s_d80f506c72c404::t_6dd39b56686f2e 1-567
+crates/dataferry-connectors/postgres/src/columns.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-12,14-210
+  s_d80f506c72c404::t_6dd39b56686f2e 1-210
+crates/dataferry-runtime/src/testkit/chaos.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-47,50-115,117-460
+  s_d80f506c72c404::t_6dd39b56686f2e 1-460
+crates/dataferry-runtime/tests/memory.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-14,17-20,24-259
+  s_d80f506c72c404::t_6dd39b56686f2e 1-259
+crates/dataferry-connectors/postgres/tests/common/mod.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-2,4-13,18-20,24-128,130-349
+  s_d80f506c72c404::t_6dd39b56686f2e 1-349
+crates/dataferry/src/builtins.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-15,18-25,27-28
+  s_d80f506c72c404::t_6dd39b56686f2e 1-28
+crates/dataferry-runtime/tests/throttle.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-11,15-173
+  s_d80f506c72c404::t_6dd39b56686f2e 1-173
+crates/dataferry-dsl/src/compile/mod.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 2-21,23-66,70-72,75-93,95-429,431-472,474-488,490-508,510-555,557-568,572-599,601-653,655-666,668-671,673-675,677-680,682-686,688-696,698-704,706-749,755-790,792-859,861-886,888-964,966-977,979-1016,1018-1124,1126-1166,1172-1204,1206-1252,1254-1284,1286-1305,1307-1387,1390-1461,1463-1493,1495-1547
+  s_d80f506c72c404::t_6dd39b56686f2e 1-1547
+crates/dataferry/tests/acme-dataferry/src/lib.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 3-5,7-13,16-19,25-36,38-39,41-344
+  s_d80f506c72c404::t_6dd39b56686f2e 1-344
+crates/dataferry-connectors/postgres/src/ddl.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-10,21,25-27,32-164,210-225,227-233,245-324
+  s_d80f506c72c404::t_6dd39b56686f2e 1-22,25-170,172-324
+  s_d80f506c72c404::t_2ae876d18afa84 23-24,171
+crates/dataferry-dsl/src/types.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1-7,9-234
+  s_d80f506c72c404::t_6dd39b56686f2e 1-234
+crates/dataferry-connectors/postgres/src/connector.rs
+  s_d80f506c72c404::t_453b7e19ee5c4d 1,3-11,15-16,18-243
+  s_d80f506c72c404::t_6dd39b56686f2e 1-243
+examples/bad/wrong-value-type/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+crates/dataferry-registry/src/schema.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-240
+crates/dataferry-core/src/missing.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-78
+crates/dataferry-core/src/checkpoint.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-17
+.gitignore
+  s_d80f506c72c404::t_6dd39b56686f2e 2
+examples/bad/env-file-reference/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+docs/src/running.md
+  s_d80f506c72c404::t_a7db5b8b025288 77
+crates/dataferry-runtime/src/testkit/mod.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-4
+crates/dataferry-core/src/target.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-83
+crates/dataferry-dsl/src/config/yaml.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-473
+crates/dataferry-core/src/testkit/mem_source.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-196
+examples/bad/undefined-connection/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+docs/src/examples/fail-fast/expected.txt
+  s_d80f506c72c404::t_a7db5b8b025288 6
+crates/dataferry-dsl/tests/common/mod.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-48
+.github/workflows/docs.yml
+  s_d80f506c72c404::t_2ae876d18afa84 63
+examples/bad/include-missing/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+examples/bad/env-in-flow/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+examples/bad/depends-on-cycle/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+docs/scripts/check-snippets.sh
+  s_d80f506c72c404::t_de88112892846a 35,59-60
+examples/bad/flow-runtime-not-overridable/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+crates/dataferry-runtime/src/throttle.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-137
+docs/src/extending.md
+  s_d80f506c72c404::t_a7db5b8b025288 34,64,75,89
+crates/dataferry-core/src/testkit/sink_contract.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-138
+examples/bad/version-missing/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+examples/bad/unknown-runtime-key/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+examples/bad/duplicate-key/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+examples/golden-pg/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+crates/dataferry-core/src/partition.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-319
+examples/bad/upsert-without-key/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+examples/bad/join-without-cardinality/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+crates/dataferry/tests/fixtures/fake/ferry/flows/items.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 1-9
+examples/bad/README.md
+  s_d80f506c72c404::t_6dd39b56686f2e 4,22-23
+fixtures/golden/README.md
+  s_d80f506c72c404::t_6dd39b56686f2e 13,42
+crates/dataferry-registry/tests/ui/mismatched_conn.stderr
+  s_d80f506c72c404::t_6dd39b56686f2e 1-21
+crates/dataferry-runtime/src/settings.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-101
+crates/dataferry-core/src/source.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-45
+crates/dataferry-connectors/postgres/tests/pg_sink_concurrency.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-17,21-36,38-40,42-66,68-230
+  s_d80f506c72c404::t_2ae876d18afa84 18-20,37,41,67
+examples/README.md
+  s_d80f506c72c404::t_6dd39b56686f2e 7-8
+schemas/v1/connections.schema.json
+  s_d80f506c72c404::t_6dd39b56686f2e 15,33,45
+crates/dataferry-core/tests/golden_fixture.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-120
+crates/dataferry-registry/tests/handle_types.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-11
+crates/dataferry-registry/tests/ui/mismatched_pool.stderr
+  s_d80f506c72c404::t_6dd39b56686f2e 1-43
+crates/dataferry-registry/src/secret.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-280
+crates/dataferry-connectors/mongo/tests/container_smoke.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-30
+crates/dataferry-connectors/postgres/src/decode.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-202
+crates/dataferry-core/src/testkit/mem_sink.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-215
+crates/dataferry-dsl/tests/examples.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-153
+examples/bad/unknown-connection-type/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+examples/bad/yaml-syntax/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+crates/dataferry-dsl/src/config/mod.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-66
+crates/dataferry-core/src/transform.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-212
+examples/bad/flows-in-ferry-yaml/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+examples/golden/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+examples/golden/README.md
+  s_d80f506c72c404::t_6dd39b56686f2e 22-23,25,28,36,66,68
+docs/src/examples/max-errors/expected.txt
+  s_d80f506c72c404::t_a7db5b8b025288 6
+examples/bad/version-unsupported/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+docs/src/examples/bad/missing-env/validate.txt
+  s_d80f506c72c404::t_a7db5b8b025288 6
+docs/config-reference.md
+  s_d80f506c72c404::t_6dd39b56686f2e 7,10,14-15,48,53,132,185,192
+crates/dataferry-core/src/types.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-230
+crates/dataferry-connectors/postgres/src/encode.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-410
+crates/dataferry-core/src/error.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-50
+examples/bad/empty-flow-file/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+examples/bad/include-outside-ferry-yaml/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+schemas/v1/flows.schema.json
+  s_d80f506c72c404::t_6dd39b56686f2e 360,372
+crates/dataferry-core/src/entity.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-158
+examples/bad/depends-on-unknown/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+examples/bad/depends-on-self/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+crates/dataferry/tests/fixtures/fake/ferry/connections.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 1-4
+crates/dataferry/tests/fixtures/fake/ferry/ferry.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 1-4
+crates/dataferry-dsl/src/config/error.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-213
+examples/bad/duplicate-flow-name/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+crates/dataferry-dsl/src/config/validate.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-503
+examples/bad/entity-without-connection/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+schemas/README.md
+  s_d80f506c72c404::t_6dd39b56686f2e 4,16,24,51,55
+examples/bad/missing-env/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+crates/dataferry-connectors/mongo/src/decimal.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-171
+scripts/check-examples.sh
+  s_d80f506c72c404::t_6dd39b56686f2e 2,6,11,13,55,75
+crates/dataferry-connectors/postgres/tests/container_smoke.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-23
+schemas/v1/runtime.schema.json
+  s_d80f506c72c404::t_6dd39b56686f2e 134,143
+examples/ci.env
+  s_d80f506c72c404::t_6dd39b56686f2e 2
+crates/dataferry-core/src/lease.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-18
+crates/dataferry-dsl/tests/expr_purity.proptest-regressions
+  s_d80f506c72c404::t_6dd39b56686f2e 1-7
+crates/dataferry-core/src/sink.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-123
+crates/dataferry-dsl/src/config/de.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-428
+crates/dataferry-core/src/testkit/mod.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-17
+crates/dataferry-dsl/src/config/load.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-689
+examples/golden/demo.sh
+  s_d80f506c72c404::t_6dd39b56686f2e 9-10,13,28,83,86,89,97
+crates/dataferry-core/src/testkit/source_contract.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-148
+examples/bad/state-not-state-capable/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+crates/dataferry-dsl/src/expr/error.rs
+  s_d80f506c72c404::t_6dd39b56686f2e 1-168
+schemas/v1/ferry.schema.json
+  s_d80f506c72c404::t_6dd39b56686f2e 16,38
+examples/bad/connection-description/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+examples/bad/duplicate-connection-name/ferry/runtime.yaml
+  s_d80f506c72c404::t_6dd39b56686f2e 13
+crates/dataferry-dsl/tests/snapshots/bad@connection-description.snap
+  s_d80f506c72c404::t_942aec3ed37223 2
+crates/dataferry-dsl/tests/snapshots/bad@depends-on-cycle.snap
+  s_d80f506c72c404::t_4135366c109229 2
+crates/dataferry-dsl/tests/snapshots/bad@depends-on-self.snap
+  s_d80f506c72c404::t_44040cd7bbc236 2
+crates/dataferry-dsl/tests/snapshots/bad@depends-on-unknown.snap
+  s_d80f506c72c404::t_82a0bfc1483b67 2
+crates/dataferry-dsl/tests/snapshots/bad@duplicate-connection-name.snap
+  s_d80f506c72c404::t_0e1cbef96cf183 2
+crates/dataferry-dsl/tests/snapshots/bad@duplicate-flow-name.snap
+  s_d80f506c72c404::t_acfe084122f275 2
+crates/dataferry-dsl/tests/snapshots/bad@duplicate-key.snap
+  s_d80f506c72c404::t_96a675d3469047 2
+crates/dataferry-dsl/tests/snapshots/bad@empty-flow-file.snap
+  s_d80f506c72c404::t_8a07fee0d71942 2
+crates/dataferry-dsl/tests/snapshots/bad@entity-without-connection.snap
+  s_d80f506c72c404::t_ed5753a854f1c5 2
+crates/dataferry-dsl/tests/snapshots/bad@env-file-reference.snap
+  s_d80f506c72c404::t_b6803b9daf3f2e 2
+crates/dataferry-dsl/tests/snapshots/bad@env-in-flow.snap
+  s_d80f506c72c404::t_99a947457fcfb7 2
+crates/dataferry-dsl/tests/snapshots/bad@flow-runtime-not-overridable.snap
+  s_d80f506c72c404::t_ad8192c7c752a4 2
+crates/dataferry-dsl/tests/snapshots/bad@flows-in-ferry-yaml.snap
+  s_d80f506c72c404::t_e3dc64ad8fd7da 2
+crates/dataferry-dsl/tests/snapshots/bad@include-missing.snap
+  s_d80f506c72c404::t_60b04fd5e9cc5f 2
+crates/dataferry-dsl/tests/snapshots/bad@include-outside-ferry-yaml.snap
+  s_d80f506c72c404::t_08447d8f028d77 2
+crates/dataferry-dsl/tests/snapshots/bad@join-without-cardinality.snap
+  s_d80f506c72c404::t_05cd317a5330c7 2
+crates/dataferry-dsl/tests/snapshots/bad@missing-env.snap
+  s_d80f506c72c404::t_a88f257165cd75 2,6
+crates/dataferry-dsl/tests/snapshots/bad@undefined-connection.snap
+  s_d80f506c72c404::t_edcfac7c4f6b13 2
+crates/dataferry-dsl/tests/snapshots/bad@unknown-runtime-key.snap
+  s_d80f506c72c404::t_d71e2e939a187b 2
+crates/dataferry-dsl/tests/snapshots/bad@upsert-without-key.snap
+  s_d80f506c72c404::t_0cbf113b01140e 2
+crates/dataferry-dsl/tests/snapshots/bad@version-missing.snap
+  s_d80f506c72c404::t_16b42a4822b07c 2
+crates/dataferry-dsl/tests/snapshots/bad@version-unsupported.snap
+  s_d80f506c72c404::t_bc4f7da4ae8acf 2,5
+crates/dataferry-dsl/tests/snapshots/bad@wrong-value-type.snap
+  s_d80f506c72c404::t_3ce1acd6a616ab 2
+crates/dataferry-dsl/tests/snapshots/bad@yaml-syntax.snap
+  s_d80f506c72c404::t_15b0d23b02ea10 2
+crates/dataferry-dsl/tests/snapshots/typecheck__mistake_lossy_narrowing_without_opt_in.snap
+  s_d80f506c72c404::t_9f71e272742846 2
+crates/dataferry-dsl/tests/snapshots/typecheck__mistake_misspelled_field.snap
+  s_d80f506c72c404::t_e17855734e4557 2
+crates/dataferry-dsl/tests/snapshots/typecheck__mistake_reserved_name_without_its_sigil.snap
+  s_d80f506c72c404::t_dd997f5bdcd7f7 2
+crates/dataferry-dsl/tests/snapshots/typecheck__mistake_text_declared_as_a_number.snap
+  s_d80f506c72c404::t_a36a93f0d6dc09 2
+crates/dataferry-dsl/tests/snapshots/typecheck__mistake_where_that_is_not_a_condition.snap
+  s_d80f506c72c404::t_068f9f8ed17973 2
+crates/dataferry/tests/acme-dataferry/tests/snapshots/stderr@missing-env.snap
+  s_d80f506c72c404::t_7fa6823cd24399 2,10
+crates/dataferry/tests/acme-dataferry/tests/snapshots/stderr@state-not-state-capable.snap
+  s_d80f506c72c404::t_9aac0f89f6a281 2
+crates/dataferry/tests/acme-dataferry/tests/snapshots/stderr@unknown-connection-type.snap
+  s_d80f506c72c404::t_3d2b716e50a389 2
+crates/dataferry/tests/acme-dataferry/tests/snapshots/stderr@yaml-syntax.snap
+  s_d80f506c72c404::t_fe853a261f0165 2
+crates/dataferry/tests/snapshots/pg_merge__pg_merge_plan.snap
+  s_d80f506c72c404::t_a3d3e38da62931 2
+crates/dataferry/tests/snapshots/plan__golden_plan.snap
+  s_d80f506c72c404::t_907bc295727d6e 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4f5af4635327a388ca8d30969e8814ee009d146b",
+  "prompts": {},
+  "sessions": {
+    "s_d80f506c72c404": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1d0a2ad-a08d-48d1-b9b4-3537641f44af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
