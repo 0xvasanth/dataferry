@@ -46,7 +46,7 @@
 //! flow `where:`: `one` joins become `<alias>.<field>` columns of the
 //! driver record, and `many` joins feed `nest:` columns and `unnest:
 //! <alias>` targets. A duplicate match on a `one` join rejects the record.
-//! [`merge`] has the rules and the two strategies (co-partitioned
+//! The `merge` module has the rules and the two strategies (co-partitioned
 //! streaming, or staging), which [`FlowPlan::joins`] shows.
 
 pub mod key;

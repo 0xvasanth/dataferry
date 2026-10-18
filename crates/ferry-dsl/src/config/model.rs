@@ -1,4 +1,5 @@
-//! The config model: one struct per file kind and the merged [`Config`],
+//! The config model: one struct per file kind and the merged
+//! [`Config`](super::Config),
 //! exactly as 0003 §1 defines the grammar.
 //!
 //! Unknown keys are errors everywhere (`deny_unknown_fields`). Expressions
@@ -500,7 +501,7 @@ impl JsonSchema for Connection {
 }
 
 /// A connection field as written, with the location of every value. The
-/// registry gets it as JSON ([`RawValue::to_json`]).
+/// registry gets it as JSON ([`RawKind::to_json`]).
 pub type RawValue = Spanned<RawKind>;
 
 #[derive(Clone, Debug)]

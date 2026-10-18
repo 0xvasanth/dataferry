@@ -1,0 +1,45 @@
+# cargo-deny policy, checked by the `deny` CI job (`cargo deny check`).
+
+[graph]
+all-features = true
+
+[advisories]
+# Fail on any RustSec vulnerability; yanked crates fail too.
+yanked = "deny"
+ignore = []
+
+[licenses]
+# Permissive licenses only (ferry itself is Apache-2.0). Crates offering
+# a choice (e.g. "MIT OR LGPL-2.1-or-later") pass on the permissive one.
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "CC0-1.0",
+    "CDLA-Permissive-2.0",
+    "ISC",
+    "MIT",
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
+]
+confidence-threshold = 0.9
+
+[bans]
+# Duplicate versions are worth knowing about but not worth failing CI:
+# the arrow/DataFusion tree pulls several unavoidably.
+multiple-versions = "warn"
+wildcards = "deny"
+# Workspace path dependencies carry versions (for packaging), so they are
+# not wildcards; this keeps them allowed.
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+# DataFusion is pinned to a main-branch commit until it releases on
+# arrow 60 (README, Publishing).
+allow-git = ["https://github.com/apache/datafusion"]

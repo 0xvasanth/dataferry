@@ -268,7 +268,7 @@ fn deserialization_errors_never_quote_a_secret() {
     // A secret that deserialized fine, and a later field that didn't: the
     // error names the bad field and doesn't carry the secret.
     for fields in [
-        json!({ "url": url(), "token": TOKEN, "port": format!("{TOKEN}") }),
+        json!({ "url": url(), "token": TOKEN, "port": TOKEN.to_string() }),
         json!({ "port": TOKEN, "url": url(), "token": TOKEN }),
     ] {
         let err = registry.build(&raw(fields), Roles::SOURCE).unwrap_err();
