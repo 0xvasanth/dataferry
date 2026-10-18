@@ -6,6 +6,8 @@
     scripts/release.py order                     publishable crates, dependencies first
     scripts/release.py publish [--dry-run]       `cargo publish` each, skipping versions
                                                  crates.io already has
+    scripts/release.py verify [--index-only]     every crate is on crates.io at this
+                                                 version and its docs.rs build passed
 
 The publish order comes from `cargo metadata`, so a new crate is published
 in the right place without editing this file. Safe to re-run after a
@@ -29,6 +31,12 @@ INDEX = "https://index.crates.io"
 # minutes, and answers 429 Too Many Requests in between.
 RATE_LIMIT_WAIT = int(os.environ.get("RELEASE_RATE_LIMIT_WAIT", "660"))
 RATE_LIMIT_ATTEMPTS = 8
+DOCS_RS = "https://docs.rs"
+USER_AGENT = "dataferry-release (github.com/0xvasanth/dataferry)"
+# How long `verify` waits for the index and for docs.rs, which queues builds.
+INDEX_WAIT = int(os.environ.get("RELEASE_INDEX_WAIT", "600"))
+DOCS_WAIT = int(os.environ.get("RELEASE_DOCS_WAIT", "3600"))
+POLL = 30
 
 
 def fail(message):
@@ -102,26 +110,98 @@ def index_path(name):
     return f"{name[:2]}/{name[2:4]}/{name}"
 
 
-def published(name, version):
-    """Whether crates.io already has `name` at `version` (yanked or not)."""
+def published(name, version, strict=True):
+    """Whether crates.io already has `name` at `version` (yanked or not).
+    A failed lookup stops the script, or with `strict=False` returns None,
+    for callers that poll and will ask again."""
     # curl rather than urllib: it falls back from IPv6 to IPv4 at once.
     out = subprocess.run(
         [
             "curl", "--silent", "--show-error", "--location", "--max-time", "60",
-            "--retry", "3", "--user-agent", "dataferry-release (github.com/0xvasanth/dataferry)",
+            "--retry", "3", "--user-agent", USER_AGENT,
             "--write-out", "\n%{http_code}", f"{INDEX}/{index_path(name)}",
         ],
         capture_output=True,
         text=True,
     )
     body, _, status = out.stdout.rpartition("\n")
-    if out.returncode != 0:
-        fail(f"crates.io index lookup for {name} failed: {out.stderr.strip()}")
+    if out.returncode != 0 or status not in ("200", "404"):
+        if not strict:
+            return None
+        detail = out.stderr.strip() if out.returncode != 0 else f"HTTP {status}"
+        fail(f"crates.io index lookup for {name} failed: {detail}")
     if status == "404":
         return False
-    if status != "200":
-        fail(f"crates.io index lookup for {name} failed: HTTP {status}")
-    return any(json.loads(line)["vers"] == version for line in body.splitlines() if line.strip())
+    try:
+        return any(json.loads(line)["vers"] == version for line in body.splitlines() if line.strip())
+    except (ValueError, KeyError, TypeError):
+        if not strict:
+            return None
+        fail(f"crates.io index lookup for {name} returned an unreadable entry")
+
+
+def docs_status(name, version):
+    """docs.rs's build result for `name` at `version`: True, False, or None
+    while it hasn't built it yet."""
+    out = subprocess.run(
+        [
+            "curl", "--silent", "--location", "--max-time", "60", "--retry", "3",
+            "--user-agent", USER_AGENT, "--write-out", "\n%{http_code}",
+            f"{DOCS_RS}/crate/{name}/{version}/status.json",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    body, _, status = out.stdout.rpartition("\n")
+    if out.returncode != 0 or status != "200":
+        return None
+    try:
+        data = json.loads(body)
+        # docs.rs reads the version as a semver requirement and may answer
+        # for another one (a later 0.1.x), which says nothing about ours.
+        if data.get("version") != version:
+            return None
+        return bool(data.get("doc_status"))
+    except (ValueError, AttributeError):
+        return None
+
+
+def wait_for(what, names, check, timeout):
+    """Polls `check(name)` for every name until each returns True, failing
+    on False or once `timeout` seconds pass with some still None."""
+    pending, deadline = list(names), time.monotonic() + timeout
+    while True:
+        still = []
+        for name in pending:
+            result = check(name)
+            if result is True:
+                print(f"ok       {name}: {what}", flush=True)
+            elif result is False:
+                fail(f"{name}: {what} failed")
+            else:
+                still.append(name)
+        if not still:
+            return
+        if time.monotonic() > deadline:
+            fail(f"gave up waiting for {what}: {', '.join(still)}")
+        print(f"waiting  {what}: {', '.join(still)}", flush=True)
+        pending = still
+        time.sleep(POLL)
+
+
+def verify(meta, docs=True):
+    """Every publishable crate is on crates.io at the workspace version, and
+    (unless `docs` is false) docs.rs built its documentation."""
+    version, names = workspace_version(meta), order(meta)
+    wait_for(
+        f"in the crates.io index at {version}",
+        names,
+        lambda name: True if published(name, version, strict=False) else None,
+        INDEX_WAIT,
+    )
+    if not docs:
+        return
+    wait_for(f"docs.rs build of {version}", names, lambda name: docs_status(name, version), DOCS_WAIT)
 
 
 def publish(name, version):
@@ -207,6 +287,8 @@ def main(args):
                 continue
             print(f"publish  {name} {version}", flush=True)
             publish(name, version)
+    elif command == "verify" and rest in ([], ["--index-only"]):
+        verify(meta, docs=rest != ["--index-only"])
     else:
         fail(__doc__.strip())
 

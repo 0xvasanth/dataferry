@@ -3,7 +3,9 @@ name: Release
 # Pushing a `v*` tag (v0.1.0-beta.1) releases that version: binaries for
 # four targets, a GitHub Release with the CHANGELOG section as its notes
 # (a pre-release when the version has a `-` suffix), then every crate on
-# crates.io in dependency order. RELEASING.md has the whole procedure.
+# crates.io in dependency order, then a check that the crates are live,
+# `cargo install` works and docs.rs built them. RELEASING.md has the whole
+# procedure.
 #
 # Every job is safe to re-run: the release's assets are replaced, and
 # crates already on crates.io at this version are skipped.
@@ -25,10 +27,11 @@ env:
 jobs:
   # Fails before anything is built or published: the tag must match the
   # workspace version, CHANGELOG.md must have that version's section, the
-  # user guide must be live, and the crates.io token must be there.
+  # user guide must be live, the crates.io token must be there, and every
+  # crate must build from the tarball `cargo publish` would upload.
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 60
     outputs:
       version: ${{ steps.version.outputs.version }}
       prerelease: ${{ steps.version.outputs.prerelease }}
@@ -64,6 +67,11 @@ jobs:
             echo "::error::the CARGO_REGISTRY_TOKEN repository secret is not set (RELEASING.md)"
             exit 1
           fi
+      - uses: Swatinem/rust-cache@v2
+      # The same tarballs `cargo publish` uploads, each built on its own
+      # against its packaged dependencies, so a crate that can't publish
+      # stops the release before the GitHub Release exists.
+      - run: cargo package --workspace --locked --exclude acme-dataferry
       - uses: actions/upload-artifact@v7
         with:
           name: notes
@@ -183,3 +191,38 @@ jobs:
       - run: scripts/release.py publish
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  # Proves the release from the outside, as a user gets it: every crate is
+  # in the crates.io index at this version, `cargo install` from crates.io
+  # gives a working binary, and docs.rs built each crate's documentation.
+  # Nothing here publishes, so a failure is safe to investigate and re-run.
+  verify:
+    needs: [check, publish]
+    runs-on: ubuntu-latest
+    # Up to 10 minutes for the index, a from-scratch `cargo install` of
+    # DataFusion, and up to an hour for docs.rs's queue.
+    timeout-minutes: 150
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - run: rustup toolchain install
+      - name: Every crate is on crates.io
+        run: scripts/release.py verify --index-only
+      - name: cargo install from crates.io
+        run: |
+          cargo install dataferry --version "$VERSION" --locked --root "$RUNNER_TEMP/install"
+          out=$("$RUNNER_TEMP/install/bin/dataferry" --version)
+          echo "$out"
+          if [[ $out != "dataferry $VERSION" ]]; then
+            echo "::error::expected \`dataferry $VERSION\`, got \`$out\`"
+            exit 1
+          fi
+          # The installed binary reads a real config, with the CI values
+          # for its connection variables (it doesn't connect).
+          mapfile -t ci_env < <(grep -v -e '^#' -e '^$' examples/ci.env)
+          env -i "PATH=$PATH" "${ci_env[@]}" \
+            "$RUNNER_TEMP/install/bin/dataferry" --config examples/golden/ferry validate
+      - name: docs.rs built every crate
+        run: scripts/release.py verify
+
