@@ -1,0 +1,29 @@
+deny.toml
+  s_033fe7f8d5ab89::t_bf10655f4f9dc2 1-45
+.github/workflows/ci.yml
+  s_033fe7f8d5ab89::t_6fb2698650adb9 15-16,18
+  s_033fe7f8d5ab89::t_409cdf8b3e8a4e 31-33,41-43,57-59,70-72,85-87,92,96-98,114-116
+  s_033fe7f8d5ab89::t_9559e0c051862a 7-14,17,19,26,28,35-40,44-56,60-61,67,82,95,104-113,117-130
+  s_033fe7f8d5ab89::t_a8bfd98e1489d2 89
+rust-toolchain.toml
+  s_033fe7f8d5ab89::t_7bb8d517f26341 1-7
+.github/dependabot.yml
+  s_033fe7f8d5ab89::t_6fb2698650adb9 4,12-15
+  s_033fe7f8d5ab89::t_9559e0c051862a 1-3,5-11,16-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c51afa1afe351e934f2fa0b7d90e16c057571aea",
+  "prompts": {},
+  "sessions": {
+    "s_033fe7f8d5ab89": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b0c57f4-a31d-4f7b-987c-44bd6cdcd34c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
