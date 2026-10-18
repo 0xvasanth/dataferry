@@ -1,7 +1,10 @@
 //! Crates.io readiness: every crate declares the same minimum Rust version
 //! and the metadata crates.io shows, nothing depends on a git source
 //! (crates.io refuses them), the crates CI leaves out of `cargo package` are
-//! exactly the test-only ones, and every other crate really packages.
+//! exactly the test-only ones, and every other crate really packages. And
+//! the release (RELEASING.md): one version everywhere, internal dependencies
+//! pinned to it, a CHANGELOG section for it, and a publish order that puts
+//! every crate after what it needs.
 
 mod common;
 
@@ -143,6 +146,11 @@ fn every_publishable_crate_has_the_metadata_crates_io_shows() {
                 "{name}: no {field}"
             );
         }
+        assert_eq!(
+            package["documentation"].as_str(),
+            Some(format!("https://docs.rs/{name}").as_str()),
+            "{name}: documentation links its docs.rs page"
+        );
         let readme = std::path::Path::new(package["manifest_path"].as_str().unwrap())
             .parent()
             .unwrap()
@@ -239,4 +247,134 @@ fn every_publishable_crate_packages() {
         .map(|(name, p)| format!("{name}-{}", p["version"].as_str().unwrap()))
         .collect();
     assert_eq!(packaged, expected);
+}
+
+/// The one version every publishable crate has.
+fn release_version(members: &BTreeMap<String, Value>) -> String {
+    let versions: BTreeSet<&str> = members
+        .values()
+        .filter(|p| publishable(p))
+        .map(|p| p["version"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        versions.len(),
+        1,
+        "one version for every crate: {versions:?}"
+    );
+    versions.into_iter().next().unwrap().to_owned()
+}
+
+/// A workspace dependency `cargo publish` keeps: normal and build ones, and
+/// dev ones with a version (a path-only dev-dependency is dropped).
+fn kept<'a>(package: &'a Value, members: &BTreeMap<String, Value>) -> Vec<&'a Value> {
+    package["dependencies"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|dep| {
+            let name = dep["name"].as_str().unwrap();
+            members.contains_key(name)
+                && name != package["name"].as_str().unwrap()
+                && !(dep["kind"].as_str() == Some("dev") && dep["req"] == "*")
+        })
+        .collect()
+}
+
+#[test]
+fn internal_dependencies_pin_this_release_exactly() {
+    let members = members(&metadata());
+    let version = release_version(&members);
+    for (name, package) in members.iter().filter(|(_, p)| publishable(p)) {
+        for dep in kept(package, &members) {
+            assert_eq!(
+                dep["req"].as_str().unwrap(),
+                format!("={version}"),
+                "{name} -> {}: crates of one release depend on each other at exactly its version",
+                dep["name"]
+            );
+        }
+    }
+}
+
+fn release_script(args: &[&str]) -> std::process::Output {
+    Command::new(repo("scripts/release.py"))
+        .args(args)
+        .current_dir(repo(""))
+        .output()
+        .unwrap()
+}
+
+#[test]
+fn the_publish_order_puts_every_crate_after_what_it_needs() {
+    let members = members(&metadata());
+    let out = release_script(&["order"]);
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let order: Vec<String> = String::from_utf8(out.stdout)
+        .unwrap()
+        .lines()
+        .map(str::to_owned)
+        .collect();
+    let publishable: BTreeSet<String> = members
+        .iter()
+        .filter(|(_, p)| publishable(p))
+        .map(|(name, _)| name.clone())
+        .collect();
+    assert_eq!(order.iter().cloned().collect::<BTreeSet<_>>(), publishable);
+    assert_eq!(order.len(), publishable.len(), "each crate once: {order:?}");
+    let position = |name: &str| order.iter().position(|n| n == name).unwrap();
+    for name in &order {
+        for dep in kept(&members[name], &members) {
+            let dep = dep["name"].as_str().unwrap();
+            assert!(
+                position(dep) < position(name),
+                "{name} is published before {dep}, which it needs: {order:?}"
+            );
+        }
+    }
+    // The CLI needs everything, so it goes last.
+    assert_eq!(order.last().map(String::as_str), Some("dataferry"));
+}
+
+#[test]
+fn the_changelog_and_readme_are_ready_for_this_version() {
+    let version = release_version(&members(&metadata()));
+    let out = release_script(&["check-tag", &format!("v{version}")]);
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(String::from_utf8(out.stdout).unwrap().trim(), version);
+    // Any other tag is refused before anything is built.
+    let out = release_script(&["check-tag", &format!("v{version}.1")]);
+    assert!(!out.status.success());
+
+    // The release notes: this version's section, without the next one's.
+    let out = release_script(&["notes", &version]);
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let notes = String::from_utf8(out.stdout).unwrap();
+    assert!(notes.contains("### Added"), "{notes}");
+    assert!(!notes.contains("## ["), "{notes}");
+    assert!(!release_script(&["notes", "0.0.0"]).status.success());
+
+    // Both READMEs (the repository's, and this crate's on crates.io)
+    // install this version from crates.io: a pre-release has to be asked
+    // for by version.
+    for readme in ["README.md", "crates/dataferry/README.md"] {
+        let text = std::fs::read_to_string(repo(readme)).unwrap();
+        assert!(
+            text.contains(&format!(
+                "cargo install --locked dataferry --version {version}\n"
+            )),
+            "{readme} installs dataferry {version}"
+        );
+    }
 }

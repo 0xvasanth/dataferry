@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "acme-dataferry"
-version = "0.0.1"
+version = "0.1.0-beta.1"
 dependencies = [
  "assert_cmd",
  "async-trait",
@@ -1129,7 +1129,7 @@ checksum = "4583a4551df46e2792f82ceeac45e850d2e2d5debba0b91f102385cda5b11f06"
 
 [[package]]
 name = "dataferry"
-version = "0.0.1"
+version = "0.1.0-beta.1"
 dependencies = [
  "assert_cmd",
  "async-trait",
@@ -1156,7 +1156,7 @@ dependencies = [
 
 [[package]]
 name = "dataferry-connector-mongo"
-version = "0.0.1"
+version = "0.1.0-beta.1"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -1177,7 +1177,7 @@ dependencies = [
 
 [[package]]
 name = "dataferry-connector-postgres"
-version = "0.0.1"
+version = "0.1.0-beta.1"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -1203,7 +1203,7 @@ dependencies = [
 
 [[package]]
 name = "dataferry-connector-tls"
-version = "0.0.1"
+version = "0.1.0-beta.1"
 dependencies = [
  "rustls",
  "rustls-pki-types",
@@ -1212,7 +1212,7 @@ dependencies = [
 
 [[package]]
 name = "dataferry-core"
-version = "0.0.1"
+version = "0.1.0-beta.1"
 dependencies = [
  "arrow-array",
  "arrow-schema",
@@ -1228,7 +1228,7 @@ dependencies = [
 
 [[package]]
 name = "dataferry-dsl"
-version = "0.0.1"
+version = "0.1.0-beta.1"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -1276,7 +1276,7 @@ dependencies = [
 
 [[package]]
 name = "dataferry-registry"
-version = "0.0.1"
+version = "0.1.0-beta.1"
 dependencies = [
  "arrow-array",
  "arrow-schema",
@@ -1297,7 +1297,7 @@ dependencies = [
 
 [[package]]
 name = "dataferry-runtime"
-version = "0.0.1"
+version = "0.1.0-beta.1"
 dependencies = [
  "arrow-array",
  "arrow-json",
@@ -1323,7 +1323,7 @@ dependencies = [
 
 [[package]]
 name = "dataferry-state"
-version = "0.0.1"
+version = "0.1.0-beta.1"
 dependencies = [
  "arrow-array",
  "async-trait",
@@ -1346,7 +1346,7 @@ dependencies = [
 
 [[package]]
 name = "dataferry-verify"
-version = "0.0.1"
+version = "0.1.0-beta.1"
 dependencies = [
  "arrow-array",
  "arrow-buffer",

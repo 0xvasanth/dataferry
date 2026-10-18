@@ -1,12 +1,13 @@
 [package]
 name = "dataferry"
-description = "The dataferry command-line interface"
+description = "Data migration engine: move and reshape data from MongoDB and Postgres into Postgres, resumably, one committed partition at a time. The `dataferry` command line."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 homepage.workspace = true
+documentation = "https://docs.rs/dataferry"
 readme = "README.md"
 keywords.workspace = true
 categories = ["command-line-utilities", "database"]

@@ -15,7 +15,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.1"
+version = "0.1.0-beta.1"
 edition = "2024"
 # DataFusion 55.2 (dataferry-dsl, and dataferry through it) needs 1.94, the
 # highest minimum in the dependency tree, and every crate declares the same
@@ -23,21 +23,25 @@ edition = "2024"
 rust-version = "1.94"
 license = "Apache-2.0"
 repository = "https://github.com/0xvasanth/ferry"
-homepage = "https://github.com/0xvasanth/ferry"
+# The user guide.
+homepage = "https://0xvasanth.github.io/ferry/"
 readme = "README.md"
 keywords = ["migration", "etl", "postgres", "mongodb", "arrow"]
 categories = ["database"]
 
 [workspace.dependencies]
-dataferry-core = { version = "0.0.1", path = "crates/dataferry-core" }
-dataferry-dsl = { version = "0.0.1", path = "crates/dataferry-dsl" }
-dataferry-registry = { version = "0.0.1", path = "crates/dataferry-registry" }
-dataferry-state = { version = "0.0.1", path = "crates/dataferry-state" }
-dataferry-runtime = { version = "0.0.1", path = "crates/dataferry-runtime" }
-dataferry-verify = { version = "0.0.1", path = "crates/dataferry-verify" }
-dataferry-connector-tls = { version = "0.0.1", path = "crates/dataferry-connectors/tls" }
-dataferry-connector-postgres = { version = "0.0.1", path = "crates/dataferry-connectors/postgres" }
-dataferry-connector-mongo = { version = "0.0.1", path = "crates/dataferry-connectors/mongo" }
+# The crates of one release depend on each other at exactly that version
+# (`=`), so a published crate never mixes with another release's. Bump these
+# with [workspace.package] version (RELEASING.md).
+dataferry-core = { version = "=0.1.0-beta.1", path = "crates/dataferry-core" }
+dataferry-dsl = { version = "=0.1.0-beta.1", path = "crates/dataferry-dsl" }
+dataferry-registry = { version = "=0.1.0-beta.1", path = "crates/dataferry-registry" }
+dataferry-state = { version = "=0.1.0-beta.1", path = "crates/dataferry-state" }
+dataferry-runtime = { version = "=0.1.0-beta.1", path = "crates/dataferry-runtime" }
+dataferry-verify = { version = "=0.1.0-beta.1", path = "crates/dataferry-verify" }
+dataferry-connector-tls = { version = "=0.1.0-beta.1", path = "crates/dataferry-connectors/tls" }
+dataferry-connector-postgres = { version = "=0.1.0-beta.1", path = "crates/dataferry-connectors/postgres" }
+dataferry-connector-mongo = { version = "=0.1.0-beta.1", path = "crates/dataferry-connectors/mongo" }
 
 # DataFusion for the expression language (dataferry-dsl expr). 55.2 is built on
 # arrow 59, so every arrow-* dependency in the workspace stays on 59 with it:

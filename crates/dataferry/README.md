@@ -1,5 +1,15 @@
 # dataferry
 
+A data migration engine: a declarative `ferry/` directory says how data
+moves from MongoDB and Postgres into Postgres, and how it is reshaped on the
+way. Each partition commits on its own, so a stopped run resumes where it
+left off. The [user guide](https://0xvasanth.github.io/ferry/) and the
+[repository](https://github.com/0xvasanth/ferry) have the details.
+
+```sh
+cargo install --locked dataferry --version 0.1.0-beta.1
+```
+
 The `dataferry` command line, as a library and a binary (decision 0004 §5, §6).
 The binary is `Ferry::with_builtins().main()`. A third party ships its own
 binary with extra connectors the same way:

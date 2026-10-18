@@ -10,6 +10,28 @@ CLI. Each partition commits on its own, so a run that stops halfway resumes
 where it left off and writes nothing twice
 ([decision 0001](docs/decisions/0001-commit-per-partition.md)).
 
+The [user guide](https://0xvasanth.github.io/ferry/) covers every config key,
+the expression language and how runs resume. Each crate's API is on docs.rs
+([`dataferry`](https://docs.rs/dataferry)).
+
+## Install
+
+**Prebuilt binaries** for Linux (x86_64, aarch64; glibc 2.35 or newer) and
+macOS (x86_64, arm64) are on every
+[GitHub release](https://github.com/0xvasanth/ferry/releases), each with a
+SHA-256 checksum:
+
+```sh
+tar -xzf dataferry-<version>-<target>.tar.gz
+./dataferry-<version>-<target>/dataferry --version
+```
+
+**From crates.io.** 0.1.0-beta.1 is a pre-release, so name the version:
+
+```sh
+cargo install --locked dataferry --version 0.1.0-beta.1
+```
+
 ## Install from source
 
 dataferry needs Rust 1.94 or newer.
@@ -20,8 +42,9 @@ cd ferry
 cargo install --locked --path crates/dataferry
 ```
 
-That installs the `dataferry` binary, with the built-in `postgres` and `mongo`
-connectors. dataferry isn't on crates.io yet (see [Publishing](#publishing)).
+Each way installs the `dataferry` binary, with the built-in `postgres` and
+`mongo` connectors. The project was called ferry before its first release:
+the config directory is still `ferry/` (see [CHANGELOG.md](CHANGELOG.md)).
 
 ## The `ferry/` directory
 
@@ -329,8 +352,9 @@ on Docker, from `dataferry validate` to the report.
 
 ## Publishing
 
-Every crate carries the metadata crates.io needs, and nothing is published
-yet. `acme-dataferry` is test-only (`publish = false`). Every other crate
+Every crate is published to crates.io by the release workflow when a
+version tag is pushed: [RELEASING.md](RELEASING.md) has the steps.
+`acme-dataferry` is test-only (`publish = false`). Every other crate
 packages, and CI checks it:
 
 ```sh
