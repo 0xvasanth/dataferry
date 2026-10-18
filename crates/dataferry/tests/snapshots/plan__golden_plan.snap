@@ -1,0 +1,72 @@
+---
+source: crates/dataferry/tests/plan.rs
+expression: "normalized(&out.stdout, &shop, &warehouse)"
+---
+plan for `golden_orders`, config sha256:c4e1f41657f0c914abccab48976f2122ca2041b6769bd83a031f758b787109e4
+state store: postgres, on connection `warehouse`
+on_error: dead_letter, max_errors: 10
+
+connections
+  shop       mongo (source): ***, database shop
+  warehouse  postgres (sink, state store): postgres://postgres@127.0.0.1:<pg-port>/postgres, schema public
+
+run order
+  1. orders
+
+flow `orders`
+  from:        shop.orders (driver, key _id)
+  sink:        warehouse, mode insert
+  strategy:    TxnWithState
+  partitions:  about 4 rows each (the flow's runtime:), stored as `orders/<partition>`
+  where:       not_deleted: deleted_at == null
+  write order: orders → order_items
+  targets:
+    orders (key id)
+      id           utf8
+      customer_id  utf8, nullable
+      status       utf8, nullable
+      placed_at    timestamp(UTC), nullable
+      total_cents  int64, nullable
+    order_items (key order_id, line_no; parent orders; unnest items)
+      id          uuid
+      order_id    utf8
+      line_no     int64
+      sku         utf8, nullable
+      qty         int64, nullable
+      unit_cents  int64, nullable
+      foreign key (order_id) → orders (id)
+  expect:
+    order_count: count(orders) == source.count()
+    order_total: sum(orders.total_cents) == source.sum(int(round(total * 100)))
+    item_count: count(order_items) == source.sum(coalesce(cardinality(items), 0))
+  ddl (not run by plan):
+    CREATE SCHEMA IF NOT EXISTS "public";
+    CREATE TABLE "public"."orders" (
+      "id" text NOT NULL,
+      "customer_id" text,
+      "status" text,
+      "placed_at" timestamp with time zone,
+      "total_cents" bigint,
+      PRIMARY KEY ("id")
+    );
+    CREATE TABLE "public"."order_items" (
+      "id" uuid NOT NULL,
+      "order_id" text NOT NULL,
+      "line_no" bigint NOT NULL,
+      "sku" text,
+      "qty" bigint,
+      "unit_cents" bigint,
+      PRIMARY KEY ("order_id", "line_no")
+    );
+    CREATE TABLE "public"."_ferry_dlq" (
+      "flow" text NOT NULL,
+      "source_id" text NOT NULL,
+      "run" text NOT NULL,
+      "partition" text NOT NULL,
+      "target" text,
+      "error" text NOT NULL,
+      "record" jsonb,
+      PRIMARY KEY ("flow", "source_id")
+    );
+    ALTER TABLE "public"."order_items" ADD CONSTRAINT "order_items_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") NOT VALID;
+    ALTER TABLE "public"."order_items" VALIDATE CONSTRAINT "order_items_order_id_fkey";

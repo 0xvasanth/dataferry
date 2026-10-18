@@ -1,6 +1,0 @@
----
-source: crates/ferry-dsl/tests/bad_configs.rs
-expression: rendered
----
-error: flows/orders.yaml:32:7 flows[orders].to.order_items.key: flow `orders` is `mode: upsert`, so target `order_items` needs `key:`
-  help: every target of an upsert flow names its key columns (0003 §5.5)

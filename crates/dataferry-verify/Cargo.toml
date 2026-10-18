@@ -1,0 +1,44 @@
+[package]
+name = "dataferry-verify"
+description = "The dataferry verifier: read-time counts, multiset checksums, constraint checks and the run report"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/dataferry-verify"
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+dataferry-core.workspace = true
+dataferry-registry.workspace = true
+dataferry-runtime.workspace = true
+dataferry-connector-postgres.workspace = true
+arrow-array = "59"
+arrow-buffer = "59"
+arrow-schema = "59"
+async-trait = "0.1"
+deadpool-postgres = "0.14"
+futures = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio-postgres = "0.7"
+twox-hash = { version = "2.1", default-features = false, features = ["xxhash3_128"] }
+
+[dev-dependencies]
+dataferry-connector-mongo.workspace = true
+dataferry-core = { workspace = true, features = ["testkit"] }
+dataferry-state = { workspace = true, features = ["postgres"] }
+serde_json = "1"
+arrow-select = "59"
+mongodb = "3"
+pulldown-cmark = { version = "0.13", default-features = false }
+tempfile = "3"
+tokio.workspace = true
+testcontainers-modules.workspace = true

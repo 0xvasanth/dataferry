@@ -1,0 +1,5 @@
+---
+source: crates/dataferry-dsl/tests/bad_configs.rs
+expression: rendered
+---
+error: ferry.yaml:3:1 version: missing key `version`

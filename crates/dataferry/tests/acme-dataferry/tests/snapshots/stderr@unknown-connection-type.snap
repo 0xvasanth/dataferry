@@ -1,0 +1,11 @@
+---
+source: crates/dataferry/tests/acme-dataferry/tests/validate.rs
+expression: out.stderr
+---
+error[F0302]: connections[warehouse].type: unknown connection type `postgresql`
+  --> examples/bad/unknown-connection-type/ferry/connections.yaml:10:11
+   |
+10 |     type: postgresql
+   |           ^^^^^^^^^^
+   = help: registered types: `fake` (source and sink), `mongo` (source), `postgres` (source and sink)
+config is invalid: 1 error

@@ -1,0 +1,11 @@
+---
+source: crates/dataferry/tests/acme-dataferry/tests/validate.rs
+expression: out.stderr
+---
+error[F0108]: connections[shop].url: environment variable not set: FERRY_GOLDEN_MONGO_URI (connections.yaml:6:10)
+ --> examples/bad/missing-env/ferry/connections.yaml:6:10
+  |
+6 |     url: ${FERRY_GOLDEN_MONGO_URI}
+  |          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  = help: export it before running dataferry; values are read only from the environment (0003 §9)
+config is invalid: 1 error

@@ -10,7 +10,7 @@ and this README together.
 The spec's split/unnest example. It is written in the 0003 grammar in
 [`examples/golden/ferry/flows/orders.yaml`](../../examples/golden/ferry/flows/orders.yaml);
 each rule below names the line that implements it, and a test in
-`ferry-dsl` (`tests/examples.rs`) checks that the line still says so.
+`dataferry-dsl` (`tests/examples.rs`) checks that the line still says so.
 
 | Rule | Line | Text on that line |
 | --- | --- | --- |
@@ -39,7 +39,7 @@ each rule below names the line that implements it, and a test in
 | A child fails | the whole source document is dead-lettered, no rows written | `…0006` |
 | Missing or empty array | no children, parent still written | `…0002`, `…0003` |
 | Null or missing nested parent | the derived column is null | `…0008`, `…000a` |
-| Generated child key | `id: $key`: UUIDv5 over (`_id`, the unnest path `items`, `$index`) in ferry's namespace, encoded as `ferry_dsl::compile::key` documents. The same document always gets the same keys. The table key stays `(order_id, line_no)` | all items |
+| Generated child key | `id: $key`: UUIDv5 over (`_id`, the unnest path `items`, `$index`) in dataferry's namespace, encoded as `dataferry_dsl::compile::key` documents. The same document always gets the same keys. The table key stays `(order_id, line_no)` | all items |
 
 Timestamps are UTC, microsecond precision.
 

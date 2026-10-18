@@ -1,0 +1,10 @@
+---
+source: crates/dataferry/tests/acme-dataferry/tests/validate.rs
+expression: out.stderr
+---
+error[F0102]: invalid YAML: while parsing a block collection, did not find expected '-' indicator
+ --> examples/bad/yaml-syntax/ferry/flows/orders.yaml:4:4
+  |
+4 |    sink: warehouse
+  |    ^^^^^
+config is invalid: 1 error

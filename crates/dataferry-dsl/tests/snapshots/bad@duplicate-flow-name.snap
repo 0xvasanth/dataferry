@@ -1,0 +1,5 @@
+---
+source: crates/dataferry-dsl/tests/bad_configs.rs
+expression: rendered
+---
+error: flows/orders.yaml:2:11 flows[orders].name: flow `orders` is defined twice: first at flows/archive/orders_copy.yml:3:11, again here

@@ -1,6 +1,0 @@
----
-source: crates/ferry-dsl/tests/bad_configs.rs
-expression: rendered
----
-error: runtime.yaml:10:3 runtime.wrokers: unknown key `wrokers`
-  help: did you mean `workers`?

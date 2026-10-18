@@ -131,7 +131,7 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "0xferry config grammar version 1: ferry/runtime.yaml (decision 0003).",
+  "description": "dataferry config grammar version 1: ferry/runtime.yaml (decision 0003).",
   "properties": {
     "runtime": {
       "$ref": "#/$defs/Runtime"
@@ -140,6 +140,6 @@
   "required": [
     "runtime"
   ],
-  "title": "0xferry runtime.yaml",
+  "title": "dataferry runtime.yaml",
   "type": "object"
 }

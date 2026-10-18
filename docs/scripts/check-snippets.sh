@@ -32,8 +32,7 @@
 # binary prints (review the diff); the quickstart's text blocks are edited
 # by hand.
 #
-# The binary is $FERRY, default target/debug/dataferry (or target/debug/ferry
-# while it has its old name). Needs bash, awk, sed, diff and, for --live,
+# The binary is $FERRY, default target/debug/dataferry. Needs bash, awk, sed, diff and, for --live,
 # Docker: export DOCKER_HOST first if its socket isn't the default. The
 # quickstart publishes Postgres on 5432 and Mongo on 27017, as it tells
 # readers to; where those ports are taken, set QUICKSTART_PG_PORT and
@@ -57,16 +56,8 @@ for arg in "$@"; do
   esac
 done
 
-ferry=${FERRY:-}
-if [[ -z $ferry ]]; then
-  for candidate in target/debug/dataferry target/debug/ferry; do
-    if [[ -x $candidate ]]; then
-      ferry=$candidate
-      break
-    fi
-  done
-fi
-if [[ -z $ferry || ! -x $ferry ]]; then
+ferry=${FERRY:-target/debug/dataferry}
+if [[ ! -x $ferry ]]; then
   echo "no binary: build it (cargo build) or set FERRY" >&2
   exit 1
 fi

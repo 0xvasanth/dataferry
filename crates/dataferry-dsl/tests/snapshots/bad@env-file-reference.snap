@@ -1,0 +1,5 @@
+---
+source: crates/dataferry-dsl/tests/bad_configs.rs
+expression: rendered
+---
+error: connections.yaml:11:10 connections[warehouse].url: `${file:/run/secrets/pg_url}` is not supported: the only form is `${NAME}`, a variable from the environment (0003 §9)

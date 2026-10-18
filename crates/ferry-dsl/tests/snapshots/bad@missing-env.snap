@@ -1,6 +1,0 @@
----
-source: crates/ferry-dsl/tests/bad_configs.rs
-expression: rendered
----
-error: connections.yaml:6:10 connections[shop].url: environment variable not set: FERRY_GOLDEN_MONGO_URI (connections.yaml:6:10)
-  help: export it before running ferry; values are read only from the environment (0003 §9)

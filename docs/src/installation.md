@@ -5,7 +5,7 @@ connectors built in. There are three ways to get it.
 
 ## From crates.io
 
-You need a Rust toolchain, 1.95 or newer (install it with
+You need a Rust toolchain, 1.94 or newer (install it with
 [rustup](https://rustup.rs)). Then:
 
 ```sh

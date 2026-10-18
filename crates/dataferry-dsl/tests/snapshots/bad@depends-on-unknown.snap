@@ -1,0 +1,6 @@
+---
+source: crates/dataferry-dsl/tests/bad_configs.rs
+expression: rendered
+---
+error: flows/orders.yaml:6:18 flows[orders].depends_on[0]: no flow named `customer`
+  help: defined flows: orders

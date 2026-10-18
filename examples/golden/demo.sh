@@ -6,11 +6,11 @@
 #   examples/golden/demo.sh
 #
 # Brings up Mongo and Postgres in Docker (and removes them on exit), loads
-# fixtures/golden/source/orders.json, then runs `ferry validate`, `ferry
-# plan` and `ferry run` on examples/golden/ferry, and prints report.md.
+# fixtures/golden/source/orders.json, then runs `dataferry validate`, `dataferry
+# plan` and `dataferry run` on examples/golden/ferry, and prints report.md.
 #
 # Environment (all optional):
-#   FERRY                   path to a ferry binary; default: cargo run -q -p ferry-cli --
+#   FERRY                   path to a dataferry binary; default: cargo run -q -p dataferry --
 #   FERRY_GOLDEN_MONGO_URL  use this Mongo, already holding the golden
 #   FERRY_GOLDEN_PG_URL       documents in shop.orders, and this empty
 #                             Postgres, instead of starting containers
@@ -25,7 +25,7 @@ repo=$(cd "$here/../.." && pwd)
 if [ -n "${FERRY:-}" ]; then
     ferry=("$FERRY")
 else
-    ferry=(cargo run -q --manifest-path "$repo/Cargo.toml" -p ferry-cli --)
+    ferry=(cargo run -q --manifest-path "$repo/Cargo.toml" -p dataferry --)
 fi
 work=${FERRY_WORK_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/ferry-golden.XXXXXX")}
 mkdir -p "$work"
@@ -80,13 +80,13 @@ fi
 
 config=$repo/examples/golden/ferry
 
-step "ferry validate: the config, without connecting"
+step "dataferry validate: the config, without connecting"
 "${ferry[@]}" validate --config "$config"
 
-step "ferry plan: what would run, from the live schemas"
+step "dataferry plan: what would run, from the live schemas"
 "${ferry[@]}" plan --config "$config"
 
-step "ferry run: copy, verify, write the report"
+step "dataferry run: copy, verify, write the report"
 # Exit 0: complete and verified. 7: verified, and an assertion failed.
 # Shown as it goes, so the run id (printed first) is on screen if it stops.
 status=0
@@ -94,7 +94,7 @@ status=0
 run=$(sed -n '1s/^run //p' "$work/run.out")
 report=$work/runs/$run/report.md
 if [ -z "$run" ] || [ ! -f "$report" ]; then
-    echo "no report was written (ferry run exited $status)" >&2
+    echo "no report was written (dataferry run exited $status)" >&2
     exit $((status == 0 ? 1 : status))
 fi
 

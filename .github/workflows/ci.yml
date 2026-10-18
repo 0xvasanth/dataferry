@@ -47,7 +47,7 @@ jobs:
   # Connector tests start Postgres and MongoDB through testcontainers,
   # using the Docker daemon that ubuntu-latest runners ship with. This
   # includes the kill -9 chaos and conformance suites, the README
-  # quickstart (crates/ferry-cli/tests/readme.rs) and the config
+  # quickstart (crates/dataferry/tests/readme.rs) and the config
   # reference check (tests/config_reference.rs).
   test:
     runs-on: ubuntu-latest
@@ -60,7 +60,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --locked --workspace
 
-  # Every example config passes `ferry validate`, and every examples/bad
+  # Every example config passes `dataferry validate`, and every examples/bad
   # case is rejected as invalid. A broken example fails here.
   examples:
     runs-on: ubuntu-latest
@@ -71,12 +71,11 @@ jobs:
       # clippy), so CI and local builds use the same compiler.
       - run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
-      - run: cargo build --locked -p ferry-cli
+      - run: cargo build --locked -p dataferry
       - run: scripts/check-examples.sh
 
   # Every crate that can be published packages and builds from its
-  # tarball. ferry-dsl and ferry-cli wait for a DataFusion release on
-  # arrow 60 (README, Publishing); acme-ferry is test-only.
+  # tarball; acme-dataferry is test-only (README, Publishing).
   package:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -86,7 +85,7 @@ jobs:
       # clippy), so CI and local builds use the same compiler.
       - run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
-      - run: cargo package --workspace --locked --exclude ferry-dsl --exclude ferry-cli --exclude acme-ferry
+      - run: cargo package --workspace --locked --exclude acme-dataferry
 
   # The declared minimum Rust version (workspace rust-version) builds
   # everything, not just the toolchain rust-toolchain.toml pins.
@@ -95,10 +94,10 @@ jobs:
     timeout-minutes: 30
     env:
       # Overrides rust-toolchain.toml, which pins the newer toolchain.
-      RUSTUP_TOOLCHAIN: "1.95"
+      RUSTUP_TOOLCHAIN: "1.94"
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@1.95
+      - uses: dtolnay/rust-toolchain@1.94
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --locked --workspace --all-targets
 

@@ -1,6 +1,0 @@
----
-source: crates/ferry-dsl/tests/bad_configs.rs
-expression: rendered
----
-error: flows/orders.yaml:4:11 flows[orders].sink: no connection named `warehous`
-  help: did you mean `warehouse`?

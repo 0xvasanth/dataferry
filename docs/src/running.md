@@ -74,7 +74,7 @@ one, since where an interrupt lands depends on timing):
 run 2b82553a45d04191abfb245b3d6de94c
   flow `events`: TxnWithState
 error[F0603]: interrupted: in-flight partitions of run `2b82553a45d04191abfb245b3d6de94c` were abandoned, and 2 leases were released
-   = help: continue it with `ferry resume 2b82553a45d04191abfb245b3d6de94c`
+   = help: continue it with `dataferry resume 2b82553a45d04191abfb245b3d6de94c`
 ```
 
 `resume` continues from the committed partitions:

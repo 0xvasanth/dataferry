@@ -1,4 +1,4 @@
-# 0xferry
+# dataferry
 
 An open-source data migration engine written in Rust. A declarative config
 in a `ferry/` directory describes how data moves, and how it is reshaped,
@@ -10,25 +10,48 @@ CLI. Each partition commits on its own, so a run that stops halfway resumes
 where it left off and writes nothing twice
 ([decision 0001](docs/decisions/0001-commit-per-partition.md)).
 
+The [user guide](https://0xvasanth.github.io/ferry/) covers every config key,
+the expression language and how runs resume. Each crate's API is on docs.rs
+([`dataferry`](https://docs.rs/dataferry)).
+
+## Install
+
+**Prebuilt binaries** for Linux (x86_64, aarch64; glibc 2.35 or newer) and
+macOS (x86_64, arm64) are on every
+[GitHub release](https://github.com/0xvasanth/ferry/releases), each with a
+SHA-256 checksum:
+
+```sh
+tar -xzf dataferry-<version>-<target>.tar.gz
+./dataferry-<version>-<target>/dataferry --version
+```
+
+**From crates.io.** 0.1.0-beta.1 is a pre-release, so name the version:
+
+```sh
+cargo install --locked dataferry --version 0.1.0-beta.1
+```
+
 ## Install from source
 
-Ferry needs Rust 1.95 or newer.
+dataferry needs Rust 1.94 or newer.
 
 ```sh
 git clone https://github.com/0xvasanth/ferry
 cd ferry
-cargo install --locked --path crates/ferry-cli
+cargo install --locked --path crates/dataferry
 ```
 
-That installs the `ferry` binary, with the built-in `postgres` and `mongo`
-connectors. Ferry isn't on crates.io yet (see [Publishing](#publishing)).
+Each way installs the `dataferry` binary, with the built-in `postgres` and
+`mongo` connectors. The project was called ferry before its first release:
+the config directory is still `ferry/` (see [CHANGELOG.md](CHANGELOG.md)).
 
 ## The `ferry/` directory
 
 ```text
 ferry/
   ferry.yaml          # version: 1, the migration's name, optional include:
-  connections.yaml    # every database ferry reads from or writes to
+  connections.yaml    # every database dataferry reads from or writes to
   runtime.yaml        # where run state lives, workers, memory, error policy
   flows/              # every *.yaml / *.yml file below here, at any depth
     orders.yaml
@@ -37,7 +60,7 @@ ferry/
 Every key is listed in the [config reference](docs/config-reference.md),
 and the grammar is explained in
 [decision 0003](docs/decisions/0003-config-shape.md). Credentials never go in
-the config: a connection's `url` is a `${ENV}` reference. `ferry schema`
+the config: a connection's `url` is a `${ENV}` reference. `dataferry schema`
 prints JSON Schemas for editor completion ([schemas/](schemas/README.md)).
 
 ## Quickstart
@@ -65,22 +88,22 @@ Check the config without connecting to anything, then print the JSON
 Schemas this binary accepts:
 
 ```sh
-ferry validate --config examples/golden/ferry
-ferry schema --config examples/golden/ferry
+dataferry validate --config examples/golden/ferry
+dataferry schema --config examples/golden/ferry
 ```
 
 See what a run would do. `plan` reads the sources and the sink's catalog,
 and writes nothing:
 
 ```sh
-ferry plan --config examples/golden/ferry
+dataferry plan --config examples/golden/ferry
 ```
 
 Run it. The first line printed is the run id (`run <run-id>`); the report
 is written to `examples/golden/.ferry/runs/<run-id>/`:
 
 ```sh
-ferry run --config examples/golden/ferry
+dataferry run --config examples/golden/ferry
 ```
 
 A run that stopped (Ctrl-C, a crash, a lost connection) continues from its
@@ -88,18 +111,18 @@ committed partitions, and a run that finished with failed partitions reruns
 only those:
 
 ```sh
-ferry resume --config examples/golden/ferry <run-id>
-ferry retry --config examples/golden/ferry --failed <run-id>
+dataferry resume --config examples/golden/ferry <run-id>
+dataferry retry --config examples/golden/ferry --failed <run-id>
 ```
 
-A test (`crates/ferry-cli/tests/readme.rs`) runs this section's
-`mongoimport` and every `ferry` command in it, in order, against real Mongo
+A test (`crates/dataferry/tests/readme.rs`) runs this section's
+`mongoimport` and every `dataferry` command in it, in order, against real Mongo
 and Postgres containers, so this quickstart can't silently stop working.
 
 ## A tour of the examples
 
 Every config under [`examples/`](examples/README.md) passes
-`ferry validate`, and every case under `examples/bad/` must fail it. CI checks
+`dataferry validate`, and every case under `examples/bad/` must fail it. CI checks
 both.
 
 **1:1 copy.** `columns: "*"` copies every declared field of the entity
@@ -177,17 +200,17 @@ The examples also show flow and target `where:` filters, dead-lettering
 
 | Command | What it does | Connects? |
 | --- | --- | --- |
-| `ferry validate` | Loads the config, substitutes `${ENV}` and checks every connection's options and roles. Reports every error. | No |
-| `ferry schema [--out <dir>]` | The JSON Schema of each config file, including this binary's connection types. | No |
-| `ferry plan` | Discovers the sources, type-checks and compiles every flow, prints run order, strategies and DDL. | Read-only |
-| `ferry run` | Plans, then runs every flow, verifies the sinks and writes `report.json` and `report.md`. | Yes |
-| `ferry resume <run-id>` | Continues a run from its committed partitions. | Yes |
-| `ferry retry --failed <run-id>` | Puts a run's failed partitions back to pending, then resumes it. | Yes |
+| `dataferry validate` | Loads the config, substitutes `${ENV}` and checks every connection's options and roles. Reports every error. | No |
+| `dataferry schema [--out <dir>]` | The JSON Schema of each config file, including this binary's connection types. | No |
+| `dataferry plan` | Discovers the sources, type-checks and compiles every flow, prints run order, strategies and DDL. | Read-only |
+| `dataferry run` | Plans, then runs every flow, verifies the sinks and writes `report.json` and `report.md`. | Yes |
+| `dataferry resume <run-id>` | Continues a run from its committed partitions. | Yes |
+| `dataferry retry --failed <run-id>` | Puts a run's failed partitions back to pending, then resumes it. | Yes |
 
 Global flags: `-c, --config <dir>` (default `./ferry`, or `FERRY_CONFIG`),
 `--format text|json`, `--color auto|always|never`, `-v`, `-q`, and
 `--work-dir <dir>` (or `FERRY_WORK_DIR`). The
-[ferry-cli README](crates/ferry-cli/README.md) has the details and every
+[dataferry README](crates/dataferry/README.md) has the details and every
 diagnostic code.
 
 ### Exit codes
@@ -210,16 +233,16 @@ released.
 
 ## Adding a connector
 
-A connector is a library crate that needs only `ferry-core` and
-`ferry-registry` of ferry's crates (plus `serde` and `schemars`). It implements `ferry_registry::Connector`: a type
+A connector is a library crate that needs only `dataferry-core` and
+`dataferry-registry` of dataferry's crates (plus `serde` and `schemars`). It implements `dataferry_registry::Connector`: a type
 name, the roles it provides (source, sink or both), an options struct for
 its fields in `connections.yaml` (serde with `deny_unknown_fields`, plus
-`JsonSchema`, which `ferry schema` and editors use), `build`, which returns
+`JsonSchema`, which `dataferry schema` and editors use), `build`, which returns
 its `Source` and `Sink` endpoints, and `describe`
 ([decision 0004](docs/decisions/0004-connector-registry.md)).
 
 ```rust
-use ferry_registry::{BuildContext, BuildError, Connector, Endpoints, Roles, Secret};
+use dataferry_registry::{BuildContext, BuildError, Connector, Endpoints, Roles, Secret};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -246,61 +269,61 @@ impl Connector for ClickHouse {
         options: ClickHouseOptions,
         wants: Roles,
     ) -> Result<Endpoints, BuildError> {
-        // No I/O here: `ferry validate` calls this. Keep the URL for the
+        // No I/O here: `dataferry validate` calls this. Keep the URL for the
         // endpoints, which connect on their first trait call.
         let ClickHouseOptions { url, database } = options;
         let _ = (ctx, url, database);
         todo!("the Source and/or Sink that {wants} asks for")
     }
 
-    /// One line for `ferry plan` and the run report. No secrets.
+    /// One line for `dataferry plan` and the run report. No secrets.
     fn describe(&self, options: &ClickHouseOptions) -> String {
         format!("clickhouse, database {}", options.database)
     }
 }
 ```
 
-Ship it in your own binary, which gets every `ferry` subcommand, the
+Ship it in your own binary, which gets every `dataferry` subcommand, the
 built-in connectors and yours:
 
 ```rust
 fn main() -> std::process::ExitCode {
-    ferry_cli::Ferry::with_builtins()
+    dataferry::Ferry::with_builtins()
         .register(ClickHouse)
-        .name("acme-ferry")
+        .name("acme-dataferry")
         .main()
 }
 ```
 
-Check it with the contract suites in `ferry-registry`'s `testkit` feature
+Check it with the contract suites in `dataferry-registry`'s `testkit` feature
 (`check_connector`, and `check_state_capable` for a connector that can hold
-the state store). [`crates/ferry-cli/tests/acme-ferry`](crates/ferry-cli/tests/acme-ferry)
+the state store). [`crates/dataferry/tests/acme-dataferry`](crates/dataferry/tests/acme-dataferry)
 is a complete third-party binary, used by the tests.
 
 A connector counts as certified once it passes the conformance suite,
-`ferry_runtime::testkit::conformance` (`ferry-runtime`'s `testkit`
+`dataferry_runtime::testkit::conformance` (`dataferry-runtime`'s `testkit`
 feature), against real databases through your binary: a golden migration
 with a green report (which takes at least one `expect:` assertion in the
 pair's config), then 50 runs killed with SIGKILL mid-partition and
 resumed, each ending with the expected rows and the uninterrupted run's
 checksums. Its module docs show the `Pair` to implement;
-[`crates/ferry-cli/tests/conformance.rs`](crates/ferry-cli/tests/conformance.rs)
+[`crates/dataferry/tests/conformance.rs`](crates/dataferry/tests/conformance.rs)
 certifies the built-ins (Mongo → Postgres, Postgres → Postgres) with it.
 
 ## Workspace
 
 | Crate | Path | What it is |
 | --- | --- | --- |
-| `ferry-core` | `crates/ferry-core` | Shared contracts: `Source`, `Sink`, partitions, leases, errors |
-| `ferry-registry` | `crates/ferry-registry` | The connector author's API and the connector registry |
-| `ferry-dsl` | `crates/ferry-dsl` | The config model, expression language and planner |
-| `ferry-connector-tls` | `crates/ferry-connectors/tls` | The TLS policy the connectors share |
-| `ferry-connector-postgres` | `crates/ferry-connectors/postgres` | Postgres source and sink |
-| `ferry-connector-mongo` | `crates/ferry-connectors/mongo` | MongoDB source |
-| `ferry-state` | `crates/ferry-state` | Run, partition and lease state (file and Postgres) |
-| `ferry-runtime` | `crates/ferry-runtime` | The runner |
-| `ferry-verify` | `crates/ferry-verify` | The verifier and the run report |
-| `ferry-cli` | `crates/ferry-cli` | The `ferry` command line, as a library and a binary |
+| `dataferry-core` | `crates/dataferry-core` | Shared contracts: `Source`, `Sink`, partitions, leases, errors |
+| `dataferry-registry` | `crates/dataferry-registry` | The connector author's API and the connector registry |
+| `dataferry-dsl` | `crates/dataferry-dsl` | The config model, expression language and planner |
+| `dataferry-connector-tls` | `crates/dataferry-connectors/tls` | The TLS policy the connectors share |
+| `dataferry-connector-postgres` | `crates/dataferry-connectors/postgres` | Postgres source and sink |
+| `dataferry-connector-mongo` | `crates/dataferry-connectors/mongo` | MongoDB source |
+| `dataferry-state` | `crates/dataferry-state` | Run, partition and lease state (file and Postgres) |
+| `dataferry-runtime` | `crates/dataferry-runtime` | The runner |
+| `dataferry-verify` | `crates/dataferry-verify` | The verifier and the run report |
+| `dataferry` | `crates/dataferry` | The `dataferry` command line, as a library and a binary |
 
 ## Development
 
@@ -309,7 +332,7 @@ cargo build
 cargo test --workspace
 ```
 
-The minimum supported Rust version is 1.95, declared by every crate. CI
+The minimum supported Rust version is 1.94, declared by every crate. CI
 builds the workspace with it.
 
 Connector tests start real Postgres and MongoDB containers with
@@ -322,26 +345,26 @@ context:
 export DOCKER_HOST=$(docker context inspect -f '{{.Endpoints.docker.Host}}')
 ```
 
-`scripts/check-examples.sh` runs `ferry validate` on every example and
+`scripts/check-examples.sh` runs `dataferry validate` on every example and
 checks every `examples/bad/` case fails, as CI does.
 [`examples/golden/demo.sh`](examples/golden/README.md) runs the golden demo
-on Docker, from `ferry validate` to the report.
+on Docker, from `dataferry validate` to the report.
 
 ## Publishing
 
-Every crate carries the metadata crates.io needs, and nothing is published
-yet. `acme-ferry` is test-only (`publish = false`).
-
-`ferry-dsl`, and `ferry-cli` through it, can't be packaged yet: they depend
-on DataFusion through a git pin (apache/datafusion commit `1da3cf0`),
-because no DataFusion release is built on arrow 60. The latest, 55.2.0,
-uses arrow 59. crates.io refuses git dependencies, so these two wait for
-the first DataFusion release on arrow 60. Every other crate packages today,
-and CI checks it:
+Every crate is published to crates.io by the release workflow when a
+version tag is pushed: [RELEASING.md](RELEASING.md) has the steps.
+`acme-dataferry` is test-only (`publish = false`). Every other crate
+packages, and CI checks it:
 
 ```sh
-cargo package --workspace --exclude ferry-dsl --exclude ferry-cli --exclude acme-ferry
+cargo package --workspace --exclude acme-dataferry
 ```
+
+Every dependency comes from crates.io. DataFusion is the released 55.2,
+which is built on arrow 59, so the workspace's arrow crates stay on 59
+until a DataFusion release moves to arrow 60; the two are upgraded
+together.
 
 ## License
 

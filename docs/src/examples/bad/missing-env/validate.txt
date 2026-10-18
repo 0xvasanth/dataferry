@@ -3,5 +3,5 @@ error[F0108]: connections[warehouse].url: environment variable not set: CATALOG_
   |
 9 |     url: ${CATALOG_PG_URI}
   |          ^^^^^^^^^^^^^^^^^
-  = help: export it before running ferry; values are read only from the environment (0003 §9)
+  = help: export it before running dataferry; values are read only from the environment (0003 §9)
 config is invalid: 1 error

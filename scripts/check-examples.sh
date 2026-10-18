@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# `ferry validate` on every example config: each `ferry/` directory under
+# `dataferry validate` on every example config: each `ferry/` directory under
 # examples/ must pass, and each examples/bad/<case>/ferry must be rejected
 # as an invalid config (exit 3). Examples are found, not listed, so a new
 # one is checked as soon as it is added. Run from anywhere; the binary is
-# $FERRY, default target/debug/ferry (build it with `cargo build -p ferry-cli`).
+# $FERRY, default target/debug/dataferry (build it with `cargo build -p dataferry`).
 set -euo pipefail
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
-ferry=${FERRY:-target/debug/ferry}
+ferry=${FERRY:-target/debug/dataferry}
 if [[ ! -x $ferry ]]; then
-  echo "no ferry binary at $ferry: run \`cargo build -p ferry-cli\` or set FERRY" >&2
+  echo "no dataferry binary at $ferry: run \`cargo build -p dataferry\` or set FERRY" >&2
   exit 1
 fi
 
@@ -52,7 +52,7 @@ while IFS= read -r dir; do
   if [[ $status -eq 0 ]]; then
     echo "ok   $dir"
   else
-    echo "FAIL $dir: ferry validate exited $status, expected 0"
+    echo "FAIL $dir: dataferry validate exited $status, expected 0"
     sed 's/^/     /' "$out"
     failed=1
   fi
@@ -72,7 +72,7 @@ for case in examples/bad/*/; do
   if [[ $status -eq 3 ]]; then
     echo "ok   $case (rejected)"
   else
-    echo "FAIL $case: ferry validate exited $status, expected 3 (config invalid)"
+    echo "FAIL $case: dataferry validate exited $status, expected 3 (config invalid)"
     sed 's/^/     /' "$out"
     failed=1
   fi

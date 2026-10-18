@@ -3,15 +3,15 @@
 version = 4
 
 [[package]]
-name = "acme-ferry"
-version = "0.0.1"
+name = "acme-dataferry"
+version = "0.1.0-beta.1"
 dependencies = [
  "assert_cmd",
  "async-trait",
- "ferry-cli",
- "ferry-core",
- "ferry-dsl",
- "ferry-registry",
+ "dataferry",
+ "dataferry-core",
+ "dataferry-dsl",
+ "dataferry-registry",
  "insta",
  "jsonschema",
  "schemars 1.2.3",
@@ -123,9 +123,9 @@ checksum = "7d902e3d592a523def97af8f317b08ce16b7ab854c1985a0c671e6f15cebc236"
 
 [[package]]
 name = "arrow"
-version = "60.0.0"
+version = "59.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "234ce58e76c04e8162c2e4bc3fe53fa7c2418ef5fba7bb2838b8531b7d4fbf14"
+checksum = "4c25317ebddb8f2e6f006759336c95e5ded847a446f3524c27853bfe7d77a69b"
 dependencies = [
  "arrow-arith",
  "arrow-array",
@@ -144,9 +144,9 @@ dependencies = [
 
 [[package]]
 name = "arrow-arith"
-version = "60.0.0"
+version = "59.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2303ebedb1071f4f72d71171e383859a9a285c94d99e4892685a96fca9890720"
+checksum = "2ab555c0ffe9cb817041c0cee80baa9663a22225d0a035693579771f2693cadc"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -158,9 +158,9 @@ dependencies = [
 
 [[package]]
 name = "arrow-array"
-version = "60.0.0"
+version = "59.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51dff6e4b9f158864a0aeb6a131ad53858ecbae7a2fc8989307b9b3c6b2f122e"
+checksum = "2dae1d91737421e92c6dd7c7f9d0f2d25198fd6fc539738b628f4dad10adf533"
 dependencies = [
  "ahash",
  "arrow-buffer",
@@ -177,9 +177,9 @@ dependencies = [
 
 [[package]]
 name = "arrow-buffer"
-version = "60.0.0"
+version = "59.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7235b863533e9db3ab86905b4521251de11226275b436ff3cb2d0010558d1c5"
+checksum = "1fe9cd0064f2d7cf8ecfaf77cd70e67a980bc71aea92b63102bd37a7d3379a09"
 dependencies = [
  "bytes",
  "half",
@@ -189,9 +189,9 @@ dependencies = [
 
 [[package]]
 name = "arrow-cast"
-version = "60.0.0"
+version = "59.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d52cf840f0c34aeeb7e8b05aba72d66878e6c001827f423331f0b260209e7b7e"
+checksum = "ee510bc252781d700400979a96bd1eadebeae23901132bbabd92118da1b376c5"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -210,21 +210,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "arrow-cmp"
-version = "60.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73a0e9adb28d95739fabcdae637261a2c14e618caf58ba1b88857120f9ee2687"
-dependencies = [
- "arrow-array",
- "arrow-buffer",
- "arrow-schema",
-]
-
-[[package]]
 name = "arrow-csv"
-version = "60.0.0"
+version = "59.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ad83176cc677f996096d694a3cccd7310069faeee4b3df9e2dabf92fdcf8b4b"
+checksum = "ace83d5935421b950fea3a0a3f9972c0837c297ef98ade57127a5661b681112c"
 dependencies = [
  "arrow-array",
  "arrow-cast",
@@ -237,9 +226,9 @@ dependencies = [
 
 [[package]]
 name = "arrow-data"
-version = "60.0.0"
+version = "59.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5aa06d5e22786c4966ffc4d2f171d0cb65d95f6bdea108a14e8c335e9faa437f"
+checksum = "54f128c73bb7fe9f7137218f910edd5b436f390e0f040b1956f5028390787897"
 dependencies = [
  "arrow-buffer",
  "arrow-schema",
@@ -250,9 +239,9 @@ dependencies = [
 
 [[package]]
 name = "arrow-ipc"
-version = "60.0.0"
+version = "59.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86c523472d22e31f984df7a44fc36e6323d3c9b05ffe53d267ee4c3aa7c128d2"
+checksum = "8e244f39b82fa7a823e8b5984a0bd988234f9c92c1df79378fb85090e6e4c821"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -266,9 +255,9 @@ dependencies = [
 
 [[package]]
 name = "arrow-json"
-version = "60.0.0"
+version = "59.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "342fc6600a93a48038d853431803c941436b7b51f756763e76cad9784b7e3718"
+checksum = "727b21ebf8894dcd9504d6ab66bffdac338391e1f85cde594526a0210299ea40"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -291,13 +280,12 @@ dependencies = [
 
 [[package]]
 name = "arrow-ord"
-version = "60.0.0"
+version = "59.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a7ac2c6a9cdc782fa9548d3763461eaec8c93347e297fddbaa44807e70a3698"
+checksum = "70d376b9b883239ae0f9963cdeeb59126ccaac08d60adf208a6ad3e2dd4048c3"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
- "arrow-cmp",
  "arrow-data",
  "arrow-schema",
  "arrow-select",
@@ -305,9 +293,9 @@ dependencies = [
 
 [[package]]
 name = "arrow-row"
-version = "60.0.0"
+version = "59.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "758b87e9648d80001e0916c083334ed93074c677a81a96144d5c84bd2d8eab2a"
+checksum = "48096811f92b5c3a0c59d33cfecd7d7d2ed037d81e54a27a42d232e7700e6de2"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -318,9 +306,9 @@ dependencies = [
 
 [[package]]
 name = "arrow-schema"
-version = "60.0.0"
+version = "59.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f85a9a58cd03560526b0066487574aacb9008e413504fa0ee23d61141e96c338"
+checksum = "37b6c8a6b12cf3869d299ce36ed8e1cd6fe9836264b68fb6c6538473a36124a1"
 dependencies = [
  "serde_core",
  "serde_json",
@@ -328,14 +316,13 @@ dependencies = [
 
 [[package]]
 name = "arrow-select"
-version = "60.0.0"
+version = "59.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba3482b7d03bf4a3bf0b195f08a7f2b071595ccd54897e35b975ac63d3104977"
+checksum = "e523e85fa9fb3181a391bf0edfa6a1ae0dc46df8cbf7f6b96034dcb1e2a7a04a"
 dependencies = [
  "ahash",
  "arrow-array",
  "arrow-buffer",
- "arrow-cmp",
  "arrow-data",
  "arrow-schema",
  "num-traits",
@@ -343,9 +330,9 @@ dependencies = [
 
 [[package]]
 name = "arrow-string"
-version = "60.0.0"
+version = "59.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f300b4400b1e7cd58f7cbbd5dd2a0072cc59e73bfaee2a152b3ac660e46d9dd1"
+checksum = "b931a905a0e4b8832d9f54fb369cf6e545f9dc03cb3d9611216a7bd2653df60a"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -463,9 +450,9 @@ dependencies = [
 
 [[package]]
 name = "atoi"
-version = "3.1.1"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d12c37257553c19e9aee6cba77814fdc9e07844abfc8b3a2c377cd920ee5a993"
+checksum = "f28d99ec8bfea296261ca1af174f24225171fea9664ba9003cbebee704810528"
 dependencies = [
  "num-traits",
 ]
@@ -909,9 +896,9 @@ dependencies = [
 
 [[package]]
 name = "comfy-table"
-version = "8.0.0"
+version = "7.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "136c8c4c3823846e8ba6d4bda011b4e5d5827b8bb0ac26c31f9ab31abe9f54f2"
+checksum = "958c5d6ecf1f214b4c2bbbbf6ab9523a864bd136dcf71a7e8904799acfe1ad47"
 dependencies = [
  "unicode-segmentation",
  "unicode-width",
@@ -1141,9 +1128,255 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4583a4551df46e2792f82ceeac45e850d2e2d5debba0b91f102385cda5b11f06"
 
 [[package]]
+name = "dataferry"
+version = "0.1.0-beta.1"
+dependencies = [
+ "assert_cmd",
+ "async-trait",
+ "clap",
+ "dataferry-connector-mongo",
+ "dataferry-connector-postgres",
+ "dataferry-core",
+ "dataferry-dsl",
+ "dataferry-registry",
+ "dataferry-runtime",
+ "dataferry-state",
+ "dataferry-verify",
+ "futures",
+ "insta",
+ "mongodb",
+ "schemars 1.2.3",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "testcontainers-modules",
+ "tokio",
+ "tokio-postgres",
+]
+
+[[package]]
+name = "dataferry-connector-mongo"
+version = "0.1.0-beta.1"
+dependencies = [
+ "arrow-array",
+ "arrow-buffer",
+ "arrow-schema",
+ "async-trait",
+ "dataferry-connector-tls",
+ "dataferry-core",
+ "dataferry-registry",
+ "futures",
+ "mongodb",
+ "rcgen",
+ "schemars 1.2.3",
+ "serde",
+ "serde_json",
+ "testcontainers-modules",
+ "tokio",
+]
+
+[[package]]
+name = "dataferry-connector-postgres"
+version = "0.1.0-beta.1"
+dependencies = [
+ "arrow-array",
+ "arrow-buffer",
+ "arrow-schema",
+ "async-trait",
+ "bytes",
+ "dataferry-connector-tls",
+ "dataferry-core",
+ "dataferry-registry",
+ "dataferry-state",
+ "deadpool-postgres",
+ "futures",
+ "postgres-protocol",
+ "rcgen",
+ "schemars 1.2.3",
+ "serde",
+ "serde_json",
+ "testcontainers-modules",
+ "tokio",
+ "tokio-postgres",
+ "tokio-postgres-rustls",
+]
+
+[[package]]
+name = "dataferry-connector-tls"
+version = "0.1.0-beta.1"
+dependencies = [
+ "rustls",
+ "rustls-pki-types",
+ "webpki-roots",
+]
+
+[[package]]
+name = "dataferry-core"
+version = "0.1.0-beta.1"
+dependencies = [
+ "arrow-array",
+ "arrow-schema",
+ "arrow-select",
+ "async-trait",
+ "dataferry-core",
+ "futures",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
+name = "dataferry-dsl"
+version = "0.1.0-beta.1"
+dependencies = [
+ "arrow-array",
+ "arrow-buffer",
+ "arrow-cast",
+ "arrow-ipc",
+ "arrow-json",
+ "arrow-ord",
+ "arrow-row",
+ "arrow-schema",
+ "arrow-select",
+ "async-trait",
+ "dataferry-connector-mongo",
+ "dataferry-connector-postgres",
+ "dataferry-core",
+ "dataferry-registry",
+ "dataferry-runtime",
+ "dataferry-state",
+ "dataferry-verify",
+ "datafusion-common",
+ "datafusion-expr",
+ "datafusion-functions",
+ "datafusion-functions-nested",
+ "datafusion-optimizer",
+ "datafusion-physical-expr",
+ "datafusion-sql",
+ "deadpool-postgres",
+ "futures",
+ "glob",
+ "insta",
+ "jsonschema",
+ "mongodb",
+ "peak_alloc",
+ "proptest",
+ "saphyr-parser",
+ "schemars 1.2.3",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "testcontainers-modules",
+ "tokio",
+ "tokio-postgres",
+ "uuid",
+]
+
+[[package]]
+name = "dataferry-registry"
+version = "0.1.0-beta.1"
+dependencies = [
+ "arrow-array",
+ "arrow-schema",
+ "async-trait",
+ "dataferry-core",
+ "dataferry-registry",
+ "futures",
+ "jsonschema",
+ "schemars 1.2.3",
+ "serde",
+ "serde_json",
+ "serde_norway",
+ "serde_path_to_error",
+ "thiserror",
+ "tokio",
+ "trybuild",
+]
+
+[[package]]
+name = "dataferry-runtime"
+version = "0.1.0-beta.1"
+dependencies = [
+ "arrow-array",
+ "arrow-json",
+ "arrow-schema",
+ "arrow-select",
+ "async-trait",
+ "dataferry-connector-postgres",
+ "dataferry-core",
+ "dataferry-registry",
+ "dataferry-runtime",
+ "dataferry-state",
+ "deadpool-postgres",
+ "fastrand",
+ "futures",
+ "peak_alloc",
+ "serde_json",
+ "tempfile",
+ "testcontainers-modules",
+ "thiserror",
+ "tokio",
+ "tokio-postgres",
+]
+
+[[package]]
+name = "dataferry-state"
+version = "0.1.0-beta.1"
+dependencies = [
+ "arrow-array",
+ "async-trait",
+ "dataferry-core",
+ "dataferry-dsl",
+ "dataferry-registry",
+ "dataferry-state",
+ "deadpool-postgres",
+ "futures",
+ "schemars 1.2.3",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "testcontainers-modules",
+ "thiserror",
+ "tokio",
+ "tokio-postgres",
+ "uuid",
+]
+
+[[package]]
+name = "dataferry-verify"
+version = "0.1.0-beta.1"
+dependencies = [
+ "arrow-array",
+ "arrow-buffer",
+ "arrow-schema",
+ "arrow-select",
+ "async-trait",
+ "dataferry-connector-mongo",
+ "dataferry-connector-postgres",
+ "dataferry-core",
+ "dataferry-registry",
+ "dataferry-runtime",
+ "dataferry-state",
+ "deadpool-postgres",
+ "futures",
+ "mongodb",
+ "pulldown-cmark",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "testcontainers-modules",
+ "tokio",
+ "tokio-postgres",
+ "twox-hash",
+]
+
+[[package]]
 name = "datafusion-common"
-version = "55.1.0"
-source = "git+https://github.com/apache/datafusion?rev=1da3cf049fa1a7a708acc2c29eba4f2e9dece8db#1da3cf049fa1a7a708acc2c29eba4f2e9dece8db"
+version = "55.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d26626e12b224b83351239465dcd00f72d47b02fb5e5b65a643e2dc8ed37f687"
 dependencies = [
  "arrow",
  "arrow-ipc",
@@ -1165,13 +1398,15 @@ dependencies = [
 
 [[package]]
 name = "datafusion-doc"
-version = "55.1.0"
-source = "git+https://github.com/apache/datafusion?rev=1da3cf049fa1a7a708acc2c29eba4f2e9dece8db#1da3cf049fa1a7a708acc2c29eba4f2e9dece8db"
+version = "55.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c2569c2e74a34fcae3a369ab3912d61e41a062592510f11e31b1dae2725ecdc"
 
 [[package]]
 name = "datafusion-execution"
-version = "55.1.0"
-source = "git+https://github.com/apache/datafusion?rev=1da3cf049fa1a7a708acc2c29eba4f2e9dece8db#1da3cf049fa1a7a708acc2c29eba4f2e9dece8db"
+version = "55.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "39cfdd5ac0769d1e74a885450e49fde8f63ca7ab41eb479a068564aaea80b837"
 dependencies = [
  "arrow",
  "arrow-buffer",
@@ -1195,8 +1430,9 @@ dependencies = [
 
 [[package]]
 name = "datafusion-expr"
-version = "55.1.0"
-source = "git+https://github.com/apache/datafusion?rev=1da3cf049fa1a7a708acc2c29eba4f2e9dece8db#1da3cf049fa1a7a708acc2c29eba4f2e9dece8db"
+version = "55.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86560fd7df4dda924f5474b588c56e7ae8e96dcf158c7327c9cfe9daff448ec5"
 dependencies = [
  "arrow",
  "arrow-schema",
@@ -1217,8 +1453,9 @@ dependencies = [
 
 [[package]]
 name = "datafusion-expr-common"
-version = "55.1.0"
-source = "git+https://github.com/apache/datafusion?rev=1da3cf049fa1a7a708acc2c29eba4f2e9dece8db#1da3cf049fa1a7a708acc2c29eba4f2e9dece8db"
+version = "55.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e82e313cf655cf6bc2dce6cbd23bcb0d20236a54a1b09c436615e4bac4d8c49f"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -1228,8 +1465,9 @@ dependencies = [
 
 [[package]]
 name = "datafusion-functions"
-version = "55.1.0"
-source = "git+https://github.com/apache/datafusion?rev=1da3cf049fa1a7a708acc2c29eba4f2e9dece8db#1da3cf049fa1a7a708acc2c29eba4f2e9dece8db"
+version = "55.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "939ae2771da8a3fdc23ab4de610ae8fef9515476626b49d96d0d5c782b105771"
 dependencies = [
  "arrow",
  "arrow-buffer",
@@ -1255,11 +1493,11 @@ dependencies = [
 
 [[package]]
 name = "datafusion-functions-aggregate"
-version = "55.1.0"
-source = "git+https://github.com/apache/datafusion?rev=1da3cf049fa1a7a708acc2c29eba4f2e9dece8db#1da3cf049fa1a7a708acc2c29eba4f2e9dece8db"
+version = "55.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fd6c3aee9f2bc65716787d651e023743a90b4efbc57a2f679f036632e16fb110"
 dependencies = [
  "arrow",
- "arrow-select",
  "datafusion-common",
  "datafusion-doc",
  "datafusion-execution",
@@ -1270,15 +1508,15 @@ dependencies = [
  "datafusion-physical-expr-common",
  "half",
  "hashbrown 0.17.1",
- "itertools 0.15.0",
  "log",
  "num-traits",
 ]
 
 [[package]]
 name = "datafusion-functions-aggregate-common"
-version = "55.1.0"
-source = "git+https://github.com/apache/datafusion?rev=1da3cf049fa1a7a708acc2c29eba4f2e9dece8db#1da3cf049fa1a7a708acc2c29eba4f2e9dece8db"
+version = "55.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "988b5d3dfb4939d81c2f9fab267063610fe52a843620f2fa6cb2a1598e43369c"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -1288,8 +1526,9 @@ dependencies = [
 
 [[package]]
 name = "datafusion-functions-nested"
-version = "55.1.0"
-source = "git+https://github.com/apache/datafusion?rev=1da3cf049fa1a7a708acc2c29eba4f2e9dece8db#1da3cf049fa1a7a708acc2c29eba4f2e9dece8db"
+version = "55.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08149d433a97c9ea3cdf80de06480ab5c7f5453485f1e452d5b3583c81d5c0dd"
 dependencies = [
  "arrow",
  "arrow-ord",
@@ -1312,8 +1551,9 @@ dependencies = [
 
 [[package]]
 name = "datafusion-functions-window-common"
-version = "55.1.0"
-source = "git+https://github.com/apache/datafusion?rev=1da3cf049fa1a7a708acc2c29eba4f2e9dece8db#1da3cf049fa1a7a708acc2c29eba4f2e9dece8db"
+version = "55.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fffd54b8acf6ecef284cc0677e01e1b8c71be64fec50612ba00a0ff0d9b41a52"
 dependencies = [
  "datafusion-common",
  "datafusion-physical-expr-common",
@@ -1321,8 +1561,9 @@ dependencies = [
 
 [[package]]
 name = "datafusion-macros"
-version = "55.1.0"
-source = "git+https://github.com/apache/datafusion?rev=1da3cf049fa1a7a708acc2c29eba4f2e9dece8db#1da3cf049fa1a7a708acc2c29eba4f2e9dece8db"
+version = "55.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14d6df9763c8fb968b2417d797aef4c55ac2e4a895aaef38c72c16a287aa4a40"
 dependencies = [
  "datafusion-doc",
  "quote",
@@ -1331,8 +1572,9 @@ dependencies = [
 
 [[package]]
 name = "datafusion-optimizer"
-version = "55.1.0"
-source = "git+https://github.com/apache/datafusion?rev=1da3cf049fa1a7a708acc2c29eba4f2e9dece8db#1da3cf049fa1a7a708acc2c29eba4f2e9dece8db"
+version = "55.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acfb8cea6e05e2e75bae183340cf7d53cccb3db0449e2f1fbc07654d980fd19f"
 dependencies = [
  "arrow",
  "chrono",
@@ -1349,8 +1591,9 @@ dependencies = [
 
 [[package]]
 name = "datafusion-physical-expr"
-version = "55.1.0"
-source = "git+https://github.com/apache/datafusion?rev=1da3cf049fa1a7a708acc2c29eba4f2e9dece8db#1da3cf049fa1a7a708acc2c29eba4f2e9dece8db"
+version = "55.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f002cef849e10c0597a217ec7891c2796c0f8b42d739f5d24abc24496373406"
 dependencies = [
  "arrow",
  "arrow-schema",
@@ -1365,14 +1608,14 @@ dependencies = [
  "itertools 0.15.0",
  "parking_lot",
  "petgraph",
- "regex",
  "tokio",
 ]
 
 [[package]]
 name = "datafusion-physical-expr-common"
-version = "55.1.0"
-source = "git+https://github.com/apache/datafusion?rev=1da3cf049fa1a7a708acc2c29eba4f2e9dece8db#1da3cf049fa1a7a708acc2c29eba4f2e9dece8db"
+version = "55.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8c5c67aa252886f4d6b331c8114797f5b140464e774c4da36889269a1bf1bd8"
 dependencies = [
  "arrow",
  "chrono",
@@ -1383,13 +1626,13 @@ dependencies = [
  "itertools 0.15.0",
  "parking_lot",
  "pin-project",
- "regex",
 ]
 
 [[package]]
 name = "datafusion-sql"
-version = "55.1.0"
-source = "git+https://github.com/apache/datafusion?rev=1da3cf049fa1a7a708acc2c29eba4f2e9dece8db#1da3cf049fa1a7a708acc2c29eba4f2e9dece8db"
+version = "55.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "816c224a0ef5469a32a562b5d4830544f714f97c5f50142109286d40a288c7db"
 dependencies = [
  "arrow",
  "bigdecimal",
@@ -1652,251 +1895,6 @@ dependencies = [
  "portable-atomic",
  "rand 0.10.3",
  "web-time",
-]
-
-[[package]]
-name = "ferry-cli"
-version = "0.0.1"
-dependencies = [
- "assert_cmd",
- "async-trait",
- "clap",
- "ferry-connector-mongo",
- "ferry-connector-postgres",
- "ferry-core",
- "ferry-dsl",
- "ferry-registry",
- "ferry-runtime",
- "ferry-state",
- "ferry-verify",
- "futures",
- "insta",
- "mongodb",
- "schemars 1.2.3",
- "serde",
- "serde_json",
- "tempfile",
- "testcontainers-modules",
- "tokio",
- "tokio-postgres",
-]
-
-[[package]]
-name = "ferry-connector-mongo"
-version = "0.0.1"
-dependencies = [
- "arrow-array",
- "arrow-buffer",
- "arrow-schema",
- "async-trait",
- "ferry-connector-tls",
- "ferry-core",
- "ferry-registry",
- "futures",
- "mongodb",
- "rcgen",
- "schemars 1.2.3",
- "serde",
- "serde_json",
- "testcontainers-modules",
- "tokio",
-]
-
-[[package]]
-name = "ferry-connector-postgres"
-version = "0.0.1"
-dependencies = [
- "arrow-array",
- "arrow-buffer",
- "arrow-schema",
- "async-trait",
- "bytes",
- "deadpool-postgres",
- "ferry-connector-tls",
- "ferry-core",
- "ferry-registry",
- "ferry-state",
- "futures",
- "postgres-protocol",
- "rcgen",
- "schemars 1.2.3",
- "serde",
- "serde_json",
- "testcontainers-modules",
- "tokio",
- "tokio-postgres",
- "tokio-postgres-rustls",
-]
-
-[[package]]
-name = "ferry-connector-tls"
-version = "0.0.1"
-dependencies = [
- "rustls",
- "rustls-pki-types",
- "webpki-roots",
-]
-
-[[package]]
-name = "ferry-core"
-version = "0.0.1"
-dependencies = [
- "arrow-array",
- "arrow-schema",
- "arrow-select",
- "async-trait",
- "ferry-core",
- "futures",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
-]
-
-[[package]]
-name = "ferry-dsl"
-version = "0.0.1"
-dependencies = [
- "arrow-array",
- "arrow-buffer",
- "arrow-cast",
- "arrow-ipc",
- "arrow-json",
- "arrow-ord",
- "arrow-row",
- "arrow-schema",
- "arrow-select",
- "async-trait",
- "datafusion-common",
- "datafusion-expr",
- "datafusion-functions",
- "datafusion-functions-nested",
- "datafusion-optimizer",
- "datafusion-physical-expr",
- "datafusion-sql",
- "deadpool-postgres",
- "ferry-connector-mongo",
- "ferry-connector-postgres",
- "ferry-core",
- "ferry-registry",
- "ferry-runtime",
- "ferry-state",
- "ferry-verify",
- "futures",
- "glob",
- "insta",
- "jsonschema",
- "mongodb",
- "peak_alloc",
- "proptest",
- "saphyr-parser",
- "schemars 1.2.3",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "testcontainers-modules",
- "tokio",
- "tokio-postgres",
- "uuid",
-]
-
-[[package]]
-name = "ferry-registry"
-version = "0.0.1"
-dependencies = [
- "arrow-array",
- "arrow-schema",
- "async-trait",
- "ferry-core",
- "ferry-registry",
- "futures",
- "jsonschema",
- "schemars 1.2.3",
- "serde",
- "serde_json",
- "serde_norway",
- "serde_path_to_error",
- "thiserror",
- "tokio",
- "trybuild",
-]
-
-[[package]]
-name = "ferry-runtime"
-version = "0.0.1"
-dependencies = [
- "arrow-array",
- "arrow-json",
- "arrow-schema",
- "arrow-select",
- "async-trait",
- "deadpool-postgres",
- "fastrand",
- "ferry-connector-postgres",
- "ferry-core",
- "ferry-registry",
- "ferry-runtime",
- "ferry-state",
- "futures",
- "peak_alloc",
- "serde_json",
- "tempfile",
- "testcontainers-modules",
- "thiserror",
- "tokio",
- "tokio-postgres",
-]
-
-[[package]]
-name = "ferry-state"
-version = "0.0.1"
-dependencies = [
- "arrow-array",
- "async-trait",
- "deadpool-postgres",
- "ferry-core",
- "ferry-dsl",
- "ferry-registry",
- "ferry-state",
- "futures",
- "schemars 1.2.3",
- "serde",
- "serde_json",
- "tempfile",
- "testcontainers-modules",
- "thiserror",
- "tokio",
- "tokio-postgres",
- "uuid",
-]
-
-[[package]]
-name = "ferry-verify"
-version = "0.0.1"
-dependencies = [
- "arrow-array",
- "arrow-buffer",
- "arrow-schema",
- "arrow-select",
- "async-trait",
- "deadpool-postgres",
- "ferry-connector-mongo",
- "ferry-connector-postgres",
- "ferry-core",
- "ferry-registry",
- "ferry-runtime",
- "ferry-state",
- "futures",
- "mongodb",
- "pulldown-cmark",
- "serde",
- "serde_json",
- "tempfile",
- "testcontainers-modules",
- "tokio",
- "tokio-postgres",
- "twox-hash",
 ]
 
 [[package]]
@@ -3100,18 +3098,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "27b02d87554356db9e9a873add8782d4ea6e3e58ea071a9adb9a2e8ddb884a8b"
 
 [[package]]
-name = "nix"
-version = "0.31.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf20d2fde8ff38632c426f1165ed7436270b44f199fc55284c38276f9db47c3d"
-dependencies = [
- "bitflags",
- "cfg-if",
- "cfg_aliases",
- "libc",
-]
-
-[[package]]
 name = "nom"
 version = "7.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3236,9 +3222,9 @@ dependencies = [
 
 [[package]]
 name = "object_store"
-version = "0.14.2"
+version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1796bc93603f78c5760a69f2d58badc9618d22adade0a95385bb2adbae4eb94"
+checksum = "622acbc9100d3c10e2ee15804b0caa40e55c933d5aa53814cd520805b7958a49"
 dependencies = [
  "async-trait",
  "bytes",
@@ -3248,8 +3234,7 @@ dependencies = [
  "futures-util",
  "http",
  "humantime",
- "itertools 0.15.0",
- "nix",
+ "itertools 0.14.0",
  "parking_lot",
  "percent-encoding",
  "thiserror",
@@ -3259,7 +3244,6 @@ dependencies = [
  "walkdir",
  "wasm-bindgen-futures",
  "web-time",
- "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4313,9 +4297,9 @@ dependencies = [
 
 [[package]]
 name = "sqlparser"
-version = "0.63.0"
+version = "0.62.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3679862809bd1f92e563cf6fd820e28f39135303668001c10331d5027183e8b4"
+checksum = "13c6d1b651dc4edf07eead2a0c6c78016ce971bc2c10da5266861b13f25e7cec"
 dependencies = [
  "log",
  "sqlparser_derive",
@@ -4323,13 +4307,13 @@ dependencies = [
 
 [[package]]
 name = "sqlparser_derive"
-version = "0.6.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2905ae8e8148d8f7f5748ea95d1e949fa4fc1d7f5161547b758ad118b2e4b0aa"
+checksum = "a6dd45d8fc1c79299bfbb7190e42ccbbdf6a5f52e4a6ad98d92357ea965bd289"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.9",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -5704,18 +5688,18 @@ checksum = "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b"
 
 [[package]]
 name = "zstd"
-version = "0.14.3"
+version = "0.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db3ae9bf90af6e40197bef767eeefc46ad6397420fe873830bd85e5fbbfb3c70"
+checksum = "e91ee311a569c327171651566e07972200e76fcfe2242a4fa446149a3881c08a"
 dependencies = [
  "zstd-safe",
 ]
 
 [[package]]
 name = "zstd-safe"
-version = "8.2.0"
+version = "7.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ded520f16b29e1a9b771c722221b2b0a0398c2316d9bb3c42b458a5414d7434b"
+checksum = "64d80649ab6db9d9f6f9c80a40becd948eda4714a0a5ac8c4d157a32231c7882"
 dependencies = [
  "zstd-sys",
 ]

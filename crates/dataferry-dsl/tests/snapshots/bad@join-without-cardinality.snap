@@ -1,0 +1,5 @@
+---
+source: crates/dataferry-dsl/tests/bad_configs.rs
+expression: rendered
+---
+error: flows/orders.yaml:7:11 flows[orders].from[1].join.cardinality: missing key `cardinality`

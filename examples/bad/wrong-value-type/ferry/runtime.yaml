@@ -10,7 +10,7 @@ runtime:
   workers: 2
   memory_budget: 256MiB
   # …0006 has one bad item: the whole document goes to _ferry_dlq and the
-  # run carries on. One dead letter is under max_errors, so `ferry run`
+  # run carries on. One dead letter is under max_errors, so `dataferry run`
   # still exits 0.
   on_error: dead_letter
   max_errors: ten
