@@ -1,0 +1,20 @@
+run a3016d8945ee4df6949b6a8cd3533ac2
+  flow `customers`: TxnWithState
+  flow `order_summaries`: TxnWithState
+run a3016d8945ee4df6949b6a8cd3533ac2: complete; 2 partitions; read 6, dead-lettered 0; wrote customers 2, order_summaries 3
+verification of `reporting` passed; report: ./.ferry/runs/a3016d8945ee4df6949b6a8cd3533ac2/report.md
+select * from customers order by id;
+ id | name |      email      
+----+------+-----------------
+  1 | Ana  | ana@example.dev
+  2 | Bo   | 
+(2 rows)
+
+select order_id, customer_name, status, total_cents, items from order_summaries order by order_id;
+ order_id | customer_name | status  | total_cents |                                              items                                              
+----------+---------------+---------+-------------+-------------------------------------------------------------------------------------------------
+       10 | Ana           | paid    |        2550 | [{"qty": 2, "sku": "SKU-1", "unit_cents": 1000}, {"qty": 1, "sku": "SKU-2", "unit_cents": 550}]
+       12 | Bo            | paid    |           0 | []
+       13 |               | pending |         300 | [{"qty": 3, "sku": "SKU-6", "unit_cents": 100}]
+(3 rows)
+

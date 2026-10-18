@@ -1,0 +1,7 @@
+[
+  { "_id": 1, "email": "Ana@Example.dev", "plan": "pro", "seats": "5" },
+  { "_id": 2, "email": "bo@example.dev", "plan": "free", "seats": "1" },
+  { "_id": 3, "email": null, "plan": "pro", "seats": "3" },
+  { "_id": 4, "email": "cy@example.dev", "plan": "team", "seats": "ten" },
+  { "_id": 5, "email": "di@example.dev", "plan": "free", "seats": "2" }
+]

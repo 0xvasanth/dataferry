@@ -1,0 +1,35 @@
+[
+  {
+    "_id": "p-1",
+    "name": "Desk lamp",
+    "price": { "$numberDecimal": "24.50" },
+    "tags": ["lighting", "office"],
+    "dimensions": { "width_cm": 15, "height_cm": 40 },
+    "variants": [
+      {
+        "sku": "LAMP-BLK", "color": "black", "stock": 12,
+        "options": [{ "name": "bulb", "value": "LED" }, { "name": "plug", "value": "EU" }]
+      },
+      {
+        "sku": "LAMP-WHT", "color": "white", "stock": 0, "discontinued": true,
+        "options": [{ "name": "bulb", "value": "LED" }]
+      }
+    ]
+  },
+  {
+    "_id": "p-2",
+    "name": "Notebook",
+    "price": { "$numberDecimal": "3.99" },
+    "tags": [],
+    "variants": [
+      { "sku": "NB-A5", "color": "red", "stock": 100, "discontinued": false, "options": [] }
+    ]
+  },
+  {
+    "_id": "p-3",
+    "name": "Cable",
+    "price": { "$numberDecimal": "7.125" },
+    "tags": ["office"],
+    "dimensions": null
+  }
+]

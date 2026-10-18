@@ -1,0 +1,2 @@
+{"severity":"error","code":"F0105","message":"unknown key `wrokers`","file":"ferry/runtime.yaml","line":7,"column":3,"path":"runtime.wrokers","help":"did you mean `workers`?"}
+{"valid":false,"errors":1,"warnings":0}

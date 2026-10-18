@@ -1,0 +1,12 @@
+connections:
+  - name: legacy
+    type: postgres
+    url: ${LEGACY_URL}
+
+  - name: warehouse
+    type: postgres
+    url: ${WAREHOUSE_URL}       # required
+    password: ${WAREHOUSE_PW}   # optional: overrides the password in url
+    schema: reporting           # default: public
+    drop_indexes: true          # default: false
+    foreign_keys: defer         # default: defer

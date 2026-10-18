@@ -1,0 +1,7 @@
+warning[W0301]: connections[warehouse].url: holds a secret as a literal value, and config directories get committed
+ --> ferry/connections.yaml:9:10
+  |
+9 |     url: ***
+  |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = help: write `${NAME}` and export the value in the environment instead
+`catalog` is valid: 2 connections, 1 flow, 1 warning

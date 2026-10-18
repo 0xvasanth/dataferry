@@ -1,0 +1,39 @@
+Check the config without connecting to anything
+
+Usage: dataferry validate [OPTIONS]
+
+Options:
+  -c, --config <DIR>
+          The `ferry/` config directory
+          
+          [env: FERRY_CONFIG=]
+          [default: ferry]
+
+      --color <WHEN>
+          Colour diagnostics: `auto` colours a terminal unless NO_COLOR is set
+          
+          [default: auto]
+          [possible values: auto, always, never]
+
+      --format <FORMAT>
+          `json` prints diagnostics as JSON lines, for CI and editors
+
+          Possible values:
+          - text
+          - json: One JSON object per line
+          
+          [default: text]
+
+  -v, --verbose...
+          More detail, e.g. how each connection was understood
+
+  -q, --quiet
+          Only errors: no warnings, no summary
+
+      --work-dir <DIR>
+          Where `run` keeps write-time records, reports and file-backed state. Default: `.ferry` next to the config directory
+          
+          [env: FERRY_WORK_DIR=]
+
+  -h, --help
+          Print help (see a summary with '-h')

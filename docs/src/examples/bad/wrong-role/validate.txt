@@ -1,0 +1,7 @@
+error[F0303]: flows[products].sink: flow `products` writes to connection `shop`, but the `mongo` connector in this build has no sink
+ --> ferry/flows/products.yaml:4:11
+  |
+4 |     sink: shop
+  |           ^^^^
+  = help: `mongo` provides: source
+config is invalid: 1 error

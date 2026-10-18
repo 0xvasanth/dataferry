@@ -1,0 +1,77 @@
+flows:
+  - name: products
+    from: shop.products
+    sink: warehouse
+    to:
+      # ANCHOR: products
+      products:
+        key: [id]
+        columns:
+          id: _id
+          name: name
+          price: {expr: price, type: "decimal(10,2)", allow_lossy: true}
+          price_cents: int(round(price * 100))
+          tag_count: int(coalesce(cardinality(tags), 0))
+      # ANCHOR_END: products
+
+      # ANCHOR: dimensions
+      # A split: a second table from the same document, one row per product
+      # that has dimensions.
+      product_dimensions:
+        parent: products
+        key: [product_id]
+        where: dimensions != null
+        columns:
+          product_id: $parent.id
+          width_cm: dimensions.width_cm
+          height_cm: dimensions.height_cm
+      # ANCHOR_END: dimensions
+
+      # ANCHOR: tags
+      # An array of strings: `$item` is the element itself.
+      product_tags:
+        parent: products
+        unnest: tags
+        key: [product_id, position]
+        columns:
+          product_id: $parent.id
+          position: $index
+          tag: $item
+      # ANCHOR_END: tags
+
+      # ANCHOR: variants
+      # An array of objects: bare names are the element's fields.
+      variants:
+        parent: products
+        unnest: variants
+        key: [product_id, position]
+        where:
+          on_sale: not coalesce(discontinued, false)
+        columns:
+          product_id: $parent.id
+          position: $index
+          sku: sku
+          color: color
+          stock: stock
+      # ANCHOR_END: variants
+
+      # ANCHOR: options
+      # Nested: one row per option of each variant written above.
+      variant_options:
+        parent: variants
+        unnest: options
+        key: [product_id, variant_position, position]
+        columns:
+          id: $key
+          product_id: $parent.product_id
+          variant_position: $parent.position
+          position: $index
+          name: name
+          value: value
+      # ANCHOR_END: options
+
+    # ANCHOR: expect
+    expect:
+      every_product: count(products) == source.count()
+      every_tag: count(product_tags) == source.sum(coalesce(cardinality(tags), 0))
+    # ANCHOR_END: expect

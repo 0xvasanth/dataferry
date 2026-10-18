@@ -1,0 +1,51 @@
+Move data between databases, one committed partition at a time.
+
+Usage: dataferry [OPTIONS] <COMMAND>
+
+Commands:
+  validate  Check the config without connecting to anything
+  plan      Print what a run would do: discovered entities, types, DDL and strategies. Reads from sources, writes nothing
+  run       Plan, then run every flow. Prints the run id first
+  resume    Continue an unfinished run
+  retry     Re-run the failed partitions of a finished run
+  schema    Print the JSON Schemas for this binary's config files, including the connection types it has registered
+  help      Print this message or the help of the given subcommand(s)
+
+Options:
+  -c, --config <DIR>
+          The `ferry/` config directory
+          
+          [env: FERRY_CONFIG=]
+          [default: ferry]
+
+      --color <WHEN>
+          Colour diagnostics: `auto` colours a terminal unless NO_COLOR is set
+          
+          [default: auto]
+          [possible values: auto, always, never]
+
+      --format <FORMAT>
+          `json` prints diagnostics as JSON lines, for CI and editors
+
+          Possible values:
+          - text
+          - json: One JSON object per line
+          
+          [default: text]
+
+  -v, --verbose...
+          More detail, e.g. how each connection was understood
+
+  -q, --quiet
+          Only errors: no warnings, no summary
+
+      --work-dir <DIR>
+          Where `run` keeps write-time records, reports and file-backed state. Default: `.ferry` next to the config directory
+          
+          [env: FERRY_WORK_DIR=]
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version

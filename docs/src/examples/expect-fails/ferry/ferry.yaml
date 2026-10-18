@@ -1,0 +1,3 @@
+# The guide's expect-fails example (docs/src/errors.md, verification.md).
+version: 1
+name: signups

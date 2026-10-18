@@ -1,0 +1,25 @@
+run 68abfa6b37944a45a814e4ce6adee339
+  flow `accounts`: TxnWithState
+run 68abfa6b37944a45a814e4ce6adee339: complete; 1 partitions; read 5, dead-lettered 2; wrote accounts 3
+verification of `warehouse` passed; report: ./.ferry/runs/68abfa6b37944a45a814e4ce6adee339/report.md
+select * from accounts order by id;
+ id |      email      | plan | seats 
+----+-----------------+------+-------
+  1 | ana@example.dev | pro  |     5
+  2 | bo@example.dev  | free |     1
+  5 | di@example.dev  | free |     2
+(3 rows)
+
+select source_id, target, error from _ferry_dlq order by source_id;
+ source_id |  target  |                             error                             
+-----------+----------+---------------------------------------------------------------
+ [3]       | accounts | accounts.email can't be null, but `lower(email)` is null
+ [4]       | accounts | accounts.seats = `int(seats)`: int(): `ten` is not an integer
+(2 rows)
+
+select record from _ferry_dlq where source_id = '[4]';
+                                           record                                            
+---------------------------------------------------------------------------------------------
+ {"_id": 4, "plan": "team", "email": "cy@example.dev", "seats": "ten", "_ferry_missing": []}
+(1 row)
+
