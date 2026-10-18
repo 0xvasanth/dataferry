@@ -357,7 +357,7 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "0xferry config grammar version 1: ferry/flows/**/*.yaml and *.yml (decision 0003).",
+  "description": "dataferry config grammar version 1: ferry/flows/**/*.yaml and *.yml (decision 0003).",
   "properties": {
     "flows": {
       "items": {
@@ -369,6 +369,6 @@
   "required": [
     "flows"
   ],
-  "title": "0xferry flow file",
+  "title": "dataferry flow file",
   "type": "object"
 }

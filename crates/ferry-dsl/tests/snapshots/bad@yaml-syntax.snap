@@ -1,5 +1,0 @@
----
-source: crates/ferry-dsl/tests/bad_configs.rs
-expression: rendered
----
-error: flows/orders.yaml:4:4 invalid YAML: while parsing a block collection, did not find expected '-' indicator

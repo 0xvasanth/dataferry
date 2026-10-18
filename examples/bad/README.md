@@ -1,7 +1,7 @@
 # Bad configs
 
 Each directory is `examples/golden/ferry/` with **exactly one** defect, in
-the one file the table names. A test in `ferry-dsl` (`tests/examples.rs`)
+the one file the table names. A test in `dataferry-dsl` (`tests/examples.rs`)
 diffs every case against the golden config, so a case can't fail for a
 reason other than the one documented here.
 
@@ -19,8 +19,8 @@ Columns:
   - `load`: needs the whole directory (several files, names defined
     elsewhere, `include:`, `depends_on:`). The JSON Schema can't see it.
   - `env`: `${ENV}` rules (0003 §9).
-  - `registry`: needs the connector registry (0004). `ferry-dsl` loads these
-    without error, and `ferry validate` (C1) rejects them.
+  - `registry`: needs the connector registry (0004). `dataferry-dsl` loads these
+    without error, and `dataferry validate` (C1) rejects them.
 - **Owner**: the ticket that owns the check.
 
 | Case | Defect | File | Error at | Field path | Checked by | Owner |

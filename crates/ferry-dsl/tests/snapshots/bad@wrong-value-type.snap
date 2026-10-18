@@ -1,5 +1,0 @@
----
-source: crates/ferry-dsl/tests/bad_configs.rs
-expression: rendered
----
-error: runtime.yaml:16:15 runtime.max_errors: expected a whole number, 0 or more, found string "ten"

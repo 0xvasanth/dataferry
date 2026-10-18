@@ -1,0 +1,67 @@
+[package]
+name = "dataferry"
+description = "The dataferry command-line interface"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords.workspace = true
+categories = ["command-line-utilities", "database"]
+
+[lints]
+workspace = true
+
+[features]
+default = ["postgres", "mongo"]
+# The built-in connectors (0004 §5). `postgres` brings dataferry-state's
+# Postgres state backend with it, so a run can keep its state in a
+# postgres connection.
+postgres = ["dep:dataferry-connector-postgres", "dataferry-state/postgres"]
+mongo = ["dep:dataferry-connector-mongo"]
+
+[dependencies]
+dataferry-core.workspace = true
+dataferry-dsl.workspace = true
+dataferry-registry.workspace = true
+# `run`: the runner (A5), the file state backend (A4), the verifier (A8).
+dataferry-runtime.workspace = true
+dataferry-state.workspace = true
+dataferry-verify.workspace = true
+dataferry-connector-postgres = { workspace = true, optional = true }
+dataferry-connector-mongo = { workspace = true, optional = true }
+async-trait = "0.1"
+clap = { version = "4", features = ["derive", "env"] }
+futures = "0.3"
+schemars = "1"
+serde_json = "1"
+# `signal`: Ctrl-C stops a run with exit 130. `time`: releasing its leases
+# is bounded.
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "time"] }
+
+[dev-dependencies]
+assert_cmd = "2"
+# A sink type with no verifier, for the unverified-sink test.
+dataferry-core = { workspace = true, features = ["testkit"] }
+# The built-ins by name, for the tests that register them again.
+dataferry-connector-mongo.workspace = true
+dataferry-connector-postgres.workspace = true
+dataferry-state = { workspace = true, features = ["postgres"] }
+# The conformance suite (`testkit::conformance`) and its chaos harness.
+dataferry-runtime = { workspace = true, features = ["testkit"] }
+insta = "1"
+# The plan and run tests: real Mongo and Postgres on testcontainers.
+mongodb = "3"
+# The README's connector example (tests/readme_connector.rs), and the
+# unverified-sink test's sink type.
+serde = { version = "1", features = ["derive"] }
+tempfile = "3"
+testcontainers-modules.workspace = true
+tokio.workspace = true
+tokio-postgres = "0.7"
+
+[[bin]]
+name = "dataferry"
+path = "src/main.rs"

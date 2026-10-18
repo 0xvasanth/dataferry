@@ -1,0 +1,5 @@
+---
+source: crates/dataferry-dsl/tests/bad_configs.rs
+expression: rendered
+---
+error: connections.yaml:6:5 connections[shop].description: `description` is reserved for connection entries and has no meaning in v0.1 (0003 §3)

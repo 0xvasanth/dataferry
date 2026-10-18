@@ -1,0 +1,75 @@
+---
+source: crates/dataferry/tests/pg_merge.rs
+expression: "normalized(&out.stdout, &app, &reporting)"
+---
+plan for `pg_order_summaries`, config sha256:b36c92a9de9c1a061d2da896bd84fd87ff8f06c0128fb12df61858ea3067a574
+state store: postgres, on connection `reporting`
+on_error: fail, max_errors: unbounded
+
+connections
+  app        postgres (source): postgres://postgres@127.0.0.1:<app-port>/postgres, schema public
+  reporting  postgres (sink, state store): postgres://postgres@127.0.0.1:<reporting-port>/postgres, schema public
+
+run order
+  1. customers
+  2. order_summaries, after `customers` (declared)
+
+flow `customers`
+  from:        app.public.customers (driver, key id)
+  sink:        reporting, mode upsert
+  strategy:    TxnWithState
+  partitions:  about 50000 rows each (runtime.yaml), stored as `customers/<partition>`
+  write order: customers
+  targets:
+    customers (key id)
+      id     int64
+      name   utf8
+      email  utf8, nullable
+  ddl (not run by plan):
+    CREATE SCHEMA IF NOT EXISTS "public";
+    CREATE TABLE "public"."customers" (
+      "id" bigint NOT NULL,
+      "name" text NOT NULL,
+      "email" text,
+      PRIMARY KEY ("id")
+    );
+
+flow `order_summaries`
+  from:        app.public.orders (driver, key id)
+  sink:        reporting, mode upsert
+  strategy:    TxnWithState
+  partitions:  about 50000 rows each (runtime.yaml), stored as `order_summaries/<partition>`
+  joins:
+    c app.public.customers (one, on c.id = o.customer_id)
+      strategy: staged: read once, sorted in 256MiB and spilled to disk
+      why:      auto: staged, because `o.customer_id` isn't the driver's key `o.id`
+    i app.public.order_items (many, on i.order_id = o.id)
+      strategy: co-partitioned on `order_id`, streamed with each driver partition
+      why:      pinned by `strategy: co_partition`
+  nest:        order_summaries.items from i, ordered by line_no, order_id
+  where:       not_cancelled: status != 'cancelled'
+  write order: order_summaries
+  targets:
+    order_summaries (key order_id)
+      order_id       int64
+      customer_id    int64, nullable
+      customer_name  utf8, nullable
+      status         utf8
+      placed_at      timestamp(UTC)
+      total_cents    int64
+      items          list(struct(sku: utf8, qty: int32, unit_cents: int64))
+  expect:
+    one_row_per_order: count(order_summaries) == source.count()
+    totals_match: sum(order_summaries.total_cents) == source.sum(total_cents)
+  ddl (not run by plan):
+    CREATE SCHEMA IF NOT EXISTS "public";
+    CREATE TABLE "public"."order_summaries" (
+      "order_id" bigint NOT NULL,
+      "customer_id" bigint,
+      "customer_name" text,
+      "status" text NOT NULL,
+      "placed_at" timestamp with time zone NOT NULL,
+      "total_cents" bigint NOT NULL,
+      "items" jsonb NOT NULL,
+      PRIMARY KEY ("order_id")
+    );

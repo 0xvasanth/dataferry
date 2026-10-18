@@ -1,7 +1,7 @@
 # Config JSON Schemas
 
 One JSON Schema (draft 2020-12) per kind of file in a `ferry/` directory,
-generated from the `ferry-dsl` model (`crates/ferry-dsl/src/config/schema.rs`).
+generated from the `dataferry-dsl` model (`crates/dataferry-dsl/src/config/schema.rs`).
 `v1/` is grammar `version: 1` (decision 0003).
 
 | File | Schema |
@@ -13,7 +13,7 @@ generated from the `ferry-dsl` model (`crates/ferry-dsl/src/config/schema.rs`).
 
 Every key is described in the
 [config reference](../docs/config-reference.md), which a test checks against
-`ferry schema`.
+`dataferry schema`.
 
 A file reached through `include:` holds `flows:`, `connections:` or both, and
 matches the flows or connections schema for what it holds.
@@ -21,7 +21,7 @@ matches the flows or connections schema for what it holds.
 Connection entries are left open here: only `name` and `type` are checked,
 and `description` is rejected. Each connector type's own fields come from the
 connector registry, so the complete connections schema depends on the binary
-and is printed by `ferry schema` (decision 0004 §3). Point editors at that
+and is printed by `dataferry schema` (decision 0004 §3). Point editors at that
 output when it exists.
 
 ## Editor setup
@@ -48,11 +48,11 @@ Or per file, with a modeline on its first line:
 
 ## Keeping them current
 
-`cargo test -p ferry-dsl --test schema` fails when these files no longer
+`cargo test -p dataferry-dsl --test schema` fails when these files no longer
 match the model. Regenerate them with
 
 ```sh
-FERRY_UPDATE_SCHEMAS=1 cargo test -p ferry-dsl --test schema
+FERRY_UPDATE_SCHEMAS=1 cargo test -p dataferry-dsl --test schema
 ```
 
 and commit the result. A new grammar version gets a new directory; `v1/`

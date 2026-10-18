@@ -1,0 +1,44 @@
+[package]
+name = "dataferry-connector-postgres"
+description = "Postgres source and sink for dataferry"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme.workspace = true
+keywords = ["migration", "etl", "postgres", "postgresql", "arrow"]
+categories.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+dataferry-core.workspace = true
+dataferry-connector-tls.workspace = true
+dataferry-registry.workspace = true
+arrow-array = "59"
+arrow-buffer = "59"
+arrow-schema = "59"
+async-trait = "0.1"
+bytes = "1"
+deadpool-postgres = { version = "0.14", default-features = false, features = ["rt_tokio_1"] }
+futures = "0.3"
+postgres-protocol = "0.6"
+schemars = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt"] }
+tokio-postgres = "0.7"
+tokio-postgres-rustls = "0.14"
+
+[dev-dependencies]
+dataferry-core = { workspace = true, features = ["testkit"] }
+dataferry-registry = { workspace = true, features = ["testkit"] }
+# The real state store, to test the sink's TxnWithState commit against
+# (dataferry-state doesn't depend on this crate, so there is no cycle).
+dataferry-state = { workspace = true, features = ["postgres"] }
+tokio.workspace = true
+testcontainers-modules.workspace = true
+rcgen = "0.14"

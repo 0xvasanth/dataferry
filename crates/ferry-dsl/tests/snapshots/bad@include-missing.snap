@@ -1,5 +1,0 @@
----
-source: crates/ferry-dsl/tests/bad_configs.rs
-expression: rendered
----
-error: ferry.yaml:6:5 include[0]: included file `shared/connections.yaml` does not exist

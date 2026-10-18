@@ -31,7 +31,7 @@ from them. The repository's README example, which a test compiles and
 registers:
 
 ```rust,ignore
-{{#include ../../crates/ferry-cli/tests/readme_connector.rs:9:47}}
+{{#include ../../crates/dataferry/tests/readme_connector.rs:9:47}}
 ```
 
 - **`TYPE`** is the `type:` value. **`ROLES`** says whether it can be a
@@ -61,7 +61,7 @@ registers:
 ## Your binary
 
 ```rust,ignore
-{{#include ../../crates/ferry-cli/tests/readme_connector.rs:52:57}}
+{{#include ../../crates/dataferry/tests/readme_connector.rs:52:57}}
 ```
 
 `Ferry` is a builder:
@@ -72,7 +72,7 @@ registers:
 | `.register(connector)` | Adds a connector type. |
 | `.register_state_capable(connector, backend)` | Adds a connector that can hold the state store, with its backend (below). |
 | `.replace(connector)`, `.replace_state_capable(...)` | Replaces a registered type on purpose, a patched `postgres` for example. |
-| `.name("acme-ferry")` | The name in help and usage text. |
+| `.name("acme-dataferry")` | The name in help and usage text. |
 | `.version("1.2.0")` | What `--version` prints. |
 | `.main()` | Parses the process arguments, runs the command and returns its exit code. |
 | `.run_with(args, out, err)` | The same with explicit arguments and output, for tests. |
@@ -86,7 +86,7 @@ surface in this release.
 
 ## The acme test connector
 
-[`crates/ferry-cli/tests/acme-ferry`](https://github.com/0xvasanth/ferry/tree/main/crates/ferry-cli/tests/acme-ferry)
+[`crates/dataferry/tests/acme-dataferry`](https://github.com/0xvasanth/ferry/tree/main/crates/dataferry/tests/acme-dataferry)
 is a complete third-party binary, written against the public API only and
 used by the tests: it registers its own `postgres` and `mongo` (with the
 built-ins' options, and endpoints that panic when used, which proves
@@ -96,14 +96,14 @@ have.
 Its command line:
 
 ```rust,ignore
-{{#include ../../crates/ferry-cli/tests/acme-ferry/src/lib.rs:29:36}}
+{{#include ../../crates/dataferry/tests/acme-dataferry/src/lib.rs:31:38}}
 ```
 
 A source-only connector, with a URL check in `build` that stands in for
 parsing a connection string, and no I/O:
 
 ```rust,ignore
-{{#include ../../crates/ferry-cli/tests/acme-ferry/src/lib.rs:271:302}}
+{{#include ../../crates/dataferry/tests/acme-dataferry/src/lib.rs:273:304}}
 ```
 
 `endpoints` builds whatever `wants` asks for. `Endpoints` also has two
@@ -112,7 +112,7 @@ loosened for the load, such as dropped foreign keys) and `ddl` (renders
 the DDL `prepare` would run, which `plan` prints):
 
 ```rust,ignore
-{{#include ../../crates/ferry-cli/tests/acme-ferry/src/lib.rs:85:96}}
+{{#include ../../crates/dataferry/tests/acme-dataferry/src/lib.rs:87:98}}
 ```
 
 Its tests run the binary as a real process (`validate` against the
@@ -169,7 +169,7 @@ types are the same. A sink built with plain `build` must not list
 `TxnWithState`. The acme connector's version, which does nothing:
 
 ```rust,ignore
-{{#include ../../crates/ferry-cli/tests/acme-ferry/src/lib.rs:163:201}}
+{{#include ../../crates/dataferry/tests/acme-dataferry/src/lib.rs:165:203}}
 ```
 
 ## Testing a connector

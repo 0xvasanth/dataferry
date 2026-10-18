@@ -1,0 +1,5 @@
+---
+source: crates/dataferry-dsl/tests/bad_configs.rs
+expression: rendered
+---
+error: flows/orders.yaml:6:5 flows[orders].mode: duplicate key `mode`, first written at line 5

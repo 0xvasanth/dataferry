@@ -1,0 +1,6 @@
+---
+source: crates/dataferry-dsl/tests/bad_configs.rs
+expression: rendered
+---
+error: flows/audit.yaml:6:18 flows[order_audit].depends_on[0]: `depends_on` forms a cycle: order_audit (flows/audit.yaml:3:11) → status_audit (flows/audit.yaml:11:11) → order_audit
+  help: remove one of these edges; flows in a cycle could never start (0003 §7)

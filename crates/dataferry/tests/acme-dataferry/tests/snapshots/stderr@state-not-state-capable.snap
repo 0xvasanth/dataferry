@@ -1,0 +1,11 @@
+---
+source: crates/dataferry/tests/acme-dataferry/tests/validate.rs
+expression: out.stderr
+---
+error[F0304]: runtime.state.connection: the state connection `shop` is a `mongo` connection, but `backend:` is `postgres`
+ --> examples/bad/state-not-state-capable/ferry/runtime.yaml:8:17
+  |
+8 |     connection: shop
+  |                 ^^^^
+  = help: name a `postgres` connection here, or set `backend:` to the connection's type
+config is invalid: 1 error

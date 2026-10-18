@@ -9,7 +9,7 @@ yanked = "deny"
 ignore = []
 
 [licenses]
-# Permissive licenses only (ferry itself is Apache-2.0). Crates offering
+# Permissive licenses only (dataferry itself is Apache-2.0). Crates offering
 # a choice (e.g. "MIT OR LGPL-2.1-or-later") pass on the permissive one.
 allow = [
     "Apache-2.0",

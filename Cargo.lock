@@ -3,15 +3,15 @@
 version = 4
 
 [[package]]
-name = "acme-ferry"
+name = "acme-dataferry"
 version = "0.0.1"
 dependencies = [
  "assert_cmd",
  "async-trait",
- "ferry-cli",
- "ferry-core",
- "ferry-dsl",
- "ferry-registry",
+ "dataferry",
+ "dataferry-core",
+ "dataferry-dsl",
+ "dataferry-registry",
  "insta",
  "jsonschema",
  "schemars 1.2.3",
@@ -1128,6 +1128,251 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4583a4551df46e2792f82ceeac45e850d2e2d5debba0b91f102385cda5b11f06"
 
 [[package]]
+name = "dataferry"
+version = "0.0.1"
+dependencies = [
+ "assert_cmd",
+ "async-trait",
+ "clap",
+ "dataferry-connector-mongo",
+ "dataferry-connector-postgres",
+ "dataferry-core",
+ "dataferry-dsl",
+ "dataferry-registry",
+ "dataferry-runtime",
+ "dataferry-state",
+ "dataferry-verify",
+ "futures",
+ "insta",
+ "mongodb",
+ "schemars 1.2.3",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "testcontainers-modules",
+ "tokio",
+ "tokio-postgres",
+]
+
+[[package]]
+name = "dataferry-connector-mongo"
+version = "0.0.1"
+dependencies = [
+ "arrow-array",
+ "arrow-buffer",
+ "arrow-schema",
+ "async-trait",
+ "dataferry-connector-tls",
+ "dataferry-core",
+ "dataferry-registry",
+ "futures",
+ "mongodb",
+ "rcgen",
+ "schemars 1.2.3",
+ "serde",
+ "serde_json",
+ "testcontainers-modules",
+ "tokio",
+]
+
+[[package]]
+name = "dataferry-connector-postgres"
+version = "0.0.1"
+dependencies = [
+ "arrow-array",
+ "arrow-buffer",
+ "arrow-schema",
+ "async-trait",
+ "bytes",
+ "dataferry-connector-tls",
+ "dataferry-core",
+ "dataferry-registry",
+ "dataferry-state",
+ "deadpool-postgres",
+ "futures",
+ "postgres-protocol",
+ "rcgen",
+ "schemars 1.2.3",
+ "serde",
+ "serde_json",
+ "testcontainers-modules",
+ "tokio",
+ "tokio-postgres",
+ "tokio-postgres-rustls",
+]
+
+[[package]]
+name = "dataferry-connector-tls"
+version = "0.0.1"
+dependencies = [
+ "rustls",
+ "rustls-pki-types",
+ "webpki-roots",
+]
+
+[[package]]
+name = "dataferry-core"
+version = "0.0.1"
+dependencies = [
+ "arrow-array",
+ "arrow-schema",
+ "arrow-select",
+ "async-trait",
+ "dataferry-core",
+ "futures",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
+name = "dataferry-dsl"
+version = "0.0.1"
+dependencies = [
+ "arrow-array",
+ "arrow-buffer",
+ "arrow-cast",
+ "arrow-ipc",
+ "arrow-json",
+ "arrow-ord",
+ "arrow-row",
+ "arrow-schema",
+ "arrow-select",
+ "async-trait",
+ "dataferry-connector-mongo",
+ "dataferry-connector-postgres",
+ "dataferry-core",
+ "dataferry-registry",
+ "dataferry-runtime",
+ "dataferry-state",
+ "dataferry-verify",
+ "datafusion-common",
+ "datafusion-expr",
+ "datafusion-functions",
+ "datafusion-functions-nested",
+ "datafusion-optimizer",
+ "datafusion-physical-expr",
+ "datafusion-sql",
+ "deadpool-postgres",
+ "futures",
+ "glob",
+ "insta",
+ "jsonschema",
+ "mongodb",
+ "peak_alloc",
+ "proptest",
+ "saphyr-parser",
+ "schemars 1.2.3",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "testcontainers-modules",
+ "tokio",
+ "tokio-postgres",
+ "uuid",
+]
+
+[[package]]
+name = "dataferry-registry"
+version = "0.0.1"
+dependencies = [
+ "arrow-array",
+ "arrow-schema",
+ "async-trait",
+ "dataferry-core",
+ "dataferry-registry",
+ "futures",
+ "jsonschema",
+ "schemars 1.2.3",
+ "serde",
+ "serde_json",
+ "serde_norway",
+ "serde_path_to_error",
+ "thiserror",
+ "tokio",
+ "trybuild",
+]
+
+[[package]]
+name = "dataferry-runtime"
+version = "0.0.1"
+dependencies = [
+ "arrow-array",
+ "arrow-json",
+ "arrow-schema",
+ "arrow-select",
+ "async-trait",
+ "dataferry-connector-postgres",
+ "dataferry-core",
+ "dataferry-registry",
+ "dataferry-runtime",
+ "dataferry-state",
+ "deadpool-postgres",
+ "fastrand",
+ "futures",
+ "peak_alloc",
+ "serde_json",
+ "tempfile",
+ "testcontainers-modules",
+ "thiserror",
+ "tokio",
+ "tokio-postgres",
+]
+
+[[package]]
+name = "dataferry-state"
+version = "0.0.1"
+dependencies = [
+ "arrow-array",
+ "async-trait",
+ "dataferry-core",
+ "dataferry-dsl",
+ "dataferry-registry",
+ "dataferry-state",
+ "deadpool-postgres",
+ "futures",
+ "schemars 1.2.3",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "testcontainers-modules",
+ "thiserror",
+ "tokio",
+ "tokio-postgres",
+ "uuid",
+]
+
+[[package]]
+name = "dataferry-verify"
+version = "0.0.1"
+dependencies = [
+ "arrow-array",
+ "arrow-buffer",
+ "arrow-schema",
+ "arrow-select",
+ "async-trait",
+ "dataferry-connector-mongo",
+ "dataferry-connector-postgres",
+ "dataferry-core",
+ "dataferry-registry",
+ "dataferry-runtime",
+ "dataferry-state",
+ "deadpool-postgres",
+ "futures",
+ "mongodb",
+ "pulldown-cmark",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "testcontainers-modules",
+ "tokio",
+ "tokio-postgres",
+ "twox-hash",
+]
+
+[[package]]
 name = "datafusion-common"
 version = "55.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1650,251 +1895,6 @@ dependencies = [
  "portable-atomic",
  "rand 0.10.3",
  "web-time",
-]
-
-[[package]]
-name = "ferry-cli"
-version = "0.0.1"
-dependencies = [
- "assert_cmd",
- "async-trait",
- "clap",
- "ferry-connector-mongo",
- "ferry-connector-postgres",
- "ferry-core",
- "ferry-dsl",
- "ferry-registry",
- "ferry-runtime",
- "ferry-state",
- "ferry-verify",
- "futures",
- "insta",
- "mongodb",
- "schemars 1.2.3",
- "serde",
- "serde_json",
- "tempfile",
- "testcontainers-modules",
- "tokio",
- "tokio-postgres",
-]
-
-[[package]]
-name = "ferry-connector-mongo"
-version = "0.0.1"
-dependencies = [
- "arrow-array",
- "arrow-buffer",
- "arrow-schema",
- "async-trait",
- "ferry-connector-tls",
- "ferry-core",
- "ferry-registry",
- "futures",
- "mongodb",
- "rcgen",
- "schemars 1.2.3",
- "serde",
- "serde_json",
- "testcontainers-modules",
- "tokio",
-]
-
-[[package]]
-name = "ferry-connector-postgres"
-version = "0.0.1"
-dependencies = [
- "arrow-array",
- "arrow-buffer",
- "arrow-schema",
- "async-trait",
- "bytes",
- "deadpool-postgres",
- "ferry-connector-tls",
- "ferry-core",
- "ferry-registry",
- "ferry-state",
- "futures",
- "postgres-protocol",
- "rcgen",
- "schemars 1.2.3",
- "serde",
- "serde_json",
- "testcontainers-modules",
- "tokio",
- "tokio-postgres",
- "tokio-postgres-rustls",
-]
-
-[[package]]
-name = "ferry-connector-tls"
-version = "0.0.1"
-dependencies = [
- "rustls",
- "rustls-pki-types",
- "webpki-roots",
-]
-
-[[package]]
-name = "ferry-core"
-version = "0.0.1"
-dependencies = [
- "arrow-array",
- "arrow-schema",
- "arrow-select",
- "async-trait",
- "ferry-core",
- "futures",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
-]
-
-[[package]]
-name = "ferry-dsl"
-version = "0.0.1"
-dependencies = [
- "arrow-array",
- "arrow-buffer",
- "arrow-cast",
- "arrow-ipc",
- "arrow-json",
- "arrow-ord",
- "arrow-row",
- "arrow-schema",
- "arrow-select",
- "async-trait",
- "datafusion-common",
- "datafusion-expr",
- "datafusion-functions",
- "datafusion-functions-nested",
- "datafusion-optimizer",
- "datafusion-physical-expr",
- "datafusion-sql",
- "deadpool-postgres",
- "ferry-connector-mongo",
- "ferry-connector-postgres",
- "ferry-core",
- "ferry-registry",
- "ferry-runtime",
- "ferry-state",
- "ferry-verify",
- "futures",
- "glob",
- "insta",
- "jsonschema",
- "mongodb",
- "peak_alloc",
- "proptest",
- "saphyr-parser",
- "schemars 1.2.3",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "testcontainers-modules",
- "tokio",
- "tokio-postgres",
- "uuid",
-]
-
-[[package]]
-name = "ferry-registry"
-version = "0.0.1"
-dependencies = [
- "arrow-array",
- "arrow-schema",
- "async-trait",
- "ferry-core",
- "ferry-registry",
- "futures",
- "jsonschema",
- "schemars 1.2.3",
- "serde",
- "serde_json",
- "serde_norway",
- "serde_path_to_error",
- "thiserror",
- "tokio",
- "trybuild",
-]
-
-[[package]]
-name = "ferry-runtime"
-version = "0.0.1"
-dependencies = [
- "arrow-array",
- "arrow-json",
- "arrow-schema",
- "arrow-select",
- "async-trait",
- "deadpool-postgres",
- "fastrand",
- "ferry-connector-postgres",
- "ferry-core",
- "ferry-registry",
- "ferry-runtime",
- "ferry-state",
- "futures",
- "peak_alloc",
- "serde_json",
- "tempfile",
- "testcontainers-modules",
- "thiserror",
- "tokio",
- "tokio-postgres",
-]
-
-[[package]]
-name = "ferry-state"
-version = "0.0.1"
-dependencies = [
- "arrow-array",
- "async-trait",
- "deadpool-postgres",
- "ferry-core",
- "ferry-dsl",
- "ferry-registry",
- "ferry-state",
- "futures",
- "schemars 1.2.3",
- "serde",
- "serde_json",
- "tempfile",
- "testcontainers-modules",
- "thiserror",
- "tokio",
- "tokio-postgres",
- "uuid",
-]
-
-[[package]]
-name = "ferry-verify"
-version = "0.0.1"
-dependencies = [
- "arrow-array",
- "arrow-buffer",
- "arrow-schema",
- "arrow-select",
- "async-trait",
- "deadpool-postgres",
- "ferry-connector-mongo",
- "ferry-connector-postgres",
- "ferry-core",
- "ferry-registry",
- "ferry-runtime",
- "ferry-state",
- "futures",
- "mongodb",
- "pulldown-cmark",
- "serde",
- "serde_json",
- "tempfile",
- "testcontainers-modules",
- "tokio",
- "tokio-postgres",
- "twox-hash",
 ]
 
 [[package]]

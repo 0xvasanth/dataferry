@@ -4,15 +4,15 @@ Every key of every file in a `ferry/` directory, for grammar `version: 1`.
 The grammar and the reasons behind it are in
 [decision 0003](decisions/0003-config-shape.md), and the connector fields in
 [decision 0004](decisions/0004-connector-registry.md). The JSON Schemas are
-in [`schemas/v1`](../schemas/README.md), and `ferry schema` prints them for a
+in [`schemas/v1`](../schemas/README.md), and `dataferry schema` prints them for a
 binary, connection types included.
 
-Unknown keys are errors at every level, so a typo fails `ferry validate`
+Unknown keys are errors at every level, so a typo fails `dataferry validate`
 instead of being ignored.
 
 <!--
-This file is checked against `ferry schema` by
-crates/ferry-cli/tests/config_reference.rs: every key the schemas have must
+This file is checked against `dataferry schema` by
+crates/dataferry/tests/config_reference.rs: every key the schemas have must
 have a row here, and every row must be a key the schemas have.
 
 - A `## ` heading in backticks names the file a section documents.
@@ -45,12 +45,12 @@ Flows are not written here: they live under `flows/`.
 | --- | --- | --- | --- |
 | `connections` | list | required | Every database the flows read from or write to. |
 | `connections[].name` | identifier | required | Unique across every file. Flows use it in `from: <name>.<entity>` and `sink: <name>`. No dots. |
-| `connections[].type` | string | required | A connector type registered with this binary. The stock `ferry` has `postgres` and `mongo`; `ferry schema` lists a binary's types. |
+| `connections[].type` | string | required | A connector type registered with this binary. The stock `dataferry` has `postgres` and `mongo`; `dataferry schema` lists a binary's types. |
 
 `description:` is reserved and rejected in v0.1. Every other key belongs to
 the connection's type. A field marked *secret* should be a `${ENV}`
 reference: a literal value is warned about (W0301), and its value is shown as
-`***` in everything ferry prints.
+`***` in everything dataferry prints.
 
 ### `type: postgres`
 
@@ -129,7 +129,7 @@ and the order flows are written in doesn't matter.
 | `flows[].from[].join.cardinality` | `one` or `many` | required | `one`: at most one match per driver record, and a second match at run time rejects the record. `many`: zero or more, usable only as the source of `nest:` or `unnest:`. |
 | `flows[].from[].join.keys` | map | required | `{<column of this entry>: <alias>.<column>}`, each pair an equality. It may reference the driver or an earlier `one` entry. |
 | `flows[].from[].join.keys.<column>` | `<alias>.<column>` | | One equality of the join key. |
-| `flows[].from[].join.strategy` | `auto`, `co_partition` or `stage` | `auto` | `auto` lets the planner choose between co-partitioned streaming and staging, and `ferry plan` shows the choice. `co_partition` fails the plan instead of falling back. `stage` forces staging. |
+| `flows[].from[].join.strategy` | `auto`, `co_partition` or `stage` | `auto` | `auto` lets the planner choose between co-partitioned streaming and staging, and `dataferry plan` shows the choice. `co_partition` fails the plan instead of falling back. `stage` forces staging. |
 
 ### A target: `to.<table>`
 
@@ -182,14 +182,14 @@ current joined row under `unnest: <alias>`, or the current nested row.
 `${NAME}` in a string value is replaced from the environment, in
 `connections.yaml` entries (included `connections:` too) and in
 `runtime.state` only. A variable that isn't set is an error (exit 3) that
-names it, and substituted values are shown as `***` in everything ferry
+names it, and substituted values are shown as `***` in everything dataferry
 prints. `${NAME}` is the only form: `${file:...}` is an error. A `${` in a
 flow is an error too, so what a flow writes can't change between a run and
 its resume.
 
 ## The config hash
 
-A run pins a hash of the config, and `ferry resume` refuses (exit 8) when it
+A run pins a hash of the config, and `dataferry resume` refuses (exit 8) when it
 changed. It is taken before `${ENV}` substitution, with defaults filled in,
 and doesn't depend on file layout or the order flows are written in. The
 settings that only change how fast a run goes are left out, so a run can be

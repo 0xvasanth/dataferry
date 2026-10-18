@@ -1,23 +1,23 @@
 [workspace]
 resolver = "3"
 members = [
-    "crates/ferry-core",
-    "crates/ferry-registry",
-    "crates/ferry-dsl",
-    "crates/ferry-connectors/tls",
-    "crates/ferry-connectors/postgres",
-    "crates/ferry-connectors/mongo",
-    "crates/ferry-state",
-    "crates/ferry-runtime",
-    "crates/ferry-verify",
-    "crates/ferry-cli",
-    "crates/ferry-cli/tests/acme-ferry",
+    "crates/dataferry-core",
+    "crates/dataferry-registry",
+    "crates/dataferry-dsl",
+    "crates/dataferry-connectors/tls",
+    "crates/dataferry-connectors/postgres",
+    "crates/dataferry-connectors/mongo",
+    "crates/dataferry-state",
+    "crates/dataferry-runtime",
+    "crates/dataferry-verify",
+    "crates/dataferry",
+    "crates/dataferry/tests/acme-dataferry",
 ]
 
 [workspace.package]
 version = "0.0.1"
 edition = "2024"
-# DataFusion 55.2 (ferry-dsl, and ferry-cli through it) needs 1.94, the
+# DataFusion 55.2 (dataferry-dsl, and dataferry through it) needs 1.94, the
 # highest minimum in the dependency tree, and every crate declares the same
 # one. CI builds the workspace with it.
 rust-version = "1.94"
@@ -29,17 +29,17 @@ keywords = ["migration", "etl", "postgres", "mongodb", "arrow"]
 categories = ["database"]
 
 [workspace.dependencies]
-ferry-core = { version = "0.0.1", path = "crates/ferry-core" }
-ferry-dsl = { version = "0.0.1", path = "crates/ferry-dsl" }
-ferry-registry = { version = "0.0.1", path = "crates/ferry-registry" }
-ferry-state = { version = "0.0.1", path = "crates/ferry-state" }
-ferry-runtime = { version = "0.0.1", path = "crates/ferry-runtime" }
-ferry-verify = { version = "0.0.1", path = "crates/ferry-verify" }
-ferry-connector-tls = { version = "0.0.1", path = "crates/ferry-connectors/tls" }
-ferry-connector-postgres = { version = "0.0.1", path = "crates/ferry-connectors/postgres" }
-ferry-connector-mongo = { version = "0.0.1", path = "crates/ferry-connectors/mongo" }
+dataferry-core = { version = "0.0.1", path = "crates/dataferry-core" }
+dataferry-dsl = { version = "0.0.1", path = "crates/dataferry-dsl" }
+dataferry-registry = { version = "0.0.1", path = "crates/dataferry-registry" }
+dataferry-state = { version = "0.0.1", path = "crates/dataferry-state" }
+dataferry-runtime = { version = "0.0.1", path = "crates/dataferry-runtime" }
+dataferry-verify = { version = "0.0.1", path = "crates/dataferry-verify" }
+dataferry-connector-tls = { version = "0.0.1", path = "crates/dataferry-connectors/tls" }
+dataferry-connector-postgres = { version = "0.0.1", path = "crates/dataferry-connectors/postgres" }
+dataferry-connector-mongo = { version = "0.0.1", path = "crates/dataferry-connectors/mongo" }
 
-# DataFusion for the expression language (ferry-dsl expr). 55.2 is built on
+# DataFusion for the expression language (dataferry-dsl expr). 55.2 is built on
 # arrow 59, so every arrow-* dependency in the workspace stays on 59 with it:
 # two arrow majors in one build don't interoperate. Move DataFusion and arrow
 # together (DataFusion 56 is expected on arrow 60). All datafusion-* crates

@@ -4,8 +4,8 @@ Configs written in the grammar of
 [`docs/decisions/0003-config-shape.md`](../docs/decisions/0003-config-shape.md).
 The type-specific connection fields (`url`, `database`, `schema`) follow
 [`0004-connector-registry.md`](../docs/decisions/0004-connector-registry.md) §2.
-`ferry-dsl` loads every one of them in its tests (`tests/examples.rs`), and
-CI runs `ferry validate` on each (`scripts/check-examples.sh`): every
+`dataferry-dsl` loads every one of them in its tests (`tests/examples.rs`), and
+CI runs `dataferry validate` on each (`scripts/check-examples.sh`): every
 `ferry/` directory outside `bad/` must pass, and every `bad/<case>/ferry`
 must be rejected with exit 3. New examples are found, not listed.
 

@@ -1,8 +1,0 @@
----
-source: crates/ferry-dsl/tests/typecheck.rs
-expression: "snapshot_errors(\"flows:\\n  - name: orders\\n    from: shop.orders\\n    sink: warehouse\\n    to:\\n      orders:\\n        columns:\\n          id: string(_id)\\n      order_items:\\n        parent: orders\\n        unnest: items\\n        columns:\\n          line_no: index\\n\")"
----
-error: flows/f.yaml:13:20 flows[orders].to.order_items.columns.line_no: `index` is a reserved name
-   | index
-   | ^^^^^
-  help: write `$index` for the engine's value, or `"index"` for a field named index

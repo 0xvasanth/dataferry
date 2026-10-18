@@ -60,7 +60,7 @@ jobs:
       # Installs the toolchain rust-toolchain.toml pins.
       - run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
-      - run: cargo build --locked -p ferry-cli
+      - run: cargo build --locked -p dataferry
       - run: docs/scripts/check-snippets.sh --live
 
   # Deploys only once the repository variable DOCS_DEPLOY is "true":

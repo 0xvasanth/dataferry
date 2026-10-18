@@ -3,7 +3,7 @@ run cbfe8b46a34b4250ab799b56f725b2a3
 run cbfe8b46a34b4250ab799b56f725b2a3: not complete (0 done, 1 failed, 0 pending, 0 leased); 1 partitions; read 0, dead-lettered 0; wrote nothing
 error[F0602]: flow `accounts`: partition `accounts/signups-0` failed: runner: max_errors exceeded: this partition would bring the run to 2 dead-lettered records, more than max_errors (1); it was rolled back and the run stops
 verification of `warehouse` incomplete: the run isn't finished; report: ./.ferry/runs/cbfe8b46a34b4250ab799b56f725b2a3/report.md
-run `cbfe8b46a34b4250ab799b56f725b2a3` has failed partitions; `ferry retry --failed cbfe8b46a34b4250ab799b56f725b2a3` re-runs them
+run `cbfe8b46a34b4250ab799b56f725b2a3` has failed partitions; `dataferry retry --failed cbfe8b46a34b4250ab799b56f725b2a3` re-runs them
 select count(*) from accounts;
  count 
 -------

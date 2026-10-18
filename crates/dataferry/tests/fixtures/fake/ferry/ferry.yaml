@@ -1,0 +1,4 @@
+# Uses only the `fake` connection type, which acme-dataferry registers and the
+# stock dataferry binary does not.
+version: 1
+name: fake_demo
