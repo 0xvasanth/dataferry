@@ -77,10 +77,10 @@ use arrow_array::{ArrayRef, RecordBatch, new_null_array};
 use arrow_schema::SchemaRef;
 use dataferry_core::types::CanonicalType;
 use datafusion_common::DFSchema;
-use datafusion_common::tree_node::TreeNode;
-use datafusion_expr::ExprSchemable;
+use datafusion_common::tree_node::{Transformed, TreeNode, TreeNodeRewriter};
 use datafusion_expr::execution_props::ExecutionProps;
 use datafusion_expr::simplify::SimplifyContext;
+use datafusion_expr::{Expr, ExprSchemable};
 use datafusion_optimizer::analyzer::type_coercion::TypeCoercionRewriter;
 use datafusion_optimizer::simplify_expressions::ExprSimplifier;
 use datafusion_physical_expr::{PhysicalExpr, create_physical_expr};
@@ -194,20 +194,28 @@ impl Expression {
         let logical = planner
             .sql_to_expr(ast, &schema, &mut PlannerContext::new())
             .map_err(type_error)?;
+        // Coercion and simplification run node by node, bottom up, so each
+        // node is coerced against its children's final types. The simplifier
+        // can change a type: `round(x, 1)` has scale 1 only once the
+        // coerced `CAST(1 AS INT)` is folded back to a literal, and a parent
+        // coerced against the type before that (`coalesce`, `greatest`, `=`)
+        // would mix two scales.
+        //
+        // Some functions (`coalesce`) only run in the form the simplifier
+        // rewrites them to. It also folds constants; one that fails to
+        // evaluate (`int('three')`) is left as it is and fails at run time.
+        let schema = Arc::new(schema);
         let logical = logical
-            .rewrite(&mut TypeCoercionRewriter::new(&schema))
+            .rewrite(&mut CoerceAndSimplify {
+                coercion: TypeCoercionRewriter::new(&schema),
+                simplifier: ExprSimplifier::new(
+                    SimplifyContext::builder()
+                        .with_schema(Arc::clone(&schema))
+                        .build(),
+                ),
+            })
             .map_err(type_error)?
             .data;
-        // Some functions (`coalesce`) only run in the form the simplifier
-        // rewrites them to. It also folds constants, so a constant that
-        // can't be computed (`int('three')`) fails here, at plan time.
-        let schema = Arc::new(schema);
-        let simplifier = ExprSimplifier::new(
-            SimplifyContext::builder()
-                .with_schema(Arc::clone(&schema))
-                .build(),
-        );
-        let logical = simplifier.simplify(logical).map_err(type_error)?;
         let (_, field) = logical.to_field(&schema).map_err(type_error)?;
         let physical = create_physical_expr(
             &logical,
@@ -233,6 +241,22 @@ impl Expression {
             nullable: field.is_nullable(),
             target: None,
         })
+    }
+}
+
+/// Coerces a node whose children are already coerced and simplified, then
+/// simplifies it.
+struct CoerceAndSimplify<'a> {
+    coercion: TypeCoercionRewriter<'a>,
+    simplifier: ExprSimplifier,
+}
+
+impl TreeNodeRewriter for CoerceAndSimplify<'_> {
+    type Node = Expr;
+
+    fn f_up(&mut self, expr: Expr) -> datafusion_common::Result<Transformed<Expr>> {
+        let coerced = self.coercion.f_up(expr)?.data;
+        self.simplifier.simplify(coerced).map(Transformed::yes)
     }
 }
 

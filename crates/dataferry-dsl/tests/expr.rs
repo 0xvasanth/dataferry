@@ -12,7 +12,7 @@ use arrow_array::{
 };
 use arrow_schema::Field;
 use common::golden;
-use dataferry_core::types::{CanonicalField, CanonicalType};
+use dataferry_core::types::{CanonicalField, CanonicalType, DecimalSpec};
 use dataferry_dsl::config::{ErrorKind, FieldPath, FileKind, Location, SourceFile, Spanned};
 use dataferry_dsl::expr::{Compiled, ExprError, Expression, INDEX_COLUMN, PARENT_COLUMN, Scope};
 
@@ -244,6 +244,198 @@ fn decimal_arithmetic_stays_decimal() {
         compiled.output_type(),
         Some(CanonicalType::Decimal(_))
     ));
+}
+
+// `round(x, 1)` has scale 1 only once its digits are a literal again, which
+// they aren't while DataFusion coerces the call (they are `CAST(1 AS INT)`).
+// A function over it and a decimal of another scale must still see one
+// type, or it fails to plan (`coalesce`) or to run (`greatest`, `=`).
+
+/// `a int64`, `d decimal(12,2)`; the rows are (5, 12.34), (null, -12.55),
+/// (-1, 1.50) and (2, null).
+fn mixed_scale_batch() -> (Scope, RecordBatch) {
+    let scope = Scope::record(
+        "table `t`",
+        vec![
+            CanonicalField::new("a", CanonicalType::Int64, true),
+            CanonicalField::new("d", decimal(12, 2), true),
+        ],
+    );
+    let d = arrow_array::Decimal128Array::from(vec![Some(1234), Some(-1255), Some(150), None])
+        .with_precision_and_scale(12, 2)
+        .unwrap();
+    let a = Int64Array::from(vec![Some(5), None, Some(-1), Some(2)]);
+    let batch = RecordBatch::try_new(scope.input_schema(), vec![Arc::new(a), Arc::new(d)]).unwrap();
+    (scope, batch)
+}
+
+fn decimal(precision: u8, scale: i8) -> CanonicalType {
+    CanonicalType::Decimal(DecimalSpec::new(precision, scale).unwrap())
+}
+
+/// The inferred type and the values on [`mixed_scale_batch`], as unscaled
+/// integers at the array's scale.
+fn eval_mixed(text: &str) -> (Option<CanonicalType>, Vec<Option<i128>>, i8) {
+    let (scope, batch) = mixed_scale_batch();
+    let compiled = compile(text, &scope).unwrap_or_else(|e| panic!("{text}: {e}"));
+    let values = compiled
+        .evaluate(&batch)
+        .unwrap_or_else(|e| panic!("{text}: {e}"));
+    let (values, scale) = decimal_values(&values);
+    (compiled.output_type().cloned(), values, scale)
+}
+
+#[test]
+fn coalesce_of_a_rounded_decimal_and_another_scale_compiles() {
+    // The shrunk proptest failure: "CASE expression 'then' values had
+    // multiple data types: Decimal128(3, 1), Decimal128(4, 3)".
+    assert_eq!(
+        eval_mixed("coalesce(round(0.000, 1), 0.000)"),
+        (Some(decimal(5, 3)), vec![Some(0); 4], 3)
+    );
+    assert_eq!(
+        eval_mixed("greatest(coalesce(round(0.000, 1), 0.000), a)"),
+        (
+            Some(decimal(23, 3)),
+            vec![Some(5000), Some(0), Some(0), Some(2000)],
+            3
+        )
+    );
+    assert_eq!(
+        eval_mixed("coalesce(round(1.25, 1), 0.000, a)"),
+        (Some(decimal(23, 3)), vec![Some(1300); 4], 3)
+    );
+}
+
+#[test]
+fn functions_over_a_rounded_column_and_the_column_see_one_scale() {
+    // round(d, 1) is 12.3, -12.6 (half away from zero), 1.5 and null.
+    let both = |values: [Option<i128>; 4]| (Some(decimal(13, 2)), values.to_vec(), 2);
+    assert_eq!(
+        eval_mixed("greatest(round(d, 1), d)"),
+        both([Some(1234), Some(-1255), Some(150), None])
+    );
+    assert_eq!(
+        eval_mixed("least(round(d, 1), d)"),
+        both([Some(1230), Some(-1260), Some(150), None])
+    );
+    assert_eq!(
+        eval_mixed("greatest(round(d, 1), 12.30)"),
+        both([Some(1230), Some(1230), Some(1230), Some(1230)])
+    );
+    assert_eq!(
+        eval_mixed("coalesce(round(d, 1), d)"),
+        both([Some(1230), Some(-1260), Some(150), None])
+    );
+    // Equal only where d already had one digit.
+    assert_eq!(
+        eval_mixed("nullif(round(d, 1), d)"),
+        both([Some(1230), Some(-1260), None, None])
+    );
+    assert_eq!(
+        eval_mixed("CASE WHEN a > 0 THEN round(d, 1) ELSE d END"),
+        both([Some(1230), Some(-1255), Some(150), None])
+    );
+    // Digits that are a constant expression rather than a literal.
+    assert_eq!(
+        eval_mixed("coalesce(round(d, 0 + 1), d)"),
+        both([Some(1230), Some(-1260), Some(150), None])
+    );
+}
+
+#[test]
+fn a_rounded_column_compares_with_the_column() {
+    let (scope, batch) = mixed_scale_batch();
+    let eval = |text: &str| {
+        let compiled = compile(text, &scope).unwrap_or_else(|e| panic!("{text}: {e}"));
+        assert_eq!(compiled.output_type(), Some(&CanonicalType::Bool), "{text}");
+        bools(
+            &compiled
+                .evaluate(&batch)
+                .unwrap_or_else(|e| panic!("{text}: {e}")),
+        )
+    };
+    assert_eq!(
+        eval("round(d, 1) = d"),
+        [Some(false), Some(false), Some(true), None]
+    );
+    assert_eq!(
+        eval("round(d, 1) == 1.500"),
+        [Some(false), Some(false), Some(true), None]
+    );
+    assert_eq!(
+        eval("round(d, 1) > d"),
+        [Some(false), Some(false), Some(false), None]
+    );
+    assert_eq!(
+        eval("d between round(d, 1) and 12.34"),
+        [Some(true), Some(true), Some(true), None]
+    );
+    assert_eq!(
+        eval("round(d, 1) in (12.34, d)"),
+        [Some(false), Some(false), Some(true), None]
+    );
+}
+
+#[test]
+fn a_constant_that_cannot_convert_plans_and_fails_when_it_runs() {
+    // Folding constants while planning leaves one that fails as it is.
+    let (scope, batch) = mixed_scale_batch();
+    let compiled = compile("coalesce(int('three'), a)", &scope).unwrap();
+    assert_eq!(compiled.output_type(), Some(&CanonicalType::Int64));
+    let (_, errors) = compiled.evaluate_rows(&batch);
+    assert_eq!(errors.len(), 4);
+    assert!(
+        errors[0].message.contains("`three` is not an integer"),
+        "{}",
+        errors[0].message
+    );
+}
+
+#[test]
+fn a_rounded_decimal_mixes_with_integers_and_nests() {
+    // An integer column joins at scale 0 with as many digits as an int64.
+    assert_eq!(
+        eval_mixed("greatest(round(d, 1), a)"),
+        (
+            Some(decimal(21, 1)),
+            vec![Some(123), Some(-126), Some(15), Some(20)],
+            1
+        )
+    );
+    assert_eq!(
+        eval_mixed("coalesce(round(d, 1), a)"),
+        (
+            Some(decimal(21, 1)),
+            vec![Some(123), Some(-126), Some(15), Some(20)],
+            1
+        )
+    );
+    assert_eq!(
+        eval_mixed("round(d, 1) + a"),
+        (
+            Some(decimal(22, 1)),
+            vec![Some(173), None, Some(5), None],
+            1
+        )
+    );
+    assert_eq!(
+        eval_mixed("abs(coalesce(round(d, 1), 1.000))"),
+        (
+            Some(decimal(14, 3)),
+            vec![Some(12300), Some(12600), Some(1500), Some(1000)],
+            3
+        )
+    );
+    // round over a function over round: each level keeps its own scale.
+    assert_eq!(
+        eval_mixed("round(greatest(round(d, 1), d), 0)"),
+        (
+            Some(decimal(13, 0)),
+            vec![Some(12), Some(-13), Some(2), None],
+            0
+        )
+    );
 }
 
 // ---------------------------------------------------------------- strict conversions
