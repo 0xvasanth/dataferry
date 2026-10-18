@@ -1,0 +1,19 @@
+.github/workflows/docs.yml
+  s_e33d69fc531480::t_d99fcc51be54cd 46,66-67,69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ab292eb499d9f2583b598255c05b7b7929c592c7",
+  "prompts": {},
+  "sessions": {
+    "s_e33d69fc531480": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "806ecb72-9e9c-42ea-ac66-dee4a5324dad",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
