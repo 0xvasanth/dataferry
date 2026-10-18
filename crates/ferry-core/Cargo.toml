@@ -19,9 +19,9 @@ workspace = true
 testkit = ["dep:arrow-select"]
 
 [dependencies]
-arrow-schema = "60"
-arrow-array = "60"
-arrow-select = { version = "60", optional = true }
+arrow-schema = "59"
+arrow-array = "59"
+arrow-select = { version = "59", optional = true }
 async-trait = "0.1"
 futures = "0.3"
 serde = { version = "1", features = ["derive"] }

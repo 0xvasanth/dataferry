@@ -570,3 +570,55 @@ fn sql_forms_that_plan_to_functions_work() {
     );
     assert_eq!(first("lower(status) || '/' || customer.id"), "paid/c1");
 }
+
+#[test]
+fn like_and_ilike_honour_the_backslash_escape() {
+    let docs = golden::documents();
+    let status =
+        |d: &serde_json::Value| d.get("status").and_then(|s| s.as_str()).map(str::to_owned);
+    let ids = |keep: &dyn Fn(&str) -> bool| -> Vec<String> {
+        docs.iter()
+            .filter(|d| status(d).is_some_and(|s| keep(&s)))
+            .map(golden::id)
+            .collect()
+    };
+    // `\%` is a literal percent sign: only `PAID` followed by `%` matches,
+    // not every status that starts with `PAID`.
+    assert_eq!(
+        ids_where(&eval_golden(r"(status || '%') like 'PAID\%' escape '\'")),
+        ids(&|s| s == "PAID")
+    );
+    assert_eq!(
+        ids_where(&eval_golden(r"(status || 'x') like 'PAID\%' escape '\'")),
+        Vec::<String>::new()
+    );
+    // Backslash is also the implicit escape, so the clause can be left out.
+    assert_eq!(
+        ids_where(&eval_golden(r"(status || '%') like 'PAID\%'")),
+        ids(&|s| s == "PAID")
+    );
+    // An unescaped `%` is the wildcard.
+    assert_eq!(
+        ids_where(&eval_golden("(status || 'x') like 'PAID%'")),
+        ids(&|s| s == "PAID")
+    );
+    assert_eq!(
+        ids_where(&eval_golden(r"status ilike 'p\_%' escape '\'")),
+        Vec::<String>::new()
+    );
+    assert_eq!(
+        ids_where(&eval_golden("status ilike 'p%'")),
+        ids(&|s| s.to_lowercase().starts_with('p'))
+    );
+    // DataFusion only escapes with a backslash; any other character is
+    // refused when the expression compiles, not at run time.
+    let err = compile("status like 'PAID!%' escape '!'", &golden_scope()).unwrap_err();
+    assert!(err.to_string().contains("escape"), "{err}");
+    // The pattern is an expression and resolves like one: a misspelled
+    // field in it is still an error.
+    assert!(compile("status like custmer.id", &golden_scope()).is_err());
+    assert_eq!(
+        ids_where(&eval_golden("lower(status) like lower(status)")),
+        ids(&|_| true)
+    );
+}

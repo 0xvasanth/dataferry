@@ -121,23 +121,22 @@ impl<'a> Resolver<'a> {
                 self.expr(expr)?;
                 list.iter_mut().try_for_each(|e| self.expr(e))
             }
+            // The escape character (`ESCAPE '!'`) is a literal value, never
+            // a path, so only the operands resolve.
             Expr::Like {
                 expr,
                 pattern,
-                escape_char,
                 any: false,
                 ..
             }
             | Expr::ILike {
                 expr,
                 pattern,
-                escape_char,
                 any: false,
                 ..
             } => {
                 self.expr(expr)?;
-                self.expr(pattern)?;
-                escape_char.iter_mut().try_for_each(|e| self.expr(e))
+                self.expr(pattern)
             }
             Expr::Case {
                 operand,

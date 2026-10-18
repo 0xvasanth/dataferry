@@ -15,14 +15,14 @@ categories.workspace = true
 workspace = true
 
 [dependencies]
-arrow-array = "60"
-arrow-buffer = "60"
-arrow-cast = "60"
-arrow-ipc = "60"
-arrow-ord = "60"
-arrow-row = "60"
-arrow-schema = "60"
-arrow-select = "60"
+arrow-array = "59"
+arrow-buffer = "59"
+arrow-cast = "59"
+arrow-ipc = "59"
+arrow-ord = "59"
+arrow-row = "59"
+arrow-schema = "59"
+arrow-select = "59"
 async-trait = "0.1"
 datafusion-common.workspace = true
 datafusion-expr.workspace = true
@@ -52,7 +52,7 @@ tokio = { version = "1", features = ["rt"] }
 uuid = { version = "1", default-features = false, features = ["std", "v5"] }
 
 [dev-dependencies]
-arrow-json = "60"
+arrow-json = "59"
 async-trait = "0.1"
 ferry-core = { workspace = true, features = ["testkit"] }
 ferry-connector-postgres.workspace = true

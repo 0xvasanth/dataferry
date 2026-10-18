@@ -19,9 +19,9 @@ ferry-core.workspace = true
 ferry-registry.workspace = true
 ferry-runtime.workspace = true
 ferry-connector-postgres.workspace = true
-arrow-array = "60"
-arrow-buffer = "60"
-arrow-schema = "60"
+arrow-array = "59"
+arrow-buffer = "59"
+arrow-schema = "59"
 async-trait = "0.1"
 deadpool-postgres = "0.14"
 futures = "0.3"
@@ -35,7 +35,7 @@ ferry-connector-mongo.workspace = true
 ferry-core = { workspace = true, features = ["testkit"] }
 ferry-state = { workspace = true, features = ["postgres"] }
 serde_json = "1"
-arrow-select = "60"
+arrow-select = "59"
 mongodb = "3"
 pulldown-cmark = { version = "0.13", default-features = false }
 tempfile = "3"

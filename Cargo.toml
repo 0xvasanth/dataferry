@@ -17,9 +17,10 @@ members = [
 [workspace.package]
 version = "0.0.1"
 edition = "2024"
-# The DataFusion pin (ferry-dsl, and ferry-cli through it) needs 1.95, and
-# every crate declares the same minimum. CI builds the workspace with it.
-rust-version = "1.95"
+# DataFusion 55.2 (ferry-dsl, and ferry-cli through it) needs 1.94, the
+# highest minimum in the dependency tree, and every crate declares the same
+# one. CI builds the workspace with it.
+rust-version = "1.94"
 license = "Apache-2.0"
 repository = "https://github.com/0xvasanth/ferry"
 homepage = "https://github.com/0xvasanth/ferry"
@@ -38,18 +39,18 @@ ferry-connector-tls = { version = "0.0.1", path = "crates/ferry-connectors/tls" 
 ferry-connector-postgres = { version = "0.0.1", path = "crates/ferry-connectors/postgres" }
 ferry-connector-mongo = { version = "0.0.1", path = "crates/ferry-connectors/mongo" }
 
-# DataFusion for the expression language (ferry-dsl expr). Pinned to a commit
-# on main: no DataFusion release is built on arrow 60 yet (55.2 uses arrow
-# 59, and main moved to arrow 60 in apache/datafusion#25335). Switch to the
-# first release on arrow 60 (expected: 56) once it is out. All crates must
-# come from the same rev.
-datafusion-common = { version = "55.1.0", git = "https://github.com/apache/datafusion", rev = "1da3cf049fa1a7a708acc2c29eba4f2e9dece8db", default-features = false }
-datafusion-expr = { version = "55.1.0", git = "https://github.com/apache/datafusion", rev = "1da3cf049fa1a7a708acc2c29eba4f2e9dece8db", default-features = false }
-datafusion-functions = { version = "55.1.0", git = "https://github.com/apache/datafusion", rev = "1da3cf049fa1a7a708acc2c29eba4f2e9dece8db", default-features = false, features = ["string_expressions", "unicode_expressions"] }
-datafusion-functions-nested = { version = "55.1.0", git = "https://github.com/apache/datafusion", rev = "1da3cf049fa1a7a708acc2c29eba4f2e9dece8db", default-features = false }
-datafusion-optimizer = { version = "55.1.0", git = "https://github.com/apache/datafusion", rev = "1da3cf049fa1a7a708acc2c29eba4f2e9dece8db", default-features = false }
-datafusion-physical-expr = { version = "55.1.0", git = "https://github.com/apache/datafusion", rev = "1da3cf049fa1a7a708acc2c29eba4f2e9dece8db", default-features = false }
-datafusion-sql = { version = "55.1.0", git = "https://github.com/apache/datafusion", rev = "1da3cf049fa1a7a708acc2c29eba4f2e9dece8db", default-features = false, features = ["unicode_expressions"] }
+# DataFusion for the expression language (ferry-dsl expr). 55.2 is built on
+# arrow 59, so every arrow-* dependency in the workspace stays on 59 with it:
+# two arrow majors in one build don't interoperate. Move DataFusion and arrow
+# together (DataFusion 56 is expected on arrow 60). All datafusion-* crates
+# must be the same version.
+datafusion-common = { version = "55.2.0", default-features = false }
+datafusion-expr = { version = "55.2.0", default-features = false }
+datafusion-functions = { version = "55.2.0", default-features = false, features = ["string_expressions", "unicode_expressions"] }
+datafusion-functions-nested = { version = "55.2.0", default-features = false }
+datafusion-optimizer = { version = "55.2.0", default-features = false }
+datafusion-physical-expr = { version = "55.2.0", default-features = false }
+datafusion-sql = { version = "55.2.0", default-features = false, features = ["unicode_expressions"] }
 
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 testcontainers-modules = { version = "0.15", features = ["postgres", "mongo"] }

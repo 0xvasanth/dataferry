@@ -39,10 +39,11 @@ tokio-postgres = { version = "0.7", features = ["with-serde_json-1"], optional =
 ferry-state = { path = ".", features = ["postgres", "testkit"] }
 ferry-core = { workspace = true, features = ["testkit"] }
 ferry-registry = { workspace = true, features = ["testkit"] }
-# Path only, no version: ferry-dsl can't be published yet (its DataFusion
-# is a git dependency), so `cargo package` drops this dev-dependency.
+# Path only, no version: ferry-dsl depends on this crate (through
+# ferry-runtime), so `cargo package` drops this dev-dependency and this
+# crate can be published before it.
 ferry-dsl = { path = "../ferry-dsl" }
-arrow-array = "60"
+arrow-array = "59"
 futures = "0.3"
 schemars = "1"
 tempfile = "3"

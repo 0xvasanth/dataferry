@@ -1,7 +1,7 @@
-//! Crates.io readiness, from `cargo metadata`: every crate declares the same
-//! minimum Rust version and the metadata crates.io shows, and the crates CI
-//! leaves out of `cargo package` are exactly those that can't be published
-//! (test-only, or depending on a git dependency such as the DataFusion pin).
+//! Crates.io readiness: every crate declares the same minimum Rust version
+//! and the metadata crates.io shows, nothing depends on a git source
+//! (crates.io refuses them), the crates CI leaves out of `cargo package` are
+//! exactly the test-only ones, and every other crate really packages.
 
 mod common;
 
@@ -170,27 +170,73 @@ fn every_publishable_crate_has_the_metadata_crates_io_shows() {
     }
 }
 
+/// Members that are never published (`publish = false`).
+fn test_only(members: &BTreeMap<String, Value>) -> BTreeSet<String> {
+    members
+        .iter()
+        .filter(|(_, p)| !publishable(p))
+        .map(|(name, _)| name.clone())
+        .collect()
+}
+
 #[test]
-fn ci_packages_every_crate_that_can_be_published() {
-    let metadata = metadata();
-    let members = members(&metadata);
-    let git = depend_on_git(&metadata);
-    // Today: the DataFusion pin, in ferry-dsl and through it ferry-cli.
-    assert!(git.contains("ferry-dsl"), "{git:?}");
-    let mut blocked: BTreeSet<String> = git;
-    blocked.extend(
-        members
-            .iter()
-            .filter(|(_, p)| !publishable(p))
-            .map(|(name, _)| name.clone()),
-    );
+fn no_crate_depends_on_a_git_source() {
+    // A git dependency anywhere under a crate's normal dependencies keeps
+    // it off crates.io (DataFusion was one until 55.2).
+    let git = depend_on_git(&metadata());
+    assert!(git.is_empty(), "these depend on git: {git:?}");
+}
+
+#[test]
+fn ci_packages_every_crate_but_the_test_only_ones() {
+    let members = members(&metadata());
+    let test_only = test_only(&members);
+    assert_eq!(test_only, BTreeSet::from(["acme-ferry".to_owned()]));
 
     let ci = std::fs::read_to_string(repo(".github/workflows/ci.yml")).unwrap();
     assert_eq!(
         excluded(&ci, "ci.yml"),
-        blocked,
-        "CI's `cargo package` must leave out exactly the crates that can't be published"
+        test_only,
+        "CI's `cargo package` must leave out exactly the test-only crates"
     );
     let readme = std::fs::read_to_string(repo("README.md")).unwrap();
-    assert_eq!(excluded(&readme, "README.md"), blocked);
+    assert_eq!(excluded(&readme, "README.md"), test_only);
+}
+
+/// `cargo package` on the whole workspace, as CI runs it, but without
+/// building each tarball (CI's package job does that): a new crate that is
+/// missing a version on a path dependency, a readme, or anything else
+/// crates.io needs fails here.
+#[test]
+fn every_publishable_crate_packages() {
+    let members = members(&metadata());
+    let target = tempfile::tempdir().unwrap();
+    let mut cmd = Command::new(env!("CARGO"));
+    cmd.args(["package", "--workspace", "--locked", "--no-verify"])
+        .arg("--allow-dirty")
+        .arg("--target-dir")
+        .arg(target.path())
+        .current_dir(repo(""));
+    for name in test_only(&members) {
+        cmd.args(["--exclude", &name]);
+    }
+    let out = cmd.output().unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let packaged: BTreeSet<String> = std::fs::read_dir(target.path().join("package"))
+        .unwrap()
+        .filter_map(|entry| {
+            let name = entry.unwrap().file_name().into_string().unwrap();
+            name.strip_suffix(".crate").map(str::to_owned)
+        })
+        .collect();
+    let expected: BTreeSet<String> = members
+        .iter()
+        .filter(|(_, p)| publishable(p))
+        .map(|(name, p)| format!("{name}-{}", p["version"].as_str().unwrap()))
+        .collect();
+    assert_eq!(packaged, expected);
 }

@@ -25,10 +25,10 @@ ferry-core.workspace = true
 ferry-registry.workspace = true
 ferry-state.workspace = true
 # chrono-tz: raw records with named time zones ("UTC") render as JSON.
-arrow-array = { version = "60", features = ["chrono-tz"] }
-arrow-json = "60"
-arrow-schema = "60"
-arrow-select = "60"
+arrow-array = { version = "59", features = ["chrono-tz"] }
+arrow-json = "59"
+arrow-schema = "59"
+arrow-select = "59"
 async-trait = "0.1"
 futures = "0.3"
 serde_json = "1"

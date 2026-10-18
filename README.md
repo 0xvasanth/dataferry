@@ -12,7 +12,7 @@ where it left off and writes nothing twice
 
 ## Install from source
 
-Ferry needs Rust 1.95 or newer.
+Ferry needs Rust 1.94 or newer.
 
 ```sh
 git clone https://github.com/0xvasanth/ferry
@@ -309,7 +309,7 @@ cargo build
 cargo test --workspace
 ```
 
-The minimum supported Rust version is 1.95, declared by every crate. CI
+The minimum supported Rust version is 1.94, declared by every crate. CI
 builds the workspace with it.
 
 Connector tests start real Postgres and MongoDB containers with
@@ -330,18 +330,17 @@ on Docker, from `ferry validate` to the report.
 ## Publishing
 
 Every crate carries the metadata crates.io needs, and nothing is published
-yet. `acme-ferry` is test-only (`publish = false`).
-
-`ferry-dsl`, and `ferry-cli` through it, can't be packaged yet: they depend
-on DataFusion through a git pin (apache/datafusion commit `1da3cf0`),
-because no DataFusion release is built on arrow 60. The latest, 55.2.0,
-uses arrow 59. crates.io refuses git dependencies, so these two wait for
-the first DataFusion release on arrow 60. Every other crate packages today,
-and CI checks it:
+yet. `acme-ferry` is test-only (`publish = false`). Every other crate
+packages, and CI checks it:
 
 ```sh
-cargo package --workspace --exclude ferry-dsl --exclude ferry-cli --exclude acme-ferry
+cargo package --workspace --exclude acme-ferry
 ```
+
+Every dependency comes from crates.io. DataFusion is the released 55.2,
+which is built on arrow 59, so the workspace's arrow crates stay on 59
+until a DataFusion release moves to arrow 60; the two are upgraded
+together.
 
 ## License
 

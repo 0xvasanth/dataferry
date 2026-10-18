@@ -1,6 +1,6 @@
 # One toolchain for local builds and CI, so a new Rust release can't
 # break the build until someone bumps this on purpose. The minimum
-# supported version (1.95, workspace rust-version) is checked separately
+# supported version (1.94, workspace rust-version) is checked separately
 # by the msrv CI job.
 [toolchain]
 channel = "1.99.1"

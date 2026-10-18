@@ -9,10 +9,17 @@ updates:
     groups:
       cargo:
         patterns: ["*"]
-    # DataFusion is a git pin until it releases on arrow 60 (README,
-    # Publishing); a registry bump would take it back to arrow 59.
+    # DataFusion and arrow move together: DataFusion 55.2 is built on
+    # arrow 59, and an arrow major on its own would put two arrows in the
+    # build (their arrays don't interoperate). A DataFusion major moves to
+    # a new arrow too, so neither major is bumped here: upgrade both by
+    # hand in one change (Cargo.toml explains). Minor and patch updates
+    # still come through.
     ignore:
+      - dependency-name: "arrow-*"
+        update-types: ["version-update:semver-major"]
       - dependency-name: "datafusion-*"
+        update-types: ["version-update:semver-major"]
     open-pull-requests-limit: 5
 
   - package-ecosystem: github-actions
@@ -20,7 +27,7 @@ updates:
     schedule:
       interval: weekly
     # dtolnay/rust-toolchain's tags are Rust versions, not action
-    # releases: the msrv job pins @1.95 on purpose.
+    # releases: the msrv job pins @1.94 on purpose.
     ignore:
       - dependency-name: "dtolnay/rust-toolchain"
     groups:
