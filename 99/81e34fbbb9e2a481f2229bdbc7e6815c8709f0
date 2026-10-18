@@ -1,0 +1,62 @@
+crates/ferry-cli/tests/packaging.rs
+  s_d80f506c72c404::t_793f9c377df539 1-4,173-181,183-194,199-200,203-241
+Cargo.toml
+  s_d80f506c72c404::t_4ca307f8c945f1 47-53
+  s_d80f506c72c404::t_c55d34c6d81c71 23
+  s_d80f506c72c404::t_3279741d68ad49 20-22,42-46
+crates/ferry-dsl/Cargo.toml
+  s_d80f506c72c404::t_4ca307f8c945f1 18-25,55
+crates/ferry-state/Cargo.toml
+  s_d80f506c72c404::t_4ca307f8c945f1 46
+  s_d80f506c72c404::t_56bffc4366af73 42-44
+crates/ferry-dsl/src/expr/resolve.rs
+  s_d80f506c72c404::t_f304d1a933ee9a 124-125
+  s_d80f506c72c404::t_4ca307f8c945f1 139
+crates/ferry-connectors/mongo/Cargo.toml
+  s_d80f506c72c404::t_4ca307f8c945f1 21-23
+crates/ferry-core/Cargo.toml
+  s_d80f506c72c404::t_4ca307f8c945f1 22-24
+.github/workflows/ci.yml
+  s_d80f506c72c404::t_3279741d68ad49 97,100
+  s_d80f506c72c404::t_56bffc4366af73 78,88
+crates/ferry-runtime/Cargo.toml
+  s_d80f506c72c404::t_4ca307f8c945f1 28-31
+rust-toolchain.toml
+  s_d80f506c72c404::t_3279741d68ad49 3
+.github/dependabot.yml
+  s_d80f506c72c404::t_3279741d68ad49 12-17,19-20,22,30
+crates/ferry-verify/Cargo.toml
+  s_d80f506c72c404::t_4ca307f8c945f1 22-24,38
+crates/ferry-connectors/postgres/Cargo.toml
+  s_d80f506c72c404::t_4ca307f8c945f1 21-23
+deny.toml
+  s_d80f506c72c404::t_3279741d68ad49 43-44
+README.md
+  s_d80f506c72c404::t_56bffc4366af73 312,333-334,337,340-343
+  s_d80f506c72c404::t_3279741d68ad49 15
+  s_d80f506c72c404::t_66a96629aa0112 344
+crates/ferry-registry/Cargo.toml
+  s_d80f506c72c404::t_4ca307f8c945f1 23-24
+crates/ferry-dsl/tests/expr.rs
+  s_d80f506c72c404::t_b8f82d4ca495d8 575,585,588,592,606,613-616
+  s_d80f506c72c404::t_057ef4081c5dff 573-574,576-584,586-587,589-591,593-594,601-605,607-612,617-624
+  s_d80f506c72c404::t_e67c180476a76c 595-600
+Cargo.lock
+  s_d80f506c72c404::t_35190035971d70 126,128,147,149,161,163,180,182,192,194,214,216,229,231,242,244,258,260,283,285,296,298,309,311,319,321,333,335,453,455,899,901,1132-1134,1156-1158,1162-1164,1188-1190,1211-1213,1223-1225,1251-1253,1272-1274,1284-1286,1309-1311,1319-1321,1330-1332,1349-1351,1371-1373,1388-1390,3225,3227,3237,4300,4302,4310,4312,4316,5691,5693,5700,5702
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9981e34fbbb9e2a481f2229bdbc7e6815c8709f0",
+  "prompts": {},
+  "sessions": {
+    "s_d80f506c72c404": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1d0a2ad-a08d-48d1-b9b4-3537641f44af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
