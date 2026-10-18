@@ -1,0 +1,14 @@
+RELEASING.md
+  h_7bb0b8336911f0 30-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aefb8e96ed62e33dae553ba4f1a4e54c32d88c39",
+  "prompts": {},
+  "humans": {
+    "h_7bb0b8336911f0": {
+      "author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
