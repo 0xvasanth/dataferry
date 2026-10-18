@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Installs the toolchain rust-toolchain.toml pins (with rustfmt and
       # clippy), so CI and local builds use the same compiler.
       - run: rustup toolchain install
@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Installs the toolchain rust-toolchain.toml pins (with rustfmt and
       # clippy), so CI and local builds use the same compiler.
       - run: rustup toolchain install
@@ -53,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Installs the toolchain rust-toolchain.toml pins (with rustfmt and
       # clippy), so CI and local builds use the same compiler.
       - run: rustup toolchain install
@@ -66,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Installs the toolchain rust-toolchain.toml pins (with rustfmt and
       # clippy), so CI and local builds use the same compiler.
       - run: rustup toolchain install
@@ -81,7 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Installs the toolchain rust-toolchain.toml pins (with rustfmt and
       # clippy), so CI and local builds use the same compiler.
       - run: rustup toolchain install
@@ -97,7 +97,7 @@ jobs:
       # Overrides rust-toolchain.toml, which pins the newer toolchain.
       RUSTUP_TOOLCHAIN: "1.95"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@1.95
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --locked --workspace --all-targets
@@ -110,7 +110,7 @@ jobs:
     env:
       RUSTDOCFLAGS: -D warnings
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Installs the toolchain rust-toolchain.toml pins (with rustfmt and
       # clippy), so CI and local builds use the same compiler.
       - run: rustup toolchain install
@@ -123,7 +123,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check
