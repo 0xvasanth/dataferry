@@ -1,0 +1,16 @@
+run 38dc95d03a27465d8cea2bf42fa890d3
+  flow `orders`: TxnWithState
+run 38dc95d03a27465d8cea2bf42fa890d3: complete; 3 partitions; read 10, dead-lettered 1; wrote order_items 7, orders 8
+verification of `warehouse` passed; report: ./.ferry/runs/38dc95d03a27465d8cea2bf42fa890d3/report.md
+select order_id, line_no, sku, qty, unit_cents from order_items order by order_id, line_no;
+         order_id         | line_no |  sku  | qty | unit_cents 
+--------------------------+---------+-------+-----+------------
+ 650000000000000000000001 |       0 | SKU-1 |   2 |       1000
+ 650000000000000000000001 |       1 | SKU-2 |   1 |        550
+ 650000000000000000000005 |       0 | SKU-3 |   1 |        725
+ 650000000000000000000007 |       0 | SKU-4 |   1 |        101
+ 650000000000000000000008 |       0 | SKU-5 |   3 |        100
+ 650000000000000000000009 |       0 | SKU-1 |   4 |        100
+ 65000000000000000000000a |       0 | SKU-6 |   1 |         50
+(7 rows)
+

@@ -1,0 +1,79 @@
+name: Docs
+
+# The user guide (docs/, an mdBook): built and link-checked on every pull
+# request, its examples run against the binary, and on main deployed to
+# GitHub Pages (https://0xvasanth.github.io/ferry/).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels its older runs. Deploys to Pages
+# queue instead, so the last push to main is the one that ends up live.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  # The mdbook the book is built with, locally too (`cargo install mdbook
+  # --locked --version 0.5.4`). Bumping it means updating the checksum of
+  # its Linux release archive below.
+  MDBOOK_VERSION: 0.5.4
+  MDBOOK_SHA256: 3f28de05dafca9d0f2eab99c662116b0e37b89b1d96a08f8f430b9eeae958cd7
+
+jobs:
+  # mdbook build with no warning or error (it only logs a missing
+  # {{#include}}), and no broken relative link or #anchor in the output.
+  book:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install mdbook
+        run: |
+          archive="mdbook-v${MDBOOK_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          curl -sSfL -o "$RUNNER_TEMP/$archive" \
+            "https://github.com/rust-lang/mdBook/releases/download/v${MDBOOK_VERSION}/$archive"
+          echo "$MDBOOK_SHA256  $RUNNER_TEMP/$archive" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - run: docs/scripts/build-book.sh
+      - if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: docs/book
+
+  # What the guide shows is what the binary does: every YAML it shows
+  # validates, the CLI reference is the binary's --help, and the
+  # quickstart and the worked examples run on Docker (Postgres and Mongo
+  # containers on the runner) and print what the guide prints.
+  snippets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      # Installs the toolchain rust-toolchain.toml pins.
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --locked -p ferry-cli
+      - run: docs/scripts/check-snippets.sh --live
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [book, snippets]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

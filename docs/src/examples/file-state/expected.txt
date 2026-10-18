@@ -1,0 +1,4 @@
+run 1f45327444324d37a312a510413cc724
+  flow `products`: DeletePartitionThenInsert (the state store is a file (`backend: file`), not on "warehouse")
+run 1f45327444324d37a312a510413cc724: complete; 1 partitions; read 3, dead-lettered 0; wrote product_dimensions 1, product_tags 3, products 3, variant_options 2, variants 2
+verification of `warehouse` passed; report: ./.ferry/runs/1f45327444324d37a312a510413cc724/report.md

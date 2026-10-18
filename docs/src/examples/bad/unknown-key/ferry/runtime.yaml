@@ -1,0 +1,7 @@
+runtime:
+  # On the flow's sink: rows and each partition's done-record commit in
+  # one transaction (TxnWithState).
+  state:
+    backend: postgres
+    connection: warehouse
+  wrokers: 4

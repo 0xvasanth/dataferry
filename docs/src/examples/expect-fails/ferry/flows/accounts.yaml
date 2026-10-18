@@ -1,0 +1,21 @@
+flows:
+  - name: accounts
+    from: crm.signups
+    sink: warehouse
+    to:
+      accounts:
+        key: [id]
+        columns:
+          id: _id
+          # Signup 3 has no email: a null in a column that can't be null
+          # rejects the record.
+          email: {expr: lower(email), type: utf8, nullable: false}
+          plan: plan
+          # Signup 4 has "ten" seats: int() rejects the record.
+          seats: int(seats)
+    # ANCHOR: expect
+    expect:
+      # Dead-lettered records are not written, so this holds only if none were.
+      every_signup_landed: count(accounts) == 5
+      seats_add_up: sum(accounts.seats) == source.sum(int(seats))
+    # ANCHOR_END: expect

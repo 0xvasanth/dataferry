@@ -1,0 +1,4 @@
+runtime:
+  # The default, written out: state in the work directory (.ferry/state).
+  state:
+    backend: file

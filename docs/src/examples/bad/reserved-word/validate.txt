@@ -1,0 +1,9 @@
+error[F0110]: flows[products].to.product_tags.columns.position: `index` is a reserved name
+   | index
+   | ^^^^^
+  --> ferry/flows/products.yaml:38:21
+   |
+38 |           position: index
+   |                     ^^^^^
+   = help: write `$index` for the engine's value, or `"index"` for a field named index
+config is invalid: 1 error

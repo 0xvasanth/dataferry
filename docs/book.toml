@@ -1,0 +1,26 @@
+[book]
+title = "dataferry"
+description = "The dataferry user guide: move and reshape data between databases, one committed partition at a time."
+authors = ["vasanth"]
+language = "en"
+src = "src"
+
+[build]
+build-dir = "book"
+# A missing {{#include}} is an error, never an empty section.
+create-missing = false
+
+[output.html]
+git-repository-url = "https://github.com/0xvasanth/ferry"
+edit-url-template = "https://github.com/0xvasanth/ferry/edit/main/docs/{path}"
+site-url = "/ferry/"
+no-section-label = false
+
+[output.html.search]
+enable = true
+
+# The generated config reference (../config-reference.md, included by
+# src/reference/config.md) links to `../schemas/README.md`, which resolves to
+# this path in the book. It is a page about the schemas, so send it there.
+[output.html.redirect]
+"/schemas/README.html" = "../reference/schemas.html"

@@ -1,0 +1,8 @@
+flows:
+  - name: customers
+    from: legacy.public.customers
+    sink: warehouse
+    to:
+      customers:
+        key: [id]
+        columns: "*"

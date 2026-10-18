@@ -1,0 +1,15 @@
+flows:
+  - name: accounts
+    from: crm.signups
+    sink: warehouse
+    to:
+      accounts:
+        key: [id]
+        columns:
+          id: _id
+          # Signup 3 has no email: a null in a column that can't be null
+          # rejects the record.
+          email: {expr: lower(email), type: utf8, nullable: false}
+          plan: plan
+          # Signup 4 has "ten" seats: int() rejects the record.
+          seats: int(seats)

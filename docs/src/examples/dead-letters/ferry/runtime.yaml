@@ -1,0 +1,10 @@
+runtime:
+  state:
+    backend: postgres
+    connection: warehouse
+  # ANCHOR: policy
+  # Keep going: a rejected record goes to _ferry_dlq on the sink, until more
+  # than 10 have been rejected in the run.
+  on_error: dead_letter
+  max_errors: 10
+  # ANCHOR_END: policy

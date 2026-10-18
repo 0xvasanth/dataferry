@@ -1,0 +1,5 @@
+run 0ab83143cdbb48ebacfb9d898e714368
+  flow `accounts`: TxnWithState
+run 0ab83143cdbb48ebacfb9d898e714368: complete; 1 partitions; read 5, dead-lettered 2; wrote accounts 3
+verification of `warehouse` failed (1 problems); report: ./.ferry/runs/0ab83143cdbb48ebacfb9d898e714368/report.md
+error[F0701]: flow `accounts`: assertion `every_signup_landed` failed: 3 == 5 is false

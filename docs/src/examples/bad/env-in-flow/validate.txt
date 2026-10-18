@@ -1,0 +1,7 @@
+error[F0108]: flows[products].to.product_dimensions.where: `${` in a flow: environment variables are substituted only in connections and runtime.state
+  --> ferry/flows/products.yaml:23:16
+   |
+23 |         where: dimensions.width_cm > ${MIN_WIDTH}
+   |                ^^^^^^^^^^^^^^^^^^^
+   = help: write the value into the flow, so it is part of the config hash (0003 §9)
+config is invalid: 1 error

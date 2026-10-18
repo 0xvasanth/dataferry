@@ -1,0 +1,9 @@
+connections:
+  - name: shop
+    type: mongo
+    url: ${CATALOG_MONGO_URL}
+    database: shop
+
+  - name: warehouse
+    type: postgres
+    url: ${CATALOG_PG_URI}
