@@ -18,10 +18,13 @@
 //! creates the foreign keys the target schema declares (the sink creates
 //! tables without them). Each object is restored in its own transaction,
 //! together with the change to its record, so finalize can stop anywhere
-//! and run again. A foreign key is added `NOT VALID` and then validated. If
-//! the loaded rows break it, it stays `NOT VALID` (checked for new rows,
-//! never silently off), the rows are reported by key, and its record is
-//! kept so the next finalize validates it again.
+//! and run again. Each of those transactions holds the schema's DDL lock
+//! (`crate::ddl::locked_transaction`) as prepare's does, so two finalizes,
+//! or a finalize and a prepare, never both act on what they found. A
+//! foreign key is added `NOT VALID` and then validated. If the loaded rows
+//! break it, it stays `NOT VALID` (checked for new rows, never silently
+//! off), the rows are reported by key, and its record is kept so the next
+//! finalize validates it again.
 
 use std::collections::BTreeSet;
 
@@ -32,7 +35,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use tokio_postgres::{Client, Transaction};
 
-use crate::ddl::{column_list, qualified};
+use crate::ddl::{column_list, locked_transaction, qualified};
 use crate::source::{pg_error, quote};
 
 /// The table that holds what a load dropped.
@@ -350,7 +353,7 @@ fn forget_sql(schema: &str) -> String {
 /// Recreates the index unless it already exists (a finalize that stopped
 /// after creating it), and forgets its record.
 async fn restore_index(client: &mut Client, schema: &str, r: &Dropped) -> Result<()> {
-    let txn = client.transaction().await.map_err(pg_error)?;
+    let txn = locked_transaction(client, schema).await?;
     let exists: Option<String> = txn
         .query_one(
             "SELECT to_regclass($1)::text",
@@ -373,7 +376,7 @@ async fn restore_index(client: &mut Client, schema: &str, r: &Dropped) -> Result
 /// until it validates.
 async fn add_foreign_key(client: &mut Client, schema: &str, r: &Dropped) -> Result<()> {
     let regclass = qualified(schema, &r.table);
-    let txn = client.transaction().await.map_err(pg_error)?;
+    let txn = locked_transaction(client, schema).await?;
     let exists = !txn
         .query(CONSTRAINT_EXISTS_SQL, &[&regclass, &r.name])
         .await
@@ -444,7 +447,7 @@ async fn declare_foreign_key(
 ) -> Result<Option<Dropped>> {
     let regclass = qualified(schema, &table.name);
     let parent = qualified(schema, &fk.references_table);
-    let txn = client.transaction().await.map_err(pg_error)?;
+    let txn = locked_transaction(client, schema).await?;
     let existing = txn
         .query(
             FOREIGN_KEY_NAMES_SQL,
@@ -500,7 +503,7 @@ async fn validate(
     r: &Dropped,
 ) -> Result<Option<FinalizeProblem>> {
     let regclass = qualified(schema, &r.table);
-    let txn = client.transaction().await.map_err(pg_error)?;
+    let txn = locked_transaction(client, schema).await?;
     let validated = txn
         .batch_execute(&format!(
             "ALTER TABLE {regclass} VALIDATE CONSTRAINT {}",

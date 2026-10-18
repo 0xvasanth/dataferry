@@ -8,13 +8,27 @@
 //! tables: finalize adds them once the flow is loaded (A6, see
 //! `crate::deferred`). The sink also uses them to find the children of a
 //! parent table.
+//!
+//! # One schema's DDL at a time
+//!
+//! `prepare` and `finalize` each check the catalog and then create or drop
+//! what they found missing or present: a table, a foreign key, an index,
+//! the schema itself. Two of them on one schema (two workers starting the
+//! same flow, a resume starting while a killed run's prepare is still in
+//! the server) could both find a table missing and both create it, and the
+//! second would fail on `pg_type`'s unique index. So every transaction that
+//! checks and acts is a [`locked_transaction`], and they run one at a time.
 
-use ferry_core::TargetTable;
 use ferry_core::types::{CanonicalField, CanonicalType};
+use ferry_core::{Result, TargetTable};
+use tokio_postgres::{Client, IsolationLevel, Transaction};
 
 use crate::encode::Wire;
 use crate::pg_type::oid;
-use crate::source::quote;
+use crate::source::{pg_error, quote};
+
+/// The first key of [`locked_transaction`]'s advisory lock: ferry's sink DDL.
+const SCHEMA_LOCK_CLASS: i32 = 0x0f_e2_5c;
 
 /// The Postgres type a canonical type is stored as, and how its values are
 /// sent.
@@ -148,6 +162,51 @@ pub(crate) fn create_table(schema: &str, table: &TargetTable) -> String {
     )
 }
 
+/// Opens a transaction on `client` holding the advisory lock on `schema`'s
+/// DDL, until it ends.
+///
+/// The lock is the two-key form, `pg_advisory_xact_lock(int4, int4)`: the
+/// first key is [`SCHEMA_LOCK_CLASS`], the second [`schema_lock_key`].
+/// Postgres keeps the two-key and the one-key (`bigint`) forms apart, so it
+/// never meets the lock ferry-state takes for its own tables. It is the
+/// transaction's first statement, so no transaction holds a table lock
+/// while it waits.
+///
+/// The transaction is read committed whatever the server's default: each
+/// statement after the wait must see what the lock's last holder
+/// committed, and under repeatable read the snapshot would be taken at the
+/// lock statement, before the wait.
+pub(crate) async fn locked_transaction<'a>(
+    client: &'a mut Client,
+    schema: &str,
+) -> Result<Transaction<'a>> {
+    let txn = client
+        .build_transaction()
+        .isolation_level(IsolationLevel::ReadCommitted)
+        .start()
+        .await
+        .map_err(pg_error)?;
+    txn.execute(
+        "SELECT pg_advisory_xact_lock($1, $2)",
+        &[&SCHEMA_LOCK_CLASS, &schema_lock_key(schema)],
+    )
+    .await
+    .map_err(pg_error)?;
+    Ok(txn)
+}
+
+/// The 32-bit FNV-1a hash of the schema's name: the same in every process
+/// and every ferry version, as two processes need for one lock. Two schemas
+/// whose names hash alike only wait for each other.
+fn schema_lock_key(schema: &str) -> i32 {
+    let mut hash: u32 = 0x811c_9dc5;
+    for b in schema.bytes() {
+        hash ^= u32::from(b);
+        hash = hash.wrapping_mul(0x0100_0193);
+    }
+    i32::from_be_bytes(hash.to_be_bytes())
+}
+
 pub(crate) fn qualified(schema: &str, table: &str) -> String {
     format!("{}.{}", quote(schema), quote(table))
 }
@@ -170,6 +229,17 @@ mod tests {
 
     fn field(name: &str, ty: CanonicalType, nullable: bool) -> CanonicalField {
         CanonicalField::new(name, ty, nullable)
+    }
+
+    /// Processes running different ferry versions must agree on the key, or
+    /// they wouldn't wait for each other: these are FNV-1a's published
+    /// values, so a change to the hash fails here.
+    #[test]
+    fn the_schema_lock_key_is_fnv_1a_of_the_name() {
+        assert_eq!(schema_lock_key(""), 0x811c_9dc5_u32 as i32);
+        assert_eq!(schema_lock_key("a"), 0xe40c_292c_u32 as i32);
+        assert_eq!(schema_lock_key("foobar"), 0xbf9c_f968_u32 as i32);
+        assert_ne!(schema_lock_key("public"), schema_lock_key("Public"));
     }
 
     #[test]
