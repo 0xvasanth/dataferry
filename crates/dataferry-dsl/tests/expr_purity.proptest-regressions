@@ -10,3 +10,4 @@ cc 0c39ee3ef60c2327da4695d42ebd34e1e7a0dc5b293b9adf60d742173d79f169 # shrinks to
 cc 5f95dbf5523114fadde9911dd0c64992ffb285c31e4a35e5d6d04c70f9eb7a92 # shrinks to text = "coalesce(greatest(0, 0), round((0 * 0.000), 1))", rows = [Row { a: None, b: None, d: None, s: None, t: None, f: None }]
 cc 394be6ad454b665de304f11e21a314c24bf8cf11dd890c4ab33ab4eabd00bbd7 # shrinks to text = "coalesce((0 + 0), round((0.000 + 0), 1))", rows = [Row { a: None, b: None, d: None, s: None, t: None, f: None }]
 cc 5e45f719dcd46a1d1d7fa858e635ca34b119a4114b7a82bcfddae5b8215b95db # shrinks to text = "(a * coalesce(0.000, round(0.000, 1)))", rows = [Row { a: None, b: None, d: None, s: None, t: None, f: None }]
+cc abf0abd0a72be5b3793a8bf7181ab47f685d579411168a7a156ecfbdf04cfc9c # shrinks to text = "upper(lower(string(CASE WHEN round(coalesce(2.950, a), 1) > length(s) THEN round(coalesce(2.950, a), 1) ELSE length(s) END)))" (main CI, 2026-10-18)
