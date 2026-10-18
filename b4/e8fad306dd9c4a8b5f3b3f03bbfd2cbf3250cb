@@ -1,0 +1,367 @@
+docs/src/examples/fail-fast/expected.txt
+  s_123eb5f173c435::t_a3669969bab3c2 2,4,7-12
+  s_123eb5f173c435::t_cd7f5b8c84c8fd 1,3,5-6
+docs/src/examples/bad/env-in-flow/ferry/runtime.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-6
+docs/src/examples/bad/wrong-role/ferry/runtime.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-6
+.github/workflows/docs.yml
+  s_123eb5f173c435::t_9ac13193be0b08 1-79
+docs/src/examples/plan-errors/expected.txt
+  s_123eb5f173c435::t_a3669969bab3c2 1-14
+docs/src/examples/dead-letters/ferry/ferry.yaml
+  s_123eb5f173c435::t_85a414e74b1934 1-3
+docs/src/examples/bad/reserved-word/ferry/flows/products.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-51,53-67,69-77
+  s_123eb5f173c435::t_514ced165b6f7b 52,68
+docs/src/examples/expect-fails/ferry/connections.yaml
+  s_123eb5f173c435::t_85a414e74b1934 1-9
+docs/src/examples/literal-secret/ferry/flows/products.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-77
+docs/src/examples/bad/missing-env/ferry/connections.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-9
+docs/src/examples/bad/wrong-role/validate.txt
+  s_123eb5f173c435::t_514ced165b6f7b 1-7
+docs/src/examples/bad/env-in-flow/ferry/ferry.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-5
+docs/src/quickstart.md
+  s_123eb5f173c435::t_d08106967f364d 79-92
+  s_123eb5f173c435::t_4d596d085ca6f7 1-78,93-411
+docs/src/installation.md
+  s_123eb5f173c435::t_1eb5b8ed72f099 1-112
+docs/src/errors.md
+  s_123eb5f173c435::t_38352fcb38126d 96-102
+  s_123eb5f173c435::t_22246cd26c9812 1-95,103-144,146,154-178,181-185
+  s_123eb5f173c435::t_16d59373dca5e4 179-180
+  s_123eb5f173c435::t_73bf915b064423 145,147-153
+docs/src/examples/postgres-options/ferry/flows/customers.yaml
+  s_123eb5f173c435::t_9196b049920e0f 1-8
+docs/src/examples/expect-fails/expected.txt
+  s_123eb5f173c435::t_cd7f5b8c84c8fd 1,3-4
+  s_123eb5f173c435::t_a3669969bab3c2 2,5
+docs/src/examples/pg-merge/check.sql
+  s_123eb5f173c435::t_1867d2572dffa3 1-2
+docs/src/examples/max-errors/ferry/runtime.yaml
+  s_123eb5f173c435::t_85a414e74b1934 1-9
+docs/src/examples/expect-fails/ferry/flows/accounts.yaml
+  s_123eb5f173c435::t_85a414e74b1934 1-21
+docs/src/examples/dead-letters/ferry/flows/accounts.yaml
+  s_123eb5f173c435::t_85a414e74b1934 1-15
+docs/src/examples/dead-letters/ferry/connections.yaml
+  s_123eb5f173c435::t_85a414e74b1934 1-9
+docs/src/transforms.md
+  s_123eb5f173c435::t_431b1023b41d10 60-62,65,70-75,77
+  s_123eb5f173c435::t_2dfc58671c2019 1-23,26-59,63-64,66-69,78-91,96-183
+  s_123eb5f173c435::t_04a8607a8fd665 24-25,76
+  s_123eb5f173c435::t_bde9c04934a01b 92-95
+docs/src/examples/golden-pg/load.sh
+  s_123eb5f173c435::t_1867d2572dffa3 1-9
+docs/src/examples/dead-letters/ferry/runtime.yaml
+  s_123eb5f173c435::t_85a414e74b1934 1-10
+docs/src/reference/cli/run.txt
+  s_123eb5f173c435::t_b0df1a978ac0f7 1-39
+docs/src/SUMMARY.md
+  s_123eb5f173c435::t_fd984aafdcfa8d 1-44
+docs/src/examples/bad/reserved-word/ferry/connections.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-9
+docs/src/running.md
+  s_123eb5f173c435::t_842533d1813a75 77
+  s_123eb5f173c435::t_d08106967f364d 70-71
+  s_123eb5f173c435::t_6a0f4a01bd6472 1-33,40,48-59,63-69,72-76,78-100,103-115,119-141,143-223,228-230
+  s_123eb5f173c435::t_14e8153b3dd778 34-39,41-47,60-62,116-118
+  s_123eb5f173c435::t_0af6b00644406c 101-102
+  s_123eb5f173c435::t_ace81b386a061f 142
+  s_123eb5f173c435::t_908308e09a1667 224-227
+docs/src/examples/file-state/ferry/flows/products.yaml
+  s_123eb5f173c435::t_aaf2da3416506b 1-77
+docs/src/extending.md
+  s_123eb5f173c435::t_1995c3bcacdd74 172
+  s_123eb5f173c435::t_3f1bf5f699a5aa 1-98,100-171,173-185,189-210
+  s_123eb5f173c435::t_8ae338a9da1083 99,186-188
+docs/src/examples/bad/env-in-flow/ferry/connections.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-9
+docs/scripts/check-snippets.sh
+  s_123eb5f173c435::t_40fea89acbcc75 76,80-90,198,273,298,323,361,371,395,513,568,626
+  s_123eb5f173c435::t_cbe8a63fb98e09 11-13,25-29,31-33,35-40,64,96,103-109,112-113,118-124,130-136,138,141-147,149-150,152,154,166,168-174,176-197,243,253-257,260,263,303,307-308,320-321,341,343,354-356,358,366-370,372-394,398-400,404-412,414-415,421,424-430,435,449-452,460,465-466,468,478-479,482-499,501-502,504-509,511-512,514-531,542,544,547-549,551,554-555,558,561,564-567,569-575,577,580-581,586-601,603-605,607,620-623,625,627-631
+  s_123eb5f173c435::t_3f053dcd13a1d1 550,556-557,562-563,578
+  s_123eb5f173c435::t_4175ac540f7bca 200-234,288-292,532-541,545-546,552-553,559-560,579,582-585
+  s_123eb5f173c435::t_db283787bdf435 608-619
+  s_123eb5f173c435::t_9301780e534f66 1-10,14,19-24,30,34,41-63,65-75,77-79,91-95,97-102,110-111,114-117,125-129,137,139-140,148,151,153,155-165,167,175,199,235-242,245,250-252,258-259,262,264,269-272,274-284,296-297,299-302,304-306,309-319,322,324-340,342,344-353,357,359-360,362-365,396-397,401-403,413,416-420,422-423,431-434,436-448,453-459,461-464,467,469-477,480-481,500,503,510,576,602,606,624
+  s_123eb5f173c435::t_cc6b85f29edb2c 543
+  s_123eb5f173c435::t_514ced165b6f7b 15-16,261,265-268
+  s_123eb5f173c435::t_fbfd57797836ef 17-18,244,246-249,285-287,293-295
+docs/src/examples/fail-fast/ferry/runtime.yaml
+  s_123eb5f173c435::t_85a414e74b1934 1-9
+docs/src/reference/cli/schema.txt
+  s_123eb5f173c435::t_b0df1a978ac0f7 1-42
+docs/src/examples/bad/reserved-word/validate.txt
+  s_123eb5f173c435::t_514ced165b6f7b 1-9
+docs/src/configuration.md
+  s_123eb5f173c435::t_6ada4f374cfc67 89-92,136-138,245-250
+  s_123eb5f173c435::t_aaf2da3416506b 50,52-54,147,152-161,207-208,211
+  s_123eb5f173c435::t_864931dc4526e8 1-49,51,55-88,93-135,139-146,148-151,162-206,209-210,212-244,251-294
+docs/src/examples/literal-secret/validate.txt
+  s_123eb5f173c435::t_514ced165b6f7b 1-7
+docs/src/examples/plan-errors/ferry/flows/accounts.yaml
+  s_123eb5f173c435::t_a3669969bab3c2 1
+  s_123eb5f173c435::t_85a414e74b1934 2-14
+docs/src/connectors/tls.md
+  s_123eb5f173c435::t_5772e02a659378 1-10,18-49,51-72
+  s_123eb5f173c435::t_a7243ea71821e9 11-15
+  s_123eb5f173c435::t_bd19c954217b6e 16-17,50
+docs/src/examples/golden-pg/expected.txt
+  s_123eb5f173c435::t_cd7f5b8c84c8fd 1-16
+docs/src/transforms/merge-nest.md
+  s_123eb5f173c435::t_2ab54df1b610c4 98-105
+  s_123eb5f173c435::t_60614f86263a5c 117
+  s_123eb5f173c435::t_9740b844b3bafa 1-97,106-116,118-158
+docs/src/examples/bad/missing-env/ferry/flows/products.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-77
+docs/src/connectors.md
+  s_123eb5f173c435::t_d08106967f364d 15-17
+  s_123eb5f173c435::t_8bab7735295d3f 1-14,18-44
+docs/src/reference/cli/plan.txt
+  s_123eb5f173c435::t_b0df1a978ac0f7 1-39
+docs/src/connectors/postgres.md
+  s_123eb5f173c435::t_9196b049920e0f 8
+  s_123eb5f173c435::t_bd19c954217b6e 200-204
+  s_123eb5f173c435::t_e4df001529a989 75-76,153-157,179-183
+  s_123eb5f173c435::t_47eedef822df4d 188
+  s_123eb5f173c435::t_8de6f575120a51 1-7,9-74,77-152,158-178,184-187,189-199
+docs/src/examples/catalog/check.sql
+  s_123eb5f173c435::t_076bf04e72243c 1-5
+docs/src/examples/expect-fails/load.sh
+  s_123eb5f173c435::t_85a414e74b1934 1-8
+docs/src/reference/cli/validate.txt
+  s_123eb5f173c435::t_b0df1a978ac0f7 1-39
+docs/src/examples/expect-fails/ferry/runtime.yaml
+  s_123eb5f173c435::t_85a414e74b1934 1-10
+docs/src/examples/postgres-options/ferry/connections.yaml
+  s_123eb5f173c435::t_9196b049920e0f 1-12
+docs/src/examples/bad/unquoted-value/ferry/flows/products.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-11,13-78
+  s_123eb5f173c435::t_514ced165b6f7b 12
+docs/src/examples/bad/env-in-flow/ferry/flows/products.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-77
+docs/src/examples/pg-merge/load.sh
+  s_123eb5f173c435::t_1867d2572dffa3 1-9
+docs/src/examples/max-errors/ferry/flows/accounts.yaml
+  s_123eb5f173c435::t_85a414e74b1934 1-15
+docs/src/examples/fail-fast/load.sh
+  s_123eb5f173c435::t_85a414e74b1934 1-8
+docs/src/examples/dead-letters/expected.txt
+  s_123eb5f173c435::t_a3669969bab3c2 2,5-25
+  s_123eb5f173c435::t_cd7f5b8c84c8fd 1,3-4
+docs/src/examples/bad/env-in-flow/validate.txt
+  s_123eb5f173c435::t_514ced165b6f7b 1-7
+docs/src/examples/bad/unquoted-value/validate.txt
+  s_123eb5f173c435::t_514ced165b6f7b 1-6
+docs/src/examples/file-state/ferry/ferry.yaml
+  s_123eb5f173c435::t_aaf2da3416506b 1-5
+docs/src/examples/fail-fast/check.sql
+  s_123eb5f173c435::t_85a414e74b1934 1
+docs/src/expressions.md
+  s_123eb5f173c435::t_70774db1d65f02 90,105
+  s_123eb5f173c435::t_732cb3d9600d8f 94-104,106-108,190-192
+  s_123eb5f173c435::t_81ea0b4d5a5480 1-89,91-93,109-189,193-281
+docs/src/examples/catalog/products.json
+  s_123eb5f173c435::t_076bf04e72243c 1-35
+docs/src/examples/max-errors/load.sh
+  s_123eb5f173c435::t_85a414e74b1934 1-8
+docs/src/examples/catalog/expected.txt
+  s_123eb5f173c435::t_cd7f5b8c84c8fd 1,3-4
+  s_123eb5f173c435::t_a3669969bab3c2 2,5-40
+docs/src/examples/dead-letters/check.sql
+  s_123eb5f173c435::t_85a414e74b1934 1-3
+docs/src/examples/plan-errors/ferry/runtime.yaml
+  s_123eb5f173c435::t_85a414e74b1934 1-4
+docs/src/examples/bad/unquoted-value/ferry/ferry.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-5
+docs/src/examples/bad/missing-env/validate.txt
+  s_123eb5f173c435::t_514ced165b6f7b 1-7
+docs/src/examples/fail-fast/ferry/flows/accounts.yaml
+  s_123eb5f173c435::t_85a414e74b1934 1-15
+docs/src/examples/bad/unknown-key/validate.json
+  s_123eb5f173c435::t_fbfd57797836ef 1-2
+docs/src/examples/bad/wrong-role/ferry/ferry.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-5
+docs/src/architecture.md
+  s_123eb5f173c435::t_28fe498bfeb554 22,25-33,38-42
+  s_123eb5f173c435::t_4175ac540f7bca 34-35
+  s_123eb5f173c435::t_69c9ab50584fd5 1-10,12-21,23-24,36-37,43-51,55-57,61-65,68-100
+  s_123eb5f173c435::t_e7b1bd474a667e 11,52-54,58-60,66-67
+docs/src/limitations.md
+  s_123eb5f173c435::t_9a0b76cede4240 81-83,86-87
+  s_123eb5f173c435::t_cb5adec3eba123 17-19,39-45,51-52,60-64
+  s_123eb5f173c435::t_7649bf4e57135f 1-16,20-38,46-50,53-54,57-59,65-76,80,84-85,88-90
+  s_123eb5f173c435::t_d9a9d5ed1b31d3 55-56,77-79
+docs/src/examples/bad/unquoted-value/ferry/runtime.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-6
+docs/src/examples/max-errors/ferry/ferry.yaml
+  s_123eb5f173c435::t_85a414e74b1934 1-3
+docs/src/examples/golden-pg/check.sql
+  s_123eb5f173c435::t_1867d2572dffa3 1
+docs/src/examples/bad/unknown-key/ferry/runtime.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-7
+docs/src/examples/bad/unknown-key/ferry/ferry.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-5
+docs/src/examples/pg-merge/expected.txt
+  s_123eb5f173c435::t_cd7f5b8c84c8fd 1-20
+docs/src/introduction.md
+  s_123eb5f173c435::t_89ce6c97e92a40 81,83
+  s_123eb5f173c435::t_40fea89acbcc75 82
+  s_123eb5f173c435::t_20f62c80770944 1-80,84-118
+docs/src/examples/bad/unknown-key/ferry/flows/products.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-77
+docs/src/examples/bad/missing-env/ferry/runtime.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-6
+docs/src/examples/pg-merge-plan/load.sh
+  s_123eb5f173c435::t_cd7f5b8c84c8fd 1-10
+docs/src/transforms/copy.md
+  s_123eb5f173c435::t_2ab54df1b610c4 56-60,62
+  s_123eb5f173c435::t_928e5dee892ac3 1-18,20-55,61,63-65
+  s_123eb5f173c435::t_db283787bdf435 66
+  s_123eb5f173c435::t_ac5d72f4e67d91 19
+docs/src/examples/max-errors/check.sql
+  s_123eb5f173c435::t_85a414e74b1934 1
+docs/src/examples/plan-errors/ferry/ferry.yaml
+  s_123eb5f173c435::t_85a414e74b1934 1-3
+docs/src/examples/plan-errors/ferry/connections.yaml
+  s_123eb5f173c435::t_85a414e74b1934 1-9
+docs/src/reference/cli/retry.txt
+  s_123eb5f173c435::t_b0df1a978ac0f7 1-42
+docs/src/reference/cli/dataferry.txt
+  s_123eb5f173c435::t_b0df1a978ac0f7 1-51
+docs/src/examples/pg-merge-plan/expected.txt
+  s_123eb5f173c435::t_cd7f5b8c84c8fd 1-71
+docs/src/examples/signups.json
+  s_123eb5f173c435::t_85a414e74b1934 1-7
+docs/src/examples/max-errors/ferry/connections.yaml
+  s_123eb5f173c435::t_85a414e74b1934 1-9
+docs/src/reference/decisions.md
+  s_123eb5f173c435::t_e346a2c1d8a40f 23-25
+  s_123eb5f173c435::t_05efef29b52907 1-22
+docs/src/examples/catalog/ferry/flows/products.yaml
+  s_123eb5f173c435::t_431b1023b41d10 12,14
+  s_123eb5f173c435::t_389ab2adcc8083 16
+  s_123eb5f173c435::t_076bf04e72243c 1-11,13,15,17-79
+docs/src/examples/expect-fails/ferry/ferry.yaml
+  s_123eb5f173c435::t_85a414e74b1934 1-3
+docs/README.md
+  s_123eb5f173c435::t_d4fee7a547627b 34-36
+  s_123eb5f173c435::t_ff4e7f4d021eb8 1-33,37-47
+docs/src/examples/literal-secret/ferry/ferry.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-5
+docs/src/examples/catalog/load.sh
+  s_123eb5f173c435::t_076bf04e72243c 1-8
+docs/src/examples/ci.env
+  s_123eb5f173c435::t_076bf04e72243c 1-8
+  s_123eb5f173c435::t_9196b049920e0f 9-11
+docs/src/examples/literal-secret/ferry/runtime.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-6
+docs/src/troubleshooting.md
+  s_123eb5f173c435::t_b66490b2aefd07 9-12,58-62
+  s_123eb5f173c435::t_66b0666bacf928 1-8,13-15,17-57,63-166
+  s_123eb5f173c435::t_6ada4f374cfc67 16
+docs/scripts/build-book.sh
+  s_123eb5f173c435::t_4081aeded69c06 1-63
+docs/src/examples/plan-errors/load.sh
+  s_123eb5f173c435::t_85a414e74b1934 1-9
+docs/src/examples/bad/unquoted-value/ferry/connections.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-9
+docs/src/changelog.md
+  s_123eb5f173c435::t_6f7c9f06f17a40 1-10
+docs/src/examples/literal-secret/ferry/connections.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-9
+docs/src/examples/dead-letters/load.sh
+  s_123eb5f173c435::t_85a414e74b1934 1-7
+docs/src/examples/bad/reserved-word/ferry/ferry.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-5
+docs/src/examples/catalog/ferry/ferry.yaml
+  s_123eb5f173c435::t_076bf04e72243c 1-5
+docs/src/examples/bad/wrong-role/ferry/flows/products.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-77
+docs/src/examples/file-state/ferry/connections.yaml
+  s_123eb5f173c435::t_aaf2da3416506b 1-9
+docs/src/examples/file-state/load.sh
+  s_123eb5f173c435::t_aaf2da3416506b 1-8
+docs/src/concepts.md
+  s_123eb5f173c435::t_ec9a4f9c7cc791 132-136,200,202-209
+  s_123eb5f173c435::t_89ce6c97e92a40 46
+  s_123eb5f173c435::t_0695d3b1239121 1-45,47-131,137-199,201,210-218
+docs/src/examples/bad/unknown-key/ferry/connections.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-9
+docs/.gitignore
+  s_123eb5f173c435::t_19766dd9206cf2 1
+docs/src/examples/bad/reserved-word/ferry/runtime.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-6
+docs/src/examples/bad/unknown-key/validate.txt
+  s_123eb5f173c435::t_514ced165b6f7b 1-7
+docs/src/examples/file-state/ferry/runtime.yaml
+  s_123eb5f173c435::t_aaf2da3416506b 1-4
+docs/src/reference/cli/resume.txt
+  s_123eb5f173c435::t_b0df1a978ac0f7 1-43
+docs/src/examples/fail-fast/ferry/ferry.yaml
+  s_123eb5f173c435::t_85a414e74b1934 1-3
+docs/src/examples/bad/missing-env/ferry/ferry.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-5
+docs/src/transforms/split-unnest.md
+  s_123eb5f173c435::t_c075cc863bf88a 1-151
+docs/src/examples/fail-fast/ferry/connections.yaml
+  s_123eb5f173c435::t_85a414e74b1934 1-9
+docs/src/verification.md
+  s_123eb5f173c435::t_908308e09a1667 129-134
+  s_123eb5f173c435::t_8d510da4bc1d7c 1-128,135-169
+docs/book.toml
+  s_123eb5f173c435::t_19766dd9206cf2 1-26
+docs/src/examples/file-state/expected.txt
+  s_123eb5f173c435::t_cd7f5b8c84c8fd 1-4
+docs/src/examples/postgres-options/ferry/ferry.yaml
+  s_123eb5f173c435::t_9196b049920e0f 1-3
+docs/src/examples/catalog/ferry/runtime.yaml
+  s_123eb5f173c435::t_076bf04e72243c 1-6
+docs/src/reference/cli.md
+  s_123eb5f173c435::t_9d777cfbe1c0a5 30,114-115,166-167,169
+  s_123eb5f173c435::t_20017e0fcc9672 1-29,31-62,64-113,116-153,155-165,168,170-201
+  s_123eb5f173c435::t_fbfd57797836ef 63
+  s_123eb5f173c435::t_6ada4f374cfc67 154
+docs/src/examples/bad/wrong-role/ferry/connections.yaml
+  s_123eb5f173c435::t_ef74ad8d01c4fa 1-9
+docs/src/reference/schemas.md
+  s_123eb5f173c435::t_ffb925823dfa05 1-73
+docs/src/examples/max-errors/expected.txt
+  s_123eb5f173c435::t_a3669969bab3c2 2,4,7-12
+  s_123eb5f173c435::t_cd7f5b8c84c8fd 1,3,5-6
+docs/src/examples/catalog/ferry/connections.yaml
+  s_123eb5f173c435::t_076bf04e72243c 1-9
+docs/src/connectors/mongo.md
+  s_123eb5f173c435::t_e4df001529a989 17-20,37-39,46-47
+  s_123eb5f173c435::t_add5e732b810e1 1-8,10-16,21-36,40-45,48-63,66-121
+  s_123eb5f173c435::t_bd19c954217b6e 9,64-65
+docs/src/reference/config.md
+  s_123eb5f173c435::t_af558c67d71593 1
+docs/src/reference/decisions/0001-commit-per-partition.md
+  s_123eb5f173c435::t_d16f6bcd4613eb 1
+docs/src/reference/decisions/0002-co-partitioning.md
+  s_123eb5f173c435::t_51b34b36814a52 1
+docs/src/reference/decisions/0003-config-shape.md
+  s_123eb5f173c435::t_35a33cc3d91827 1
+docs/src/reference/decisions/0004-connector-registry.md
+  s_123eb5f173c435::t_ad7305d3cbf0ee 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b4e8fad306dd9c4a8b5f3b3f03bbfd2cbf3250cb",
+  "prompts": {},
+  "sessions": {
+    "s_123eb5f173c435": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c61971b-1d06-46d5-9f33-2aa454db311d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
