@@ -1,0 +1,34 @@
+crates/ferry-connectors/postgres/tests/pg_sink_concurrency.rs
+  s_d54c5efd627527::t_5cc8f61ad1bc0b 67-72,174
+  s_d54c5efd627527::t_d719884bff6e52 111-116,130-135
+  s_d54c5efd627527::t_9263656f28c472 1-16,18,20-24,31,33-66,73-110,120-122,124,137-146,148-170,173,175-179,181,187-213,215-230
+  s_d54c5efd627527::t_353dcfc6d8b5a4 17,19,25-30,32,117-119,123,136,147
+  s_d54c5efd627527::t_e4075197ed44bc 125-129,171-172,180,182-186,214
+crates/ferry-connectors/postgres/src/sink.rs
+  s_d54c5efd627527::t_7383b85bd98cd9 216
+  s_d54c5efd627527::t_524730b768b34d 215,217
+crates/ferry-connectors/postgres/src/deferred.rs
+  s_d54c5efd627527::t_4abc41cb451c8f 22-27
+  s_d54c5efd627527::t_524730b768b34d 38,356,379,450,506
+  s_d54c5efd627527::t_090c411935c39e 21
+crates/ferry-connectors/postgres/src/ddl.rs
+  s_d54c5efd627527::t_524730b768b34d 20,24,30,165-166,168-171,174-188,195
+  s_d54c5efd627527::t_7383b85bd98cd9 11-19,23,28,31,167,172-173,189-194,196,198-209,234-243
+  s_d54c5efd627527::t_9c221c4d922cb6 29,197,244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0ab129e892aa5220d2996d4cb464b70e4554ae0d",
+  "prompts": {},
+  "sessions": {
+    "s_d54c5efd627527": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd00339b-3a77-4e19-acf6-c2d1b1b5d40f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
