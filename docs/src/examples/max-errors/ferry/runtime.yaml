@@ -1,0 +1,9 @@
+runtime:
+  state:
+    backend: postgres
+    connection: warehouse
+  # ANCHOR: policy
+  # Two records are rejected, one more than this run accepts.
+  on_error: dead_letter
+  max_errors: 1
+  # ANCHOR_END: policy

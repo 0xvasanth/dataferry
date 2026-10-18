@@ -1,0 +1,7 @@
+error[F0105]: runtime.wrokers: unknown key `wrokers`
+ --> ferry/runtime.yaml:7:3
+  |
+7 |   wrokers: 4
+  |   ^^^^^^^^
+  = help: did you mean `workers`?
+config is invalid: 1 error

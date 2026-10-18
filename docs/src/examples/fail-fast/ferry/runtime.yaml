@@ -1,0 +1,9 @@
+runtime:
+  state:
+    backend: postgres
+    connection: warehouse
+  # ANCHOR: policy
+  # The default, written out: the first rejected record fails its partition
+  # and the run.
+  on_error: fail
+  # ANCHOR_END: policy

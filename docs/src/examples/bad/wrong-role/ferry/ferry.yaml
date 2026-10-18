@@ -1,0 +1,5 @@
+# The guide's transforms example: Mongo `products` documents become a
+# product row, its dimensions, one row per tag and per variant, and one row
+# per option of each variant.
+version: 1
+name: catalog

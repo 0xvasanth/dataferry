@@ -1,0 +1,12 @@
+run ba4e513cd87644dd8b44ad24a254e0e8
+  flow `accounts`: TxnWithState
+run ba4e513cd87644dd8b44ad24a254e0e8: not complete (0 done, 1 failed, 0 pending, 0 leased); 1 partitions; read 0, dead-lettered 0; wrote nothing
+error[F0602]: flow `accounts`: partition `accounts/signups-0` failed: transform output broke its contract: record [Int(3)] was rejected for `accounts`: accounts.email can't be null, but `lower(email)` is null
+verification of `warehouse` incomplete: the run isn't finished; report: ./.ferry/runs/ba4e513cd87644dd8b44ad24a254e0e8/report.md
+run `ba4e513cd87644dd8b44ad24a254e0e8` has failed partitions; `ferry retry --failed ba4e513cd87644dd8b44ad24a254e0e8` re-runs them
+select count(*) from accounts;
+ count 
+-------
+     0
+(1 row)
+

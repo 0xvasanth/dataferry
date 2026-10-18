@@ -1,0 +1,14 @@
+# Two mistakes `validate` can't see, because they need the source's
+# fields and types: `plan` reports all of them.
+flows:
+  - name: accounts
+    from: crm.signups
+    sink: warehouse
+    where: emial != null
+    to:
+      accounts:
+        key: [id]
+        columns:
+          id: _id
+          email: lower(email)
+          seats: {expr: seats, type: int32}

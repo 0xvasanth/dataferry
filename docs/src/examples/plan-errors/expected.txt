@@ -1,0 +1,14 @@
+error[F0110]: flows[accounts].where: no field `emial` in entity `crm.signups`
+   | emial != null
+   | ^^^^^
+ --> ferry/flows/accounts.yaml:7:12
+  |
+7 |     where: emial != null
+  |            ^^^^^
+  = help: did you mean `email`?
+error[F0111]: flows[accounts].to.accounts.columns.seats: `seats` is utf8, but column `seats` is declared int32: utf8 → int32: text that isn't a valid int32 fails
+  --> ferry/flows/accounts.yaml:14:25
+   |
+14 |           seats: {expr: seats, type: int32}
+   |                         ^^^^^^
+   = help: add `allow_lossy: true` to the column to accept it (values that don't convert become error rows), or convert explicitly: `int(seats)`

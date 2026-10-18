@@ -1,0 +1,6 @@
+error[F0105]: flows[products].to.products.columns.in_stock: expected an expression (a string), `{expr, type, ...}` or `{nest, columns, ...}`, found boolean `true`
+  --> ferry/flows/products.yaml:12:21
+   |
+12 |           in_stock: true
+   |                     ^^^^
+config is invalid: 1 error

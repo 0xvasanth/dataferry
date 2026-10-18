@@ -1,0 +1,9 @@
+connections:
+  - name: crm
+    type: mongo
+    url: ${SIGNUPS_MONGO_URL}
+    database: crm
+
+  - name: warehouse
+    type: postgres
+    url: ${SIGNUPS_PG_URL}
