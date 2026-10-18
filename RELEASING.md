@@ -43,7 +43,10 @@ in its first job, before anything is built or published.
 ## What the workflow does
 
 1. **check:** the tag is `v` plus the workspace version, CHANGELOG.md has its
-   section, the user guide answers, and `CARGO_REGISTRY_TOKEN` is set.
+   section, the user guide answers, `CARGO_REGISTRY_TOKEN` is set, and
+   `cargo package` builds every crate from the tarball `cargo publish` will
+   upload, so a crate that can't publish stops the release before the
+   GitHub Release exists.
 2. **build:** `dataferry` for `x86_64-unknown-linux-gnu`,
    `aarch64-unknown-linux-gnu` (both built on Ubuntu 22.04, so glibc 2.35 or
    newer), `x86_64-apple-darwin` and `aarch64-apple-darwin`. Each binary
@@ -56,6 +59,14 @@ in its first job, before anything is built or published.
 4. **publish:** `cargo publish` for every crate, dependencies first
    (`scripts/release.py order`). The order comes from `cargo metadata`, so a
    new crate needs no change here.
+5. **verify:** the release as a user gets it. Every crate is in the
+   crates.io index at this version (`scripts/release.py verify
+   --index-only`), `cargo install dataferry --version <version> --locked`
+   from crates.io gives a binary that prints the version and validates the
+   golden example, and docs.rs built every crate's documentation
+   (`scripts/release.py verify`, which waits up to an hour for docs.rs's
+   queue). It publishes nothing, so a failure is safe to look into and
+   re-run.
 
 crates.io limits how fast new crates can be published (a burst of a few,
 then one every few minutes). When `cargo publish` is refused for that, the
@@ -72,6 +83,11 @@ error, a crates.io rate limit) continues where it stopped.
 - **A build failed before anything was published:** fix it on `main`, then
   delete the tag (locally and with `git push origin :v<version>`), and tag
   the fixed commit.
+- **verify failed:** the crates are published. A docs.rs failure shows on
+  `https://docs.rs/crate/<crate>/<version>/builds`; fix it in the next
+  version. A `cargo install` failure usually means a dependency resolves
+  differently from crates.io than in `Cargo.lock`: fix forward, and yank
+  the broken version if it can't be used.
 - **Some crates are published:** a version on crates.io can't be replaced,
   only yanked (`cargo yank --version <version> <crate>`). Fix forward with
   the next version.
