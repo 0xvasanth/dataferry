@@ -1,0 +1,28 @@
+crates/dataferry-dsl/tests/expr_purity.proptest-regressions
+  s_3de41edb439269::t_55f9412d6eb6e2 8
+  s_3de41edb439269::t_077d12c566f767 9-12
+crates/dataferry-dsl/tests/expr.rs
+  s_3de41edb439269::t_99c6521183ef2e 249-373,393-433,435-440
+  s_3de41edb439269::t_51e7331f2db870 15,434
+  s_3de41edb439269::t_13aa2d2b953924 374-392
+crates/dataferry-dsl/src/expr/mod.rs
+  s_3de41edb439269::t_6439be16afaf9c 83
+  s_3de41edb439269::t_077d12c566f767 80,197-207,209-216,247-259,261
+  s_3de41edb439269::t_dfc4eef6149d3d 260,262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5c534ced81265d3a09e8b0c1d033e9c541584aad",
+  "prompts": {},
+  "sessions": {
+    "s_3de41edb439269": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d230a747-2305-4faa-8328-536d981e21bf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
