@@ -19,6 +19,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # dtolnay/rust-toolchain's tags are Rust versions, not action
+    # releases: the msrv job pins @1.95 on purpose.
+    ignore:
+      - dependency-name: "dtolnay/rust-toolchain"
     groups:
       actions:
         patterns: ["*"]
