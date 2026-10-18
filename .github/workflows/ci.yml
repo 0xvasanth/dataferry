@@ -4,35 +4,72 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Not used while the repo is user-owned (merge queues need an
+  # organization), but harmless and ready if it moves to one.
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels its older runs. Every run on main
+# gets its own group, so each commit there is checked.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || (github.ref == 'refs/heads/main' && github.run_id) || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
 
 jobs:
-  check:
+  fmt:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
+      # Installs the toolchain rust-toolchain.toml pins (with rustfmt and
+      # clippy), so CI and local builds use the same compiler.
+      - run: rustup toolchain install
       - run: cargo fmt --all --check
-      - run: cargo clippy --workspace --all-targets
-      # Connector tests start Postgres and MongoDB through testcontainers,
-      # using the Docker daemon that ubuntu-latest runners ship with. This
-      # includes the README quickstart (crates/ferry-cli/tests/readme.rs)
-      # and the config reference check (tests/config_reference.rs).
-      - run: cargo test --workspace
+
+  clippy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      # Installs the toolchain rust-toolchain.toml pins (with rustfmt and
+      # clippy), so CI and local builds use the same compiler.
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --locked --workspace --all-targets
+
+  # Connector tests start Postgres and MongoDB through testcontainers,
+  # using the Docker daemon that ubuntu-latest runners ship with. This
+  # includes the kill -9 chaos and conformance suites, the README
+  # quickstart (crates/ferry-cli/tests/readme.rs) and the config
+  # reference check (tests/config_reference.rs).
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      # Installs the toolchain rust-toolchain.toml pins (with rustfmt and
+      # clippy), so CI and local builds use the same compiler.
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --locked --workspace
 
   # Every example config passes `ferry validate`, and every examples/bad
   # case is rejected as invalid. A broken example fails here.
   examples:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      # Installs the toolchain rust-toolchain.toml pins (with rustfmt and
+      # clippy), so CI and local builds use the same compiler.
+      - run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
       - run: cargo build --locked -p ferry-cli
       - run: scripts/check-examples.sh
@@ -42,18 +79,52 @@ jobs:
   # arrow 60 (README, Publishing); acme-ferry is test-only.
   package:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      # Installs the toolchain rust-toolchain.toml pins (with rustfmt and
+      # clippy), so CI and local builds use the same compiler.
+      - run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
-      - run: cargo package --workspace --exclude ferry-dsl --exclude ferry-cli --exclude acme-ferry
+      - run: cargo package --workspace --locked --exclude ferry-dsl --exclude ferry-cli --exclude acme-ferry
 
   # The declared minimum Rust version (workspace rust-version) builds
-  # everything.
+  # everything, not just the toolchain rust-toolchain.toml pins.
   msrv:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Overrides rust-toolchain.toml, which pins the newer toolchain.
+      RUSTUP_TOOLCHAIN: "1.95"
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.95
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --locked --workspace --all-targets
+
+  # Rustdoc builds without warnings (broken intra-doc links, bad code
+  # blocks), so the published API docs stay readable.
+  docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RUSTDOCFLAGS: -D warnings
+    steps:
+      - uses: actions/checkout@v4
+      # Installs the toolchain rust-toolchain.toml pins (with rustfmt and
+      # clippy), so CI and local builds use the same compiler.
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo doc --locked --workspace --no-deps
+
+  # Dependencies: known vulnerabilities (RustSec), licenses, banned or
+  # duplicate crates, and where crates come from. Policy in deny.toml.
+  deny:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
+          arguments: --all-features
