@@ -120,7 +120,8 @@ fn relocate(mut error: ExprError, offset: usize, assertion: &str, at: &Location)
 }
 
 /// A parsed `expect:` entry. Parsing checks everything that needs no
-/// schema; [`check`](super::check) resolves its names at `plan` time.
+/// schema; the type checker ([`crate::typecheck::check`]) resolves its
+/// names at `plan` time.
 #[derive(Clone, Debug)]
 pub struct Assertion {
     pub(crate) name: String,

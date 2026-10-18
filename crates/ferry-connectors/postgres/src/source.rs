@@ -40,7 +40,7 @@ impl PostgresSource {
     pub const DEFAULT_BATCH_ROWS: usize = 8192;
 
     /// `url` is a libpq-style connection string or URL. Its `sslmode` and
-    /// `sslrootcert` follow the TLS policy in [`crate::tls`]. Does no I/O:
+    /// `sslrootcert` follow the TLS policy in [`ferry_connector_tls`]. Does no I/O:
     /// the first trait call connects.
     pub fn new(url: &str, schema: impl Into<String>) -> Result<Self> {
         let (config, tls) = tls::parse(url)?;

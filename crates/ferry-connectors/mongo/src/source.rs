@@ -55,7 +55,7 @@ impl MongoSource {
     pub const DEFAULT_BATCH_ROWS: usize = 8192;
 
     /// `url` is a `mongodb://` or `mongodb+srv://` connection string; TLS
-    /// follows the policy in [`crate::tls`]. Does no I/O: the first trait
+    /// follows the policy in [`ferry_connector_tls`]. Does no I/O: the first trait
     /// call connects.
     pub fn new(url: &str, database: impl Into<String>) -> Result<Self> {
         Ok(Self {

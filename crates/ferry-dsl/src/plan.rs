@@ -6,7 +6,8 @@
 //!
 //! - type-checks (B3) and compiles (B4, B5) it into a [`CompiledFlow`]:
 //!   the transform plan, its write order (parents before children, 0003
-//!   §5.3) and the canonical [`TargetSchema`] the sink renders as DDL;
+//!   §5.3) and the canonical [`TargetSchema`](ferry_core::TargetSchema) the
+//!   sink renders as DDL;
 //! - picks the idempotency strategy, `SinkCaps::strategy_for` of the
 //!   flow's mode. A sink built on the state connection offers
 //!   `TxnWithState`; every other flow gets the sink's next strategy, and the
