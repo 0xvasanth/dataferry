@@ -212,7 +212,9 @@ impl Sink for PostgresSink {
         }
 
         let mut client = pool::get(&self.pool).await?;
-        let txn = client.transaction().await.map_err(pg_error)?;
+        // Until commit, another prepare or finalize on the schema waits, so
+        // what this one finds missing below is still missing when it acts.
+        let txn = ddl::locked_transaction(&mut client, &self.schema).await?;
         txn.batch_execute(&format!(
             "CREATE SCHEMA IF NOT EXISTS {}",
             quote(&self.schema)
