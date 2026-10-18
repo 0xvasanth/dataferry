@@ -1,0 +1,21 @@
+.github/workflows/ci.yml
+  s_033fe7f8d5ab89::t_03bdafda04b7d6 101
+.github/dependabot.yml
+  s_033fe7f8d5ab89::t_03bdafda04b7d6 22-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1b377c2c45093f6227131fa7b05759a260f8b4aa",
+  "prompts": {},
+  "sessions": {
+    "s_033fe7f8d5ab89": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b0c57f4-a31d-4f7b-987c-44bd6cdcd34c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "vasanth <itsparser@gmail.com>"
+    }
+  }
+}
