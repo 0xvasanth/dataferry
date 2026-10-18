@@ -616,6 +616,13 @@ for load in "$src"/examples/*/load.sh; do
     { print }
     END { if (dropped) print "WARN " FILENAME ": dropped a mongodb driver panic at shutdown (known bug)" > "/dev/stderr" }
   ' "$actual" >"$actual.kept"
+  # The panic can leave a blank line behind it. Only when one was dropped,
+  # trim trailing blank lines, so a real difference still fails.
+  if ! cmp -s "$actual" "$actual.kept"; then
+    awk '/^$/ { blank++; next } { while (blank) { print ""; blank-- } print }' \
+      "$actual.kept" >"$actual.trim"
+    mv "$actual.trim" "$actual.kept"
+  fi
   mv "$actual.kept" "$actual"
   if [[ $update -eq 1 ]]; then
     cp "$actual" "$example/expected.txt"
