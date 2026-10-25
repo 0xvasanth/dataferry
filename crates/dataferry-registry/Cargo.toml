@@ -34,7 +34,7 @@ thiserror = "2"
 dataferry-registry = { path = ".", features = ["testkit"] }
 dataferry-core = { workspace = true, features = ["testkit"] }
 futures = "0.3"
-jsonschema = { version = "0.58", default-features = false }
+jsonschema = { version = "0.59", default-features = false }
 serde_norway = "0.9"
 tokio.workspace = true
 trybuild = "1"

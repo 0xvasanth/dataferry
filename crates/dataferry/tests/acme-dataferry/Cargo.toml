@@ -27,6 +27,6 @@ serde = { version = "1", features = ["derive"] }
 assert_cmd = "2"
 dataferry-dsl.workspace = true
 insta = "1"
-jsonschema = { version = "0.58", default-features = false }
+jsonschema = { version = "0.59", default-features = false }
 serde_json = "1"
 tempfile = "3"

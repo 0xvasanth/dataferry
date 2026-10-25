@@ -66,7 +66,7 @@ testcontainers-modules.workspace = true
 tokio-postgres = "0.7"
 proptest = "1"
 insta = "1"
-jsonschema = { version = "0.58", default-features = false }
+jsonschema = { version = "0.59", default-features = false }
 # The staged merge's peak heap (tests/merge_memory.rs), as dataferry-runtime measures it.
 peak_alloc = "0.3"
 # The round-trip test reads serialized JSON back, and column order matters.
